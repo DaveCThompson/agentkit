@@ -8,17 +8,17 @@ tier: kind:agent-infra
 
 <!--
 Sources for this skill (D3 cite-or-run — every claim below traces to one of these):
-  [KB]    a predecessor kit/docs/knowledge-base/MCP-SANDBOX-SETUP-LEARNINGS.md
-  [OPS]   a predecessor kit/.agent/skills/open-webui-agent-network-ops/SKILL.md
-  [TKT]   TICKET-akit-p4-agent-infra-pack.md Scope 1 (orchestrator-verified facts, not project-specific)
+  [KB]    an earlier MCP operations evidence note
+  [OPS]   an earlier agent-network operations skill
+  [TKT]   the relevant agent-infrastructure review (orchestrator-verified facts, not project-specific)
   [SPEC]  MCP specification, revision 2025-11-25 — all three pages fetched 2026-07-25:
           [SPEC:transports] https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
           [SPEC:security]   https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices
           [SPEC:authz]      https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
   [RC]    MCP 2026-07-28 release candidate — fetched 2026-07-25:
           https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
-  [OWU]   Open WebUI v0.6.31 release notes — fetched 2026-07-25:
-          https://github.com/open-webui/open-webui/releases/tag/v0.6.31
+  [OWU]   the host's release notes for Streamable HTTP/OAuth support — verify the current version:
+          https://github.com/open-webui/open-webui/releases
   [SCAN]  Snyk Agent Scan (formerly Invariant Labs mcp-scan) — fetched 2026-07-25:
           https://github.com/invariantlabs-ai/mcp-scan
   [STRAT] the operate-side kit docs/knowledge-base/strategy/STRATEGY-mcp-operations-posture.md (adopted posture)
@@ -79,10 +79,9 @@ security monitoring".
 <!-- [SPEC:security] "stdio Transport Security in Proxy Scenarios" --> If you run a bridge,
 run it under those controls and treat its spawned processes as an escalation surface.
 
-**Host transport support is not a constant — check it, do not assume it.** Open WebUI, as one
-example only, added "MCP (streamable HTTP) server support" with "OAuth 2.1 dynamic client
-registration" in v0.6.31 <!-- [OWU] -->, so older guidance that its servers must all go
-through `mcpo` is stale for that host. Verify your own host's supported transports; never add
+**Host transport support is not a constant — check it, do not assume it.** A host may add
+Streamable HTTP or OAuth support over time <!-- [OWU] -->, so older guidance that its servers must
+all go through a bridge can become stale. Verify your own host's supported transports; never add
 a bridge process for a server that already speaks Streamable HTTP. <!-- [TKT]; [STRAT] §1 -->
 
 For a high-consequence write action, prefer a narrow, purpose-built tool over exposing a

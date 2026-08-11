@@ -41,7 +41,7 @@ You are looking for *systemic* fixes, not just one-off corrections. You value ri
 ### Phase 3: Application
    - **Tier guard (codification gate — `pattern-agent-orchestration.md` §1):** if this session is
      running below senior tier, do NOT apply the fix. Append the proposal to the live feedback pool
-     (`docs/backlog/IDEA-post-v06-feedback.md`) with a `**Provenance**:` line (producer tier · model ·
+     (for example, `docs/backlog/IDEA-<feedback-pool>.md`) with a `**Provenance**:` line (producer tier · model ·
      evidence tier · source) and stop — a senior/staff session adopts it after re-verifying.
    - Route the disposition through the `kit-contribute` skill (adopt to kit / promote to overlay /
      discard) — never edit generated vendor copies, and never bypass that routing with direct

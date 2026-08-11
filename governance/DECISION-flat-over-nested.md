@@ -33,8 +33,8 @@ the pilot records description-token cost and misroute rate to settle "how many i
   reports folder-count and max-nesting-depth before/after and an unjustified increase is rejected.
 - Routing quality is guarded by the semantic orthogonality gate (compare triggers/outcomes/tools) and
   trigger-grammar normalization — not by deleting skills.
-- KB nesting-by-topic is the one sanctioned exception (see `docs-standard.md` §c), and proj-b's
-  nested KB is a documented outlier.
+- KB nesting-by-topic is the one sanctioned exception (see `docs-standard.md` §c); a consuming
+  project's nested KB can be documented as an outlier when the layout is justified.
 
 ## Revisit trigger
 The pilot's misroute measurement comes back high enough that tier-gated context loading isn't enough —
