@@ -30,3 +30,5 @@ jobs:
         run: node agentkit.mjs sync .
       - name: Drift check
         run: node agentkit.mjs check . --quick
+      - name: Content integrity
+        run: node agentkit.mjs check . --content

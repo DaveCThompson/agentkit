@@ -1,7 +1,7 @@
 # Changelog
 
 <!-- The single kit-wide CHANGELOG dialect. Canonical spec: governance/docs-standard.md §(b).
-     Exemplar: proj-web-a/CHANGELOG.md.
+     Exemplar: the kit's selected CHANGELOG dialect.
      - The `# Changelog` H1 above is MANDATORY.
      - One entry per completed session/feature; newest on top, directly below this intro.
      - `### Verification` and the `KB consulted:` line are required blocks, not optional.

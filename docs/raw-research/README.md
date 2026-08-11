@@ -21,7 +21,7 @@ The **`research-curate`** skill walks a file between them.
 
 | Tier | Where | Naming | What it costs you |
 | :--- | :--- | :--- | :--- |
-| **1. Drop** | [`inbox/`](inbox/) | **none** — any filename | nothing |
+| **1. Drop** | `inbox/` | **none** — any filename | nothing |
 | **2. Curate** | here | `<TYPE>-YYYY-MM-DD-<kebab-topic>.md` + provenance header | one rename, one header |
 | **3. Promote** | `governance/` (this repo's KB-equivalent) | the governing doc itself | verification + a home in a real contract |
 
@@ -47,28 +47,21 @@ correspondence with the source, which is the whole value of a mirror).
 
 ## Contents
 
-### Curated — taxonomy map-reduce inputs
+### Curated evidence
 
-| Doc | Read it when… |
-|---|---|
-| [ANALYSIS-2026-07-03-doc-taxonomy-industry-practice.md](ANALYSIS-2026-07-03-doc-taxonomy-industry-practice.md) | you want the external / industry framing (ADRs, Diátaxis, AGENTS.md field practice) behind the taxonomy call |
-| [ANALYSIS-2026-07-03-taxonomy-survey-proj-web-a-proj-b-portfolio.md](ANALYSIS-2026-07-03-taxonomy-survey-proj-web-a-proj-b-portfolio.md) | you want the fleet survey evidence for proj-web-a-web, proj-b, and portfolio |
-| [ANALYSIS-2026-07-03-taxonomy-survey-proj-resume-bootcamp.md](ANALYSIS-2026-07-03-taxonomy-survey-proj-resume-bootcamp.md) | you want the fleet survey evidence for proj-resume and proj-bootcamp |
-
-All three were promoted into `governance/docs-standard.md`; they are kept as the evidence behind it.
+Curated evidence files may be added here by a consuming project. Keep filenames self-describing,
+include provenance headers, and promote only verified durable facts into the appropriate contract.
 
 ### Topic folders — vendor-doc corpora (`SOURCE-` material, upstream names preserved)
 
-| Corpus | Produced | Read it when… |
-|---|---|---|
-| [help-docs/](help-docs/) | 2026-07-03 | you need the raw Anthropic / Antigravity vendor docs (skills, rules+workflows, task-groups, best-practices, example agents) |
-| [official-codex-docs/](official-codex-docs/) | 2026-07-03 | you need the raw OpenAI Codex official-docs research + source index that grounded the Codex adapter |
+Consuming projects may add topic folders here for raw vendor documentation. Keep each corpus
+self-contained with provenance and an index; do not assume a corpus is present in this kit repo.
 
 ### Drop zone
 
 | | |
 |---|---|
-| [inbox/](inbox/) | Uncurated drops. No rules, no index, **never cited.** |
+| `inbox/` | Uncurated drops. No rules, no index, **never cited.** |
 
 ---
 

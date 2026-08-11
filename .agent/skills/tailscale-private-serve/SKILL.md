@@ -7,8 +7,7 @@ tier: kind:agent-infra
 # Tailscale Private Serve
 
 <!--
-Graduated from a predecessor kit/.agent/skills/tailscale-private-serve/SKILL.md (a project-tier
-overlay skill) per TICKET-akit-p4-agent-infra-pack.md Scope 2. That source is the sole
+Graduated from an earlier project-tier overlay skill and an agent-infrastructure review. That source is the sole
 authority for every claim below; project-specific service names, ports, compose files, and
 `doctor.ps1` references have been stripped. The bundled references/scripts/agents subfiles
 were deliberately NOT carried over — see the P4 report for why (non-frontmatter sibling files

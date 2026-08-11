@@ -38,7 +38,7 @@ Conduct deep research on a topic.
 - Identify next steps.
 
 ## Output
-Research notes with tiered sources cited, written to `docs/raw-research/inbox/` (the tier-1
+Research notes with tiered sources cited, written to `<docs-root>/raw-research/inbox/` (the tier-1
 evidence store; preserve upstream filenames). Promotion to the knowledge-base research ledger
 happens only via `research-curate` — never write research output into `docs/knowledge-base/`
 directly.
