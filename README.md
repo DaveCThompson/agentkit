@@ -58,9 +58,9 @@ drift remains visible.
 
 ## Self-hosting
 
-This repository can sync itself for local development. Fleet roster (`fleet.json`), MCP config
-(`.mcp.json`), generated rollups (`reports/`), and project working state stay local and are
-gitignored. Public-safe templates ship as `fleet.example.json` and `.mcp.json.example`.
+This repository can sync itself for local development. Fleet roster, MCP config, generated rollups,
+and project working state stay local and are gitignored. Public-safe templates ship as
+`fleet.example.json` and `.mcp.json.example`.
 
 ## Contributing
 
