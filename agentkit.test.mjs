@@ -1484,7 +1484,10 @@ test('sync refuses HARD when a vendor dir is a junction into .agent (even with -
   assert.equal(read(proj, '.agent/skills/implement-feature/SKILL.md'), before, 'source must be untouched');
 
   // removing the link (the sanctioned fix) unblocks sync
-  fs.rmdirSync(path.join(proj, '.claude', 'skills'));
+  // unlink removes a symlink (Linux/macOS); rmdir removes a Windows junction. Try both so the
+  // test is portable — the CLI guard is cross-platform; the cleanup must match.
+  const linkPath = path.join(proj, '.claude', 'skills');
+  try { fs.unlinkSync(linkPath); } catch { fs.rmdirSync(linkPath); }
   const ok = syncProject(proj, { kitRoot: kit, force: true });
   assert.ok(ok.ok, JSON.stringify(ok.reason || ok));
   assert.ok(exists(proj, '.claude/skills/implement-feature/SKILL.md'));
