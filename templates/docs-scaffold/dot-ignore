@@ -1,0 +1,23 @@
+# Repo-root .ignore — installed by `agentkit sync` as `.ignore` (NOT `.gitignore`).
+# Honored by ripgrep-based search, including Claude Code's Grep tool. Keeps finished/inert
+# material OUT of the default agent search path while it stays TRACKED in git.
+# Canonical spec: governance/docs-standard.md §(e),(f).
+#
+# Search the excluded paths on demand with:  rg --no-ignore <pattern> docs/archive
+# codebase-mcp: add these same globs to the indexer's exclusion config so the graph skips them.
+#
+# WARNING — silent failure mode: an excluded tree returns "no matches", byte-identical to
+# "searched, nothing there". Any VERIFICATION sweep (cross-reference / coverage / "nothing
+# links here" claims) MUST run `rg --no-ignore` or its conclusion is unsound. §(f) has the rule.
+
+# Completed work — history, not context.
+docs/archive/
+
+# Quarantined evidence (research corpora) — source material, never contracts.
+# `raw-research/` is the current name; `research/` is the legacy one, still recognised.
+docs/raw-research/
+docs/research/
+
+# Raw gate/audit command output — findings docs cite these files by name. This dir must ALSO
+# be gitignored in the consuming repo (untracked scratch, unlike the tracked paths above).
+docs/working/evidence/

@@ -1,0 +1,29 @@
+{
+  "vendors": ["claude", "antigravity"],
+  "stack": [],
+  "kinds": ["app"],
+  "tools": ["codebase-mcp"],
+  "overlay": { "rules": ["domain-*", "project-*"], "skills": ["domain-*", "project-*"], "workflows": [] },
+  "pins": {},
+  "orchestration": {
+    "mainBranch": "main",
+    "branchNamePattern": "feat/agent-<name>-<slug>",
+    "isolationMode": "shared-tree-disjoint",
+    "statusBoard": "docs/working/PLAN-wave.md",
+    "tierRoster": {
+      "staff": { "models": [], "maxRole": "orchestrator" },
+      "senior": { "models": [], "maxRole": "worker" },
+      "junior": { "models": [], "maxRole": "worker" }
+    }
+  },
+  "taxonomyEnforce": true,
+  "taxonomyBaseline": 12,
+  "taxonomyWaivers": [
+    { "path": "docs/knowledge-base/research/**", "owner": "kit-owner", "reason": "tier-3 research ledger (docs-standard §f); promoted corpora keep their source-run filenames as provenance" },
+    { "path": "docs/knowledge-base/prompts/**", "owner": "kit-owner", "reason": "imported prompt corpus — externally authored, body and filenames immutable (docs-standard §f, SOURCE- rules)" },
+    { "path": "docs/knowledge-base/golden-renders/**", "owner": "kit-owner", "reason": "render fixtures compared byte-for-byte; renaming them invalidates the comparison" }
+  ],
+  "thresholds": {
+    "staleTicketDays": 14
+  }
+}

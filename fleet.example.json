@@ -1,0 +1,17 @@
+{
+  "_comment": "The fleet roster is your personal list of kit-managed repos. Copy to `fleet.json` and list your projects. Paths are relative to this kit repo. Synced projects appear here; the kit itself is member #0 (path `.`). Keep `fleet.json` local — it is gitignored."
+,
+  "members": [
+    {
+      "name": "agentkit",
+      "path": ".",
+      "status": "managed",
+      "note": "the kit itself — fleet member #0, self-syncs"
+    },
+    {
+      "name": "<your-project>",
+      "path": "../<your-project>",
+      "status": "managed"
+    }
+  ]
+}

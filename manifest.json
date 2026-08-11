@@ -1,0 +1,2988 @@
+{
+  "kitVersion": "0.2.0",
+  "compiledAt": "2026-08-11",
+  "note": "COMPILED by agentkit sync/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
+  "entries": [
+    {
+      "path": ".agent/hooks.json",
+      "type": "other",
+      "name": "hooks",
+      "tier": "core",
+      "sha256": "eec67606e509b5a59e3ae02a776d846abc2ab65051415e7b4c1a373d6c161260",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {}
+    },
+    {
+      "path": ".agent/rules/foundation-accessibility.md",
+      "type": "rule",
+      "name": "foundation-accessibility",
+      "tier": "kind:app",
+      "sha256": "868e47666c12937d6396e9fe9cc9ce0d061d6c77d4998d60f427b69f9e212ef8",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-accessibility.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-browser-usage.md",
+      "type": "rule",
+      "name": "foundation-browser-usage",
+      "tier": "core",
+      "sha256": "618ed809961766cd16e4bd4d11d85a447bc35ff03d0f58f2d1ae9b22eb8939d8",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-browser-usage.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-communication.md",
+      "type": "rule",
+      "name": "foundation-communication",
+      "tier": "core",
+      "sha256": "007e846e62a06d8d54a6edbc3fb261bb8dec7d4c0cc896a626d510b2c07a70b1",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-communication.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-design-system.md",
+      "type": "rule",
+      "name": "foundation-design-system",
+      "tier": "kind:app",
+      "sha256": "68c4f07346a53c5ca6375eb14b3e08f65da0229d807a85ffa508f6126fc0374d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-design-system.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-design-tokens.md",
+      "type": "rule",
+      "name": "foundation-design-tokens",
+      "tier": "kind:app",
+      "sha256": "2462aa7ec3608189d9ab4867c317cd18abdb7e4715451d153633f1d158d1ecb1",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-design-tokens.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-performance.md",
+      "type": "rule",
+      "name": "foundation-performance",
+      "tier": "kind:app",
+      "sha256": "cb99956b01cbc5cb6061ce97fc6810bad7d5c3593210d2f1919f7f636577c051",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-foundation-performance/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-pwa.md",
+      "type": "rule",
+      "name": "foundation-pwa",
+      "tier": "tech:pwa",
+      "sha256": "834f4fadda35d219813e189274d58c9a429cd4a945e4a976e8616cefbdeeb832",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-foundation-pwa/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-security.md",
+      "type": "rule",
+      "name": "foundation-security",
+      "tier": "core",
+      "sha256": "7410c8f5a55c82ff0e2c0d724f46bf891e9a5576aad2add56d9a91bd2efbd3fb",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-security.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/foundation-testing.md",
+      "type": "rule",
+      "name": "foundation-testing",
+      "tier": "core",
+      "sha256": "15281d6960fd584983e86c8dcd81d20482b27539be88909b88b1fe2592ce1a89",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/foundation-testing.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/git-protocol.md",
+      "type": "rule",
+      "name": "git-protocol",
+      "tier": "core",
+      "sha256": "e24ca21744faeb5bddc08e248f9a195b6681559c8603f7ac4ea5ea18e7c4fd94",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/git-protocol.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/kind-service-containers.md",
+      "type": "rule",
+      "name": "kind-service-containers",
+      "tier": "kind:service",
+      "sha256": "47c3afad1491db5730b9a2559ead0e8a09bfc85e2092acd8d886befde73b4c5b",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-kind-service-containers/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-agent-orchestration.md",
+      "type": "rule",
+      "name": "pattern-agent-orchestration",
+      "tier": "core",
+      "sha256": "799daa1997e1cbc58029837745815ca8d7284ddaa92045d8bdd02ca77445e78b",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-agent-orchestration/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-assets.md",
+      "type": "rule",
+      "name": "pattern-assets",
+      "tier": "tech:web",
+      "sha256": "f09a0148cd7edbc7f34fb9cdbdf6d877c4f18e3f57cff87a51dfe08a764bbcc6",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-assets/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-code-standards.md",
+      "type": "rule",
+      "name": "pattern-code-standards",
+      "tier": "core",
+      "sha256": "d99ee4c48fced9d8816e93279da775e9ca5e885249c2d1aead2d9f0633444c45",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/pattern-code-standards.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-command-shape.md",
+      "type": "rule",
+      "name": "pattern-command-shape",
+      "tier": "core",
+      "sha256": "29cfdd9f8d678bfab7d40d2c562fc33c4ff68d4f709b6902f139373c68a876e9",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/pattern-command-shape.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-component-props.md",
+      "type": "rule",
+      "name": "pattern-component-props",
+      "tier": "kind:app",
+      "sha256": "18bc1029866b72b780eec4dadc6645b6c984f38fcf0654e6afa22f1311bce312",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/pattern-component-props.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-design-parity.md",
+      "type": "rule",
+      "name": "pattern-design-parity",
+      "tier": "kind:app",
+      "sha256": "7ee570aede8ffce710dc3f27b80f42c78765b508e9d591a927c4a3e20e79c8af",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/pattern-design-parity.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-docs-artifacts.md",
+      "type": "rule",
+      "name": "pattern-docs-artifacts",
+      "tier": "core",
+      "sha256": "a0ba14399b4ef77a2c3c1f2365a181341412fc2bac1a9b833873627bc0667ca7",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-docs-artifacts/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-error-handling.md",
+      "type": "rule",
+      "name": "pattern-error-handling",
+      "tier": "kind:app",
+      "sha256": "d07e9e1bc5802e66e9ffdac164b3e91991bf374a802800e899797f098011e263",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-error-handling/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-external-mutation.md",
+      "type": "rule",
+      "name": "pattern-external-mutation",
+      "tier": "core",
+      "sha256": "0700db0b3cf8de295867e986cf97e4ddc8ff884ce9e59e559ff748b7779ee4ee",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/pattern-external-mutation.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-feature-scaffolding.md",
+      "type": "rule",
+      "name": "pattern-feature-scaffolding",
+      "tier": "kind:app",
+      "sha256": "165c59f5fcd2868567739b6ddafd72c80ad4995bbe3fa83c8c9545430398003d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-feature-scaffolding/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-inputs.md",
+      "type": "rule",
+      "name": "pattern-inputs",
+      "tier": "kind:app",
+      "sha256": "3a649e5951daf28449ef984be18aff2356a1563e0b29e686d083c7987a231de8",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-inputs/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-interactions.md",
+      "type": "rule",
+      "name": "pattern-interactions",
+      "tier": "kind:app",
+      "sha256": "bd8657de28155a7bb4d0652c4a720d5c5c4cc057bbbeef7b765a6da4b8ba7f98",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-interactions/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-monorepo.md",
+      "type": "rule",
+      "name": "pattern-monorepo",
+      "tier": "core",
+      "sha256": "753efd8e02fae8b182ab810ae0a1595c2e53d1b943f3670b6b410d4e7bd861a8",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-monorepo/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-motion.md",
+      "type": "rule",
+      "name": "pattern-motion",
+      "tier": "tech:gsap",
+      "sha256": "9e96922a11c62b4da5a9a97725d8823a64bc41f22b946b9a6ea91bf6a150666b",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-motion/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-navigation.md",
+      "type": "rule",
+      "name": "pattern-navigation",
+      "tier": "kind:app",
+      "sha256": "88b93d5d02562a2c9efee7598ff104222b1e2c7e977a4e9efa5cb83bf0c4c9de",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-navigation/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-refactoring.md",
+      "type": "rule",
+      "name": "pattern-refactoring",
+      "tier": "core",
+      "sha256": "814a85f4c631e85cbfbffb31729d8a65189136adb714edc116d1668becbe9142",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-refactoring/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-state.md",
+      "type": "rule",
+      "name": "pattern-state",
+      "tier": "kind:app",
+      "sha256": "7ec383717e314bf78efaa8a118de200df5fea843d31061957dbd612e141ec0db",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/pattern-state.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-structure.md",
+      "type": "rule",
+      "name": "pattern-structure",
+      "tier": "kind:app",
+      "sha256": "33d150c2e95262f469e412cddbcbbb9c033643ce4f0f4655d074267559ce597a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-structure/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-ui-copy.md",
+      "type": "rule",
+      "name": "pattern-ui-copy",
+      "tier": "core",
+      "sha256": "ed6074a40d6829bda53e9f1baa3dd2b8d864a7cbd146aaf1bf3b4bef901df55a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-ui-copy/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-canvas-rendering.md",
+      "type": "rule",
+      "name": "tech-canvas-rendering",
+      "tier": "tech:canvas",
+      "sha256": "fa65513f8e5d29b0b28f124a9213eb5c1301e1d4d115b3b863805d7edc38cca2",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-tech-canvas-rendering/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-framer-motion.md",
+      "type": "rule",
+      "name": "tech-framer-motion",
+      "tier": "tech:framer-motion",
+      "sha256": "9e1298c3606b44c405f5b1f906fb9e5a177fcfefcd0df2c09fe783716347080e",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-tech-framer-motion/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-node-gate.md",
+      "type": "rule",
+      "name": "tech-node-gate",
+      "tier": "kind:app",
+      "sha256": "9b698cfbf45931bc5b1832b7725e0c0f5a77f822c0c1c0e4297a2b89fa95d837",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/tech-node-gate.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-python-gate.md",
+      "type": "rule",
+      "name": "tech-python-gate",
+      "tier": "tech:python",
+      "sha256": "33664fddb6fe6898138a1dd3ca67be2b26f5fd22957f1acb6d4402b6d4606796",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/tech-python-gate.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-react.md",
+      "type": "rule",
+      "name": "tech-react",
+      "tier": "tech:react",
+      "sha256": "59b49acfba2ceaa71247b8de09f637783b15ae21e13829f285e8bc3e01ca3a3d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/tech-react.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-supabase-auth.md",
+      "type": "rule",
+      "name": "tech-supabase-auth",
+      "tier": "tech:supabase",
+      "sha256": "297f445c3b01a03a93e89266710c44285edf603c3b58e2eacd7535e559a5d816",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/tech-supabase-auth.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-supabase-migrations.md",
+      "type": "rule",
+      "name": "tech-supabase-migrations",
+      "tier": "tech:supabase",
+      "sha256": "0ec2d8583fb1f8f93ba33955e4508074640e3d8fa139324ad862523d29cf38b9",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/tech-supabase-migrations.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-supabase.md",
+      "type": "rule",
+      "name": "tech-supabase",
+      "tier": "tech:supabase",
+      "sha256": "3b2a1a7b3ff6a537d6a74a473317b5c1bf8d45057a3650d9195407664ff7e108",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-tech-supabase/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/tech-typescript.md",
+      "type": "rule",
+      "name": "tech-typescript",
+      "tier": "tech:typescript",
+      "sha256": "42110d256b16ee6c79646f1f546f5325b0497dab234cb6b5011ebcabc917d1da",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/rules/tech-typescript.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md",
+      "type": "skill",
+      "name": "_templates",
+      "tier": "core",
+      "sha256": "3361eababcdf2aac422b88481cc5ba2e9877ae70840659575684478be164f7a6",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
+        ],
+        "codex": [
+          ".agents/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
+        ],
+        "opencode": [
+          ".opencode/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/_templates/SKILL-TEMPLATE.md",
+      "type": "skill",
+      "name": "_templates",
+      "tier": "core",
+      "sha256": "f7d09385854d187181034b24b7e26fd459deac47a6e2303a4b398581c0613449",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/_templates/SKILL-TEMPLATE.md"
+        ],
+        "codex": [
+          ".agents/skills/_templates/SKILL-TEMPLATE.md"
+        ],
+        "opencode": [
+          ".opencode/skills/_templates/SKILL-TEMPLATE.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/_templates/SKILL.md",
+      "type": "skill",
+      "name": "_templates",
+      "tier": "core",
+      "sha256": "1e974ded486c6dc678ec417676f0e09dd17339cc4aee535c73e3b085058f068b",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/_templates/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/_templates/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/_templates/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-accessibility/SKILL.md",
+      "type": "skill",
+      "name": "audit-accessibility",
+      "tier": "kind:app",
+      "sha256": "adc078a9de5e720c0d29ed86b55936303904879e0080eb8ab4c428de40c98935",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-accessibility/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-accessibility/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-accessibility/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-auth-db/SKILL.md",
+      "type": "skill",
+      "name": "audit-auth-db",
+      "tier": "tech:supabase",
+      "sha256": "2d26894a279c95847644ee96f787d32cca0c0ca028a12c54600ab4853a8707a3",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-auth-db/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-auth-db/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-auth-db/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-code/SKILL.md",
+      "type": "skill",
+      "name": "audit-code",
+      "tier": "core",
+      "sha256": "94b4e4c4658c1ac0483321c36200554ca7751634412c28549c0151cfdabf329d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-code/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-code/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-code/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-design-system/SKILL.md",
+      "type": "skill",
+      "name": "audit-design-system",
+      "tier": "kind:app",
+      "sha256": "f1404f9cd399c8de511881783ccb2f423bec3c350d6aff6bbb5cb5d30eb5141a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-design-system/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-design-system/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-design-system/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-docs/SKILL.md",
+      "type": "skill",
+      "name": "audit-docs",
+      "tier": "core",
+      "sha256": "906e9056d90e4c333b16592c7b729f5991d3bc1f6a1950a12046991f5f075a95",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-docs/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-docs/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-docs/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-hygiene-enforcement/SKILL.md",
+      "type": "skill",
+      "name": "audit-hygiene-enforcement",
+      "tier": "core",
+      "sha256": "1704899813e677ce232c6a5b98a0f0c6abc4d9dbb82b6e41a47f303c4ea3caf8",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "maintain-docs"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-hygiene-enforcement/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-hygiene-enforcement/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-hygiene-enforcement/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-layout/SKILL.md",
+      "type": "skill",
+      "name": "audit-layout",
+      "tier": "kind:app",
+      "sha256": "8fa544de6b843b9a5598d265252d11edbf39472392fb3e88eaecf59ed553f41a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-layout/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-layout/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-layout/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-performance/SKILL.md",
+      "type": "skill",
+      "name": "audit-performance",
+      "tier": "core",
+      "sha256": "c7403aaa1a749eed8ec8a7f58360120912aed0c1b969082b1c98648383522607",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "performance-fix"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-performance/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-performance/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-performance/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-refactor-opportunities/SKILL.md",
+      "type": "skill",
+      "name": "audit-refactor-opportunities",
+      "tier": "core",
+      "sha256": "8dbde3a05112fda2a18c7c12e6085a27b6f1efd4977c834c89f9fb0c0ed94aeb",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "fallow"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-refactor-opportunities/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-refactor-opportunities/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-refactor-opportunities/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-security/SKILL.md",
+      "type": "skill",
+      "name": "audit-security",
+      "tier": "core",
+      "sha256": "549f7518ddc5e58bcd428d4b3308a6638dd1e7068ae2cd2388add5aec44f9bb1",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "security-fix"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-security/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-security/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-security/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-typography/SKILL.md",
+      "type": "skill",
+      "name": "audit-typography",
+      "tier": "kind:app",
+      "sha256": "0b107ac70847756bbecba4c2a1e43fed4bd6073abfbdfd0c3bb90c5a3fde63f1",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-typography/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-typography/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-typography/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/SKILL.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "44f84412cc65af832d9365fb3336e10dd6b99010da11c89d2fea4e12225f7799",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/accessibility.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "88496752cdf647e220a7b450956d5768645de5eefb290d9b8e0b0a6653431bcf",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/accessibility.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/accessibility.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/accessibility.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/animation.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "4ea2733f8e86dfb99b5a6bd53f02e73dc25815f46eedbf7577f3649799a097cf",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/animation.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/animation.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/animation.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/composition.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "979e6fdc69ff83fa1bcf2dfdefcc8f16d039503bb81a4cb9f424151ef9053f90",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/composition.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/composition.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/composition.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/forms.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "c78d3e7d5ac87f5ec6e3cc7f6cea9849609d31fea3390594cdf93af67c18839f",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/forms.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/forms.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/forms.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/hydration.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "8bd16f1e21441ec854ce8743af1d13746fa0b0f7e52d601b64d02daf79e85bdf",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/hydration.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/hydration.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/hydration.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/images.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "3b4caa99f3f3d25616864b63dc00c335e3a7af9487b6588d8e1950e0932eb2cf",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/images.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/images.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/images.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/interactive-states.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "938e5cba45a36274d24b5bd2c559b9aab8816edddc4462c2072ea26c5602a3cd",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/interactive-states.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/interactive-states.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/interactive-states.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/performance.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "665e9ae4102ef6ea7328f9c863e1852546fa0b666c00d69f86a761f3a96d772f",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/performance.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/performance.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/performance.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/audit-web-interface/references/typography.md",
+      "type": "skill",
+      "name": "audit-web-interface",
+      "tier": "tech:web",
+      "sha256": "6e02df799a9f3d8810d7aa2b727e56acc29a03672af9452e8698a4a79d9fedc6",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/audit-web-interface/references/typography.md"
+        ],
+        "codex": [
+          ".agents/skills/audit-web-interface/references/typography.md"
+        ],
+        "opencode": [
+          ".opencode/skills/audit-web-interface/references/typography.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/blindspot-pass/SKILL.md",
+      "type": "skill",
+      "name": "blindspot-pass",
+      "tier": "core",
+      "sha256": "883eb689f32402bf16b6d0d8a1cb983c7c7eea0665c0ddfdde34da1b89b1edbe",
+      "triggers": [
+        "blindspot",
+        "unknown unknowns",
+        "unfamiliar area",
+        "reconnaissance",
+        "recon"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/blindspot-pass/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/blindspot-pass/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/blindspot-pass/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/debug-deep/SKILL.md",
+      "type": "skill",
+      "name": "debug-deep",
+      "tier": "core",
+      "sha256": "403e8ffe29ec78db47e6500dfcea21de20e0dafce4e0d27c03c9a06a1e0ddf00",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/debug-deep/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/debug-deep/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/debug-deep/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/debug-standard/SKILL.md",
+      "type": "skill",
+      "name": "debug-standard",
+      "tier": "core",
+      "sha256": "8b44608ba3cf7f4bda5e280d8c335a0a047bd4983a9d51f31e98ea040fa2dda5",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/debug-standard/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/debug-standard/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/debug-standard/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/explore-concept/SKILL.md",
+      "type": "skill",
+      "name": "explore-concept",
+      "tier": "core",
+      "sha256": "fb8042f6e1f8fbd8a30021deac858ac494eba491f6cb24e032442037402c264a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/explore-concept/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/explore-concept/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/explore-concept/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/explore-tech/SKILL.md",
+      "type": "skill",
+      "name": "explore-tech",
+      "tier": "core",
+      "sha256": "d08cf21e99a62cee7ab835400c7a3c156d0a5ac291a90ebaf6a41d952abcd47a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/explore-tech/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/explore-tech/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/explore-tech/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/explore-ui-design/SKILL.md",
+      "type": "skill",
+      "name": "explore-ui-design",
+      "tier": "kind:app",
+      "sha256": "bd5d0de2295335e36c5ca20036f2ff6c4cc619ad1f5f9d559f3f2a0601289f08",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/explore-ui-design/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/explore-ui-design/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/explore-ui-design/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/explore-ux/SKILL.md",
+      "type": "skill",
+      "name": "explore-ux",
+      "tier": "kind:app",
+      "sha256": "a8795641d299d993348e817905749c4edbc0c2fa47fffe3850ff52bbb784b2ac",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/explore-ux/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/explore-ux/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/explore-ux/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/gsap-css-layout/SKILL.md",
+      "type": "skill",
+      "name": "gsap-css-layout",
+      "tier": "tech:gsap",
+      "sha256": "015b0f6942a593fe1486ea811b063df79a8a80a09604e9c779a9281e69d24504",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/gsap-css-layout/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/gsap-css-layout/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/gsap-css-layout/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/handoff/SKILL.md",
+      "type": "skill",
+      "name": "handoff",
+      "tier": "core",
+      "sha256": "e005717e438c6c8913e69a790957eb203f2e2b45cd6f501f97c63d3531e6364a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/handoff/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/handoff/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/handoff/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/health-agent/SKILL.md",
+      "type": "skill",
+      "name": "health-agent",
+      "tier": "core",
+      "sha256": "dc937c6125ea01196c8fd8f45addd601bd962fd9339586b2cb557fca425b854b",
+      "triggers": [
+        "agent health",
+        "drift",
+        "stale skills",
+        "vendor mismatch"
+      ],
+      "appliesTo": null,
+      "requiredTools": [],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/health-agent/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/health-agent/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/health-agent/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-component-scaffold/SKILL.md",
+      "type": "skill",
+      "name": "implement-component-scaffold",
+      "tier": "tech:react",
+      "sha256": "e4a1e353d6091a884a0d4b0ef3330785efa119cfa9ceff0043faf07b63c7bdf2",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-component-scaffold/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-component-scaffold/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-component-scaffold/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-feature/SKILL.md",
+      "type": "skill",
+      "name": "implement-feature",
+      "tier": "core",
+      "sha256": "57ffe777dc5e42ed2cbbebeed9178b8a2f67e5fb253c5041f2b1f7789313c511",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-feature/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-feature/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-feature/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-flight-check/SKILL.md",
+      "type": "skill",
+      "name": "implement-flight-check",
+      "tier": "core",
+      "sha256": "12724d46424824395594711ab2526af4398658d301aaab4a76bf77d6fb1f5235",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-flight-check/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-flight-check/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-flight-check/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-quick-fix/SKILL.md",
+      "type": "skill",
+      "name": "implement-quick-fix",
+      "tier": "core",
+      "sha256": "cbc1d4e2cf9a6c0970eedc7344dddcce6298b4b4f97b5ffabd0dd00fae045a87",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-quick-fix/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-quick-fix/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-quick-fix/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-refactor/SKILL.md",
+      "type": "skill",
+      "name": "implement-refactor",
+      "tier": "core",
+      "sha256": "ce6932bbba9d1dfe6db9d2b2ad0f540949a716783f46953cb35fb73e85fae0fe",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp",
+        "fallow"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-refactor/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-refactor/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-refactor/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-session-land/SKILL.md",
+      "type": "skill",
+      "name": "implement-session-land",
+      "tier": "core",
+      "sha256": "466347e9ce641e415f509612e1d365358ea0f22145ac8d803975b1bc232a0b47",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-session-land/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-session-land/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-session-land/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-session-wrap-up/SKILL.md",
+      "type": "skill",
+      "name": "implement-session-wrap-up",
+      "tier": "core",
+      "sha256": "852c82c927d214f554d8292b43a1c655a6e37145faf2cfc82dc18d148d30f48d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-session-wrap-up/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-session-wrap-up/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-session-wrap-up/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/implement-test/SKILL.md",
+      "type": "skill",
+      "name": "implement-test",
+      "tier": "core",
+      "sha256": "7d4cdb4b3adf4f60608cf216782c06ff4cffca78c745725e788fc91eaf771699",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-test/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/implement-test/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-test/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/kit-contribute/SKILL.md",
+      "type": "skill",
+      "name": "kit-contribute",
+      "tier": "core",
+      "sha256": "d1b0bb58ed2cf288fcecbe0e17544927ae7ec78eefd5980d34b9ad3c41296e7d",
+      "triggers": [
+        "wrap-up",
+        "flowback",
+        "contribute",
+        "codify",
+        "locally-edited"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "pattern-codify"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/kit-contribute/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/kit-contribute/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/kit-contribute/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/maintain-docs/SKILL.md",
+      "type": "skill",
+      "name": "maintain-docs",
+      "tier": "core",
+      "sha256": "f8588cc4dbaf37fd3d4ac53359b90d02526b53b34934be904e41c510537ac706",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "audit-hygiene-enforcement"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/maintain-docs/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/maintain-docs/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/maintain-docs/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/mcp-server-ops/SKILL.md",
+      "type": "skill",
+      "name": "mcp-server-ops",
+      "tier": "kind:agent-infra",
+      "sha256": "16961b0d8b951d30b9fb2577422cc74ac7719ad899f0908423d97b47af08a1a6",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/mcp-server-ops/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/mcp-server-ops/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/mcp-server-ops/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/optimize-agent/SKILL.md",
+      "type": "skill",
+      "name": "optimize-agent",
+      "tier": "core",
+      "sha256": "8166facc0c09a253a0d9aa3f4e2b9fff6e4a43b116bfbb3103fe134e2f9d7aff",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/optimize-agent/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/optimize-agent/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/optimize-agent/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/orchestrate-decompose/SKILL.md",
+      "type": "skill",
+      "name": "orchestrate-decompose",
+      "tier": "core",
+      "sha256": "8089597f2b67abc82f83c6897a1436b63781e25d6afa861b571a73707cdbdfd0",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/orchestrate-decompose/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/orchestrate-decompose/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/orchestrate-decompose/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/orchestrate-kickoff/SKILL.md",
+      "type": "skill",
+      "name": "orchestrate-kickoff",
+      "tier": "core",
+      "sha256": "8f61cd5274c8b1e40088ad65a69aff49f44f2347a0eed2aaa13b410f8869c117",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/orchestrate-kickoff/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/orchestrate-kickoff/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/orchestrate-kickoff/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/orchestrate-merge-train/SKILL.md",
+      "type": "skill",
+      "name": "orchestrate-merge-train",
+      "tier": "core",
+      "sha256": "45a322220fd422e853f838b07c130433c0f813e434a84230dafbad1e0a4c8d36",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/orchestrate-merge-train/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/orchestrate-merge-train/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/orchestrate-merge-train/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/orchestrate-partition/SKILL.md",
+      "type": "skill",
+      "name": "orchestrate-partition",
+      "tier": "core",
+      "sha256": "165081b17b2c3f5f8e32ef0e223b4318516aa8d5a050da3a3b40decfc8c42efb",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/orchestrate-partition/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/orchestrate-partition/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/orchestrate-partition/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/orchestrate-sequence/SKILL.md",
+      "type": "skill",
+      "name": "orchestrate-sequence",
+      "tier": "core",
+      "sha256": "8fd35a13d6ec0477cbe3f0573933a6e365fbf10a0c7fa6a2d8166b3ad4274a90",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/orchestrate-sequence/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/orchestrate-sequence/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/orchestrate-sequence/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/performance-fix/SKILL.md",
+      "type": "skill",
+      "name": "performance-fix",
+      "tier": "core",
+      "sha256": "73f09adcf24b0205f7fdf87ff35db29e3cb8b10632ac8798d986e74ea89100b9",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "audit-performance"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/performance-fix/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/performance-fix/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/performance-fix/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/plan-architecture/SKILL.md",
+      "type": "skill",
+      "name": "plan-architecture",
+      "tier": "core",
+      "sha256": "7c83ffc7e1fb1a5cf9e16ee45cca2574b545a3af0670f608088f52c56d9dc586",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp",
+        "fallow"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/plan-architecture/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/plan-architecture/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/plan-architecture/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/plan-feature/SKILL.md",
+      "type": "skill",
+      "name": "plan-feature",
+      "tier": "core",
+      "sha256": "3c2cdc356e3427aa0bb8c333d9632948c44fce15fe8d08f234b2027532d8a6ea",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp",
+        "fallow"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/plan-feature/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/plan-feature/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/plan-feature/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/plan-prd/SKILL.md",
+      "type": "skill",
+      "name": "plan-prd",
+      "tier": "core",
+      "sha256": "5556341135e52830bce2d8713abb1b3cfcf2a8df527a44adec1eeb9628f17774",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/plan-prd/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/plan-prd/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/plan-prd/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/project-onboard/SKILL.md",
+      "type": "skill",
+      "name": "project-onboard",
+      "tier": "core",
+      "sha256": "8fd02326e6b52aa05c41dbe7ecaee165f7466d302d8554a5852f54a5e78adef7",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/project-onboard/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/project-onboard/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/project-onboard/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-flow-architect/SKILL.md",
+      "type": "skill",
+      "name": "react-flow-architect",
+      "tier": "tech:react-flow",
+      "sha256": "d5296e0c19c009df8b25833ae4610a2342627bac2c27476649fc1b2c0c9ca81f",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-flow-architect/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/react-flow-architect/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-flow-architect/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-performance/SKILL.md",
+      "type": "skill",
+      "name": "react-performance",
+      "tier": "tech:react",
+      "sha256": "4af33c19f22a9e826a2fffb594ab5873f1f58affc843b83bb12cb1246119ae26",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-performance/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/react-performance/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-performance/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-performance/references/async-patterns.md",
+      "type": "skill",
+      "name": "react-performance",
+      "tier": "tech:react",
+      "sha256": "8108bbd14897716231efe97638eb2b126ec2fc3adbe2895b93894a04f1a26e19",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-performance/references/async-patterns.md"
+        ],
+        "codex": [
+          ".agents/skills/react-performance/references/async-patterns.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-performance/references/async-patterns.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-performance/references/bundle-optimization.md",
+      "type": "skill",
+      "name": "react-performance",
+      "tier": "tech:react",
+      "sha256": "9ebb9c1633c5461cd0646732dd200ad7594e9337d66e4b218d5fc0b5846ed1e3",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-performance/references/bundle-optimization.md"
+        ],
+        "codex": [
+          ".agents/skills/react-performance/references/bundle-optimization.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-performance/references/bundle-optimization.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-performance/references/js-micro-optimizations.md",
+      "type": "skill",
+      "name": "react-performance",
+      "tier": "tech:react",
+      "sha256": "4788678307df4f7e80a9051de8d653400b70ccd4ba0b5e1870afbae4cd604b7b",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-performance/references/js-micro-optimizations.md"
+        ],
+        "codex": [
+          ".agents/skills/react-performance/references/js-micro-optimizations.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-performance/references/js-micro-optimizations.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-performance/references/rendering-patterns.md",
+      "type": "skill",
+      "name": "react-performance",
+      "tier": "tech:react",
+      "sha256": "93486b27a00ea466919bf80d0d017f9e657f4c62848a5fc813d6d56c33bcccca",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-performance/references/rendering-patterns.md"
+        ],
+        "codex": [
+          ".agents/skills/react-performance/references/rendering-patterns.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-performance/references/rendering-patterns.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/react-performance/references/rerender-patterns.md",
+      "type": "skill",
+      "name": "react-performance",
+      "tier": "tech:react",
+      "sha256": "27269c3558b0ba88495f8283583d59b1f70205415bbd54ea476f6edc5dce30c2",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/react-performance/references/rerender-patterns.md"
+        ],
+        "codex": [
+          ".agents/skills/react-performance/references/rerender-patterns.md"
+        ],
+        "opencode": [
+          ".opencode/skills/react-performance/references/rerender-patterns.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/reference-hunt/SKILL.md",
+      "type": "skill",
+      "name": "reference-hunt",
+      "tier": "core",
+      "sha256": "83360a26a8bd7a9bd94add01083a4ca5e04f2d13565238150cc2ce648c4e2edd",
+      "triggers": [
+        "reference",
+        "build something like this",
+        "port",
+        "reimplement",
+        "code as spec"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/reference-hunt/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/reference-hunt/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/reference-hunt/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/refine-code/SKILL.md",
+      "type": "skill",
+      "name": "refine-code",
+      "tier": "core",
+      "sha256": "b01e494821732a6d98250dd9f8fe54c8467d91098d45feb7187880fb21300525",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "implement-refactor"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/refine-code/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/refine-code/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/refine-code/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/research-curate/SKILL.md",
+      "type": "skill",
+      "name": "research-curate",
+      "tier": "core",
+      "sha256": "6509a04fc321a13fd3050c17c02b00facb5298572f5fd85ed49a201b45e92e48",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/research-curate/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/research-curate/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/research-curate/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/research-deep/SKILL.md",
+      "type": "skill",
+      "name": "research-deep",
+      "tier": "core",
+      "sha256": "462b1c0510fa2284f3663bcc3d573e0a6fa2ff9ee1a62bd2177fecb055d9e36a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/research-deep/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/research-deep/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/research-deep/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/research-synthesize/SKILL.md",
+      "type": "skill",
+      "name": "research-synthesize",
+      "tier": "core",
+      "sha256": "b875a64b25dfa7284d5b62936ef2f7a243942a6ab597fa946c752ad7b9ea6f60",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/research-synthesize/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/research-synthesize/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/research-synthesize/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/review-peer/SKILL.md",
+      "type": "skill",
+      "name": "review-peer",
+      "tier": "core",
+      "sha256": "6916609b5aea2249c6544bb1ef18d2c2801ada7860a4decf73133c8f86e43cbe",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/review-peer/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/review-peer/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/review-peer/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/review-raise-bar/SKILL.md",
+      "type": "skill",
+      "name": "review-raise-bar",
+      "tier": "core",
+      "sha256": "cf788dd6d0e613884ab50aa1feeb6384b0759d5cc3f1cc3ad3096f430aa04a98",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/review-raise-bar/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/review-raise-bar/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/review-raise-bar/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/security-fix/SKILL.md",
+      "type": "skill",
+      "name": "security-fix",
+      "tier": "core",
+      "sha256": "8540e0cff05886e24debecd0e7174bc78f991a47e0f0f5e9db828a1843e8d589",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "audit-security"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/security-fix/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/security-fix/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/security-fix/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/sweep-codebase/SKILL.md",
+      "type": "skill",
+      "name": "sweep-codebase",
+      "tier": "core",
+      "sha256": "b9972d407ea926b32ad7243d00d0a57b8618cae486de061c0b7d9534e3737470",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": [
+        "fallow"
+      ],
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/sweep-codebase/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/sweep-codebase/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/sweep-codebase/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/tailscale-private-serve/SKILL.md",
+      "type": "skill",
+      "name": "tailscale-private-serve",
+      "tier": "kind:agent-infra",
+      "sha256": "a05cc67d72f5057e3ef7c7f720443669f5ac7d374e23acd6fdd886d30a399683",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/tailscale-private-serve/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/tailscale-private-serve/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/tailscale-private-serve/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/use-codegraph/SKILL.md",
+      "type": "skill",
+      "name": "use-codegraph",
+      "tier": "core",
+      "sha256": "38545f0d84c3284761d38285fcd202e88bff775af61d318cca0e6f0203036699",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/use-codegraph/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/use-codegraph/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/use-codegraph/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/use-codegraph/agents/openai.yaml",
+      "type": "skill",
+      "name": "use-codegraph",
+      "tier": "core",
+      "sha256": "7114d0924bf323d5ed7a5d2e99702bdbc48d61ec4da559e1873c396fcca7b301",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/use-codegraph/agents/openai.yaml"
+        ],
+        "codex": [
+          ".agents/skills/use-codegraph/agents/openai.yaml"
+        ],
+        "opencode": [
+          ".opencode/skills/use-codegraph/agents/openai.yaml"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/verify-rls-policies/SKILL.md",
+      "type": "skill",
+      "name": "verify-rls-policies",
+      "tier": "tech:supabase",
+      "sha256": "bb101295541f83e258d135b39ead4cd109419f554983d0f27df46621f20bd07d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/verify-rls-policies/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/verify-rls-policies/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/verify-rls-policies/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/verify-rules/SKILL.md",
+      "type": "skill",
+      "name": "verify-rules",
+      "tier": "core",
+      "sha256": "412d9b14f28d8cf68ab2372e21942a6dd8c5bcb7ecd97b16e6329ac424550bc9",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/verify-rules/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/verify-rules/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/verify-rules/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/vet-hard/SKILL.md",
+      "type": "skill",
+      "name": "vet-hard",
+      "tier": "core",
+      "sha256": "f1a06b6021ada631d5e0e2582d92e772a52f04323086cfc463fccd9878c4d7dd",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/vet-hard/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/vet-hard/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/vet-hard/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/vet-simple/SKILL.md",
+      "type": "skill",
+      "name": "vet-simple",
+      "tier": "core",
+      "sha256": "1912422f51580065d6c3d6f027d0667912950274717a47fa931a281972aab590",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/vet-simple/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/vet-simple/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/vet-simple/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/worker-bootstrap/SKILL.md",
+      "type": "skill",
+      "name": "worker-bootstrap",
+      "tier": "core",
+      "sha256": "8354ff72907d955e2901dce65ed0323bb63af67efbdb09af44242796002c9f48",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/worker-bootstrap/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/worker-bootstrap/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/worker-bootstrap/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/worker-execute/SKILL.md",
+      "type": "skill",
+      "name": "worker-execute",
+      "tier": "core",
+      "sha256": "6c67b84b571b484a11cf80c9bb239de308a93f9d509320be4054254beb92caec",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/worker-execute/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/worker-execute/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/worker-execute/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/worker-report/SKILL.md",
+      "type": "skill",
+      "name": "worker-report",
+      "tier": "core",
+      "sha256": "0b979b9004b8127d22ae43a0bf857f28e346e2c30337566ded41a928b9a82266",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/worker-report/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/worker-report/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/worker-report/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/write-clear/SKILL.md",
+      "type": "skill",
+      "name": "write-clear",
+      "tier": "core",
+      "sha256": "f3f0a452840ba05b65a1d603a3f2bc59c7c19f85d049942cdd7caf70e215de62",
+      "triggers": [
+        "clear writing",
+        "concise writing",
+        "rewrite",
+        "copy edit",
+        "session communication",
+        "ticket writing",
+        "UI copy"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/write-clear/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/write-clear/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/write-clear/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/architect.md",
+      "type": "workflow",
+      "name": "architect",
+      "tier": "core",
+      "sha256": "e546c7aee76f3cc5d353d1b46f32621717e538af8eeb806edc1d9ddf7846a5aa",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/architect.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-architect/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/architect.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/architect.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/async-maint.md",
+      "type": "workflow",
+      "name": "async-maint",
+      "tier": "core",
+      "sha256": "522631145b718d198e4e5a6ffe0001dd5be24cdb40bbd7754f753ab12e0efda5",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/async-maint.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-async-maint/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/commands/async-maint.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/audit.md",
+      "type": "workflow",
+      "name": "audit",
+      "tier": "core",
+      "sha256": "b6d293d3a88dba37d92cd4c58e3778a10990c0c9d51de7d7b0c4cb1b7ebc5fc5",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/audit.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-audit/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/audit.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/audit.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/backlog-status.md",
+      "type": "workflow",
+      "name": "backlog-status",
+      "tier": "core",
+      "sha256": "419337c6631a621f4037a99befed3c2246c744a3f631761589ddfd20f058343b",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/backlog-status.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-backlog-status/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/backlog-status.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/backlog-status.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/build.md",
+      "type": "workflow",
+      "name": "build",
+      "tier": "core",
+      "sha256": "57d64d3617d71f4055a44ac19f2ac21e3c94b759569e1524f96dac63dac67ffa",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/build.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-build/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/build.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/build.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/debug.md",
+      "type": "workflow",
+      "name": "debug",
+      "tier": "core",
+      "sha256": "152488cb71a5dfd32b23bcc1714a0d86550323fb4d9573a7f4c2a1037cf48bfe",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/debug.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-debug/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/debug.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/debug.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/explore.md",
+      "type": "workflow",
+      "name": "explore",
+      "tier": "core",
+      "sha256": "07612f6080f6f1963b2ab81fbb1b849b2d2c2d922180c33784e0ba0b51d3df22",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/explore.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-explore/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/explore.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/explore.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/land.md",
+      "type": "workflow",
+      "name": "land",
+      "tier": "core",
+      "sha256": "68ba8ce6289bf17b4cca146a399986a9308bc2b31a386ae0b81b6937c4871658",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/land.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-land/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/land.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/land.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/onboard.md",
+      "type": "workflow",
+      "name": "onboard",
+      "tier": "core",
+      "sha256": "803c17119f65a1e9cf315d0eb3eea4df44d93c1156be98cda779305e2d5c95e0",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/onboard.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-onboard/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/onboard.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/onboard.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/plan.md",
+      "type": "workflow",
+      "name": "plan",
+      "tier": "core",
+      "sha256": "20eb9206a2683443c5217252d4e3536c8dce603fcea87c8bcd712685e9ac7d14",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/plan.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-plan/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/plan.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/plan.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/prd.md",
+      "type": "workflow",
+      "name": "prd",
+      "tier": "core",
+      "sha256": "572a25fa18f580828a7ab5d1ba25eef1cd781017aa68333a1c54b36c41a18f29",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/prd.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-prd/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/prd.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/prd.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/quick-fix.md",
+      "type": "workflow",
+      "name": "quick-fix",
+      "tier": "core",
+      "sha256": "c6a4c5ab90a44a8b610221a2fb543ae73f4c95c6c45642fa862fe887b5fc5c8d",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/quick-fix.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-quick-fix/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/quick-fix.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/quick-fix.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/refactor.md",
+      "type": "workflow",
+      "name": "refactor",
+      "tier": "core",
+      "sha256": "864791f1c4d52001ee6976bee6d534a58ef757a73bed8b3872b39aabcd44b85f",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/refactor.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-refactor/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/refactor.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/refactor.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/research.md",
+      "type": "workflow",
+      "name": "research",
+      "tier": "core",
+      "sha256": "162d6896cd9d716020b2d5027dc5eea265f0bc9633b3e1e46f23b3814089ba82",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/research.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-research/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/research.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/research.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/ship.md",
+      "type": "workflow",
+      "name": "ship",
+      "tier": "core",
+      "sha256": "ef34ba63754fab0eab154b89f7c8d91fa2af0a52df51b473a9c1f66876f96dc0",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/ship.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-ship/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/ship.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/ship.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/test.md",
+      "type": "workflow",
+      "name": "test",
+      "tier": "core",
+      "sha256": "de7d9ac5953b19477100601e51583fbd8665a9c7a24ce11022872d7e562d4889",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/test.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-test/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/test.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/test.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/verify-pre-deploy.md",
+      "type": "workflow",
+      "name": "verify-pre-deploy",
+      "tier": "core",
+      "sha256": "f658ec232d21a928e38f39c27fe789710739f5bb04809c200177e70cd312748a",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/verify-pre-deploy.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-verify-pre-deploy/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/verify-pre-deploy.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/verify-pre-deploy.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/wrap-up.md",
+      "type": "workflow",
+      "name": "wrap-up",
+      "tier": "core",
+      "sha256": "d226d7d370ed00f558c73d9cf349c585e3dd468458a437a112f9e5cec02fa2c1",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/wrap-up.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-wrap-up/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/wrap-up.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/wrap-up.md"
+        ]
+      }
+    }
+  ]
+}

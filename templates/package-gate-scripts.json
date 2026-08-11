@@ -1,0 +1,10 @@
+{
+  "//": "Gate-script convention (foundation-testing.md §1 · pattern-command-shape.md). Merge these into your package.json `scripts`. Agents run the graduated gate as ONE allowlisted command — `npm run gate` or a tier like `npm run gate:types` — instead of a bespoke `cd … && <runner> … | tail` compound the permission engine can never match. The script process owns the true exit code, so there is no pipe to mask a failure. `agentkit init` wires these automatically into an existing package.json (delegating to whichever of your lint/typecheck/test/build scripts exist); this file is the manual-merge reference.",
+  "scripts": {
+    "gate:lint": "npm run lint",
+    "gate:types": "npm run typecheck",
+    "gate:test": "npm run test",
+    "gate:build": "npm run build",
+    "gate": "npm run gate:lint && npm run gate:types && npm run gate:test && npm run gate:build"
+  }
+}

@@ -1,0 +1,11 @@
+interface:
+  display_name: "Use Codegraph"
+  short_description: "Query the MCP code graph before reading files."
+  default_prompt: "Use $use-codegraph to map the relevant code before changing it."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "codebase-memory-mcp"
+      description: "Local repository code graph and targeted snippet lookup."
+      transport: "stdio"

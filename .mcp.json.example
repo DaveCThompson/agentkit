@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy to `.mcp.json` and set the path to your local codebase-memory-mcp binary (or remove this entry if you don't use the graph). On PATH, the binary name alone may suffice."
+,
+  "mcpServers": {
+    "codebase-memory-mcp": {
+      "command": "codebase-memory-mcp"
+    }
+  }
+}

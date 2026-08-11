@@ -1,0 +1,80 @@
+# raw-research/ — external evidence & vendor-doc corpora
+
+Reusable research inputs and raw vendor documentation. Peer of the knowledge-base, **not** part of
+it. This tree is `.ignore`-excluded from default agent search — reach it on demand with
+`rg --no-ignore <pattern> docs/raw-research`. **Beware the silent failure mode:** an excluded
+tree's "no matches" is byte-identical to "searched, nothing there" — any verification sweep that
+should cover this tree MUST use `--no-ignore`, or it reports consistency for a tree it never read
+(`governance/docs-standard.md` §f).
+
+**Evidence only, never contracts.** Nothing here is authoritative project truth. A durable fact
+distilled from this material must be promoted (with its own verification) before anything relies on
+it — cite the promoted doc, not this corpus.
+
+> **Epistemic caveat:** a doc here without a ⚠ drift marker was **not** necessarily verified. These
+> are third-party / point-in-time inputs; absence of the marker is not a freshness or accuracy signal.
+
+## Three tiers, in order of ceremony
+
+Canonical spec: [`governance/docs-standard.md`](../../governance/docs-standard.md) §(f).
+The **`research-curate`** skill walks a file between them.
+
+| Tier | Where | Naming | What it costs you |
+| :--- | :--- | :--- | :--- |
+| **1. Drop** | [`inbox/`](inbox/) | **none** — any filename | nothing |
+| **2. Curate** | here | `<TYPE>-YYYY-MM-DD-<kebab-topic>.md` + provenance header | one rename, one header |
+| **3. Promote** | `governance/` (this repo's KB-equivalent) | the governing doc itself | verification + a home in a real contract |
+
+Tier 1 is the point: capturing a source must cost nothing, or sources stop being captured.
+**Nothing may cite `inbox/`.** Only tier 3 may be cited by a contract.
+
+> **Note — this repo's tier 3 is `governance/`, not `docs/knowledge-base/research/`.** `agentkit` is
+> a documented layout outlier (§i): its durable truth lives in `governance/`. Every other repo in the
+> fleet promotes into `docs/knowledge-base/research/RESEARCH-YYYY-MM-DD-<topic>.md` with per-claim
+> ✅/📄/⚠ markers.
+
+**TYPE** is the one distinction that changes how far you trust a file — *did we write it?*
+
+| TYPE | Means | Body editable after filing |
+| :--- | :--- | :--- |
+| `SOURCE-` | Externally authored — vendor doc copy, hosted research export, collaborator notes | **No.** Provenance header only. |
+| `ANALYSIS-` | Our own synthesis, not yet promoted | Yes |
+| `PROMPT-` | A research request, dispatched or not | Until dispatched |
+
+A topic gets its own **folder** once it has a *second* source — the folder's `README.md` is then the
+index, and a mirrored vendor corpus keeps its upstream filenames (renaming a mirror breaks its
+correspondence with the source, which is the whole value of a mirror).
+
+## Contents
+
+### Curated — taxonomy map-reduce inputs
+
+| Doc | Read it when… |
+|---|---|
+| [ANALYSIS-2026-07-03-doc-taxonomy-industry-practice.md](ANALYSIS-2026-07-03-doc-taxonomy-industry-practice.md) | you want the external / industry framing (ADRs, Diátaxis, AGENTS.md field practice) behind the taxonomy call |
+| [ANALYSIS-2026-07-03-taxonomy-survey-proj-web-a-proj-b-portfolio.md](ANALYSIS-2026-07-03-taxonomy-survey-proj-web-a-proj-b-portfolio.md) | you want the fleet survey evidence for proj-web-a-web, proj-b, and portfolio |
+| [ANALYSIS-2026-07-03-taxonomy-survey-proj-resume-bootcamp.md](ANALYSIS-2026-07-03-taxonomy-survey-proj-resume-bootcamp.md) | you want the fleet survey evidence for proj-resume and proj-bootcamp |
+
+All three were promoted into `governance/docs-standard.md`; they are kept as the evidence behind it.
+
+### Topic folders — vendor-doc corpora (`SOURCE-` material, upstream names preserved)
+
+| Corpus | Produced | Read it when… |
+|---|---|---|
+| [help-docs/](help-docs/) | 2026-07-03 | you need the raw Anthropic / Antigravity vendor docs (skills, rules+workflows, task-groups, best-practices, example agents) |
+| [official-codex-docs/](official-codex-docs/) | 2026-07-03 | you need the raw OpenAI Codex official-docs research + source index that grounded the Codex adapter |
+
+### Drop zone
+
+| | |
+|---|---|
+| [inbox/](inbox/) | Uncurated drops. No rules, no index, **never cited.** |
+
+---
+
+**Renamed 2026-07-25: `docs/research/` → `docs/raw-research/`.** The old name collided with
+`docs/knowledge-base/research/` in consuming repos — two stores with **opposite citation rules**
+under near-identical paths. The three flat docs also lost their `RESEARCH-` prefix, which the
+grammar now reserves for the promoted tier-3 ledger; they are `ANALYSIS-` (our own synthesis) and
+gained produced-dates and provenance headers. `docs/research/` stays recognised for repos that have
+not migrated.

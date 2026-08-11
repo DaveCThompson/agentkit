@@ -1,0 +1,7 @@
+[
+  {
+    "event": "SessionStart",
+    "command": "node \"{KIT}\" check --quick --json \"{PROJECT}\"",
+    "vendors": ["claude"]
+  }
+]
