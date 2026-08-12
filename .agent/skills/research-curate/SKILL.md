@@ -1,6 +1,6 @@
 ---
 name: research-curate
-description: Curate the evidence corpus — take raw drops from docs/raw-research/inbox/, name and stamp them into the curated store, group multi-source topics into folders, and promote finished findings into the knowledge-base research ledger. Use when the inbox has accumulated files, when a research pass returns, or when a curated file is ready to become a contract.
+description: Curate the evidence corpus — take raw drops from <docs-root>/raw-research/inbox/, name and stamp them into the curated store, group multi-source topics into folders, and promote finished findings into the knowledge-base research ledger. Use when the inbox has accumulated files, when a research pass returns, or when a curated file is ready to become a contract.
 tier: core
 ---
 
@@ -9,7 +9,7 @@ tier: core
 Walk evidence through the three tiers defined in `governance/docs-standard.md` §(f):
 
 ```
-raw-research/inbox/   →   raw-research/            →   knowledge-base/research/
+raw-research/inbox/   →   raw-research/            →   knowledge-base/research/ <!-- taxonomy-ignore-line -->
   tier 1: no rules        tier 2: named + stamped      tier 3: verified + promoted
 ```
 
@@ -33,7 +33,7 @@ codebase. This one owns the **filing and promotion** between them.
    from default search, and an excluded tree's "no matches" is byte-identical to "nothing there" —
    a cross-reference sweep without `--no-ignore` reports consistency for a tree it never read.
    This is a correctness requirement, not a convenience (`docs-standard.md` §f).
-1. List `docs/raw-research/inbox/`. For each file, read enough to answer three questions:
+1. List `docs/raw-research/inbox/`. For each file, read enough to answer three questions: <!-- taxonomy-ignore-line -->
    - **Who authored it?** Us, a model, a person, a vendor → decides `SOURCE-` vs `ANALYSIS-`.
    - **When was it produced?** From the **content**, not the filesystem and not `git log` — a
      corpus imported in one commit has one git date for every file, which is no date at all.

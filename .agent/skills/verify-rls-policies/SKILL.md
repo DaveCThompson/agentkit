@@ -1,6 +1,6 @@
 ---
 name: verify-rls-policies
-description: Audit RLS policy completeness across all tables
+description: Use when auditing Supabase RLS policy completeness across tables after schema or policy changes and before production.
 tier: tech:supabase
 ---
 
@@ -22,8 +22,9 @@ Audit Row Level Security policies for completeness and correctness.
 ### Step 1: Inventory Tables with RLS
 Search all migrations for `ENABLE ROW LEVEL SECURITY`:
 ```bash
-grep -r "ENABLE ROW LEVEL SECURITY" supabase/migrations/
+rg "ENABLE ROW LEVEL SECURITY" supabase/migrations/
 ```
+If `rg` is unavailable, use `grep -r` for the same search.
 
 ### Step 2: Build Policy Matrix
 For each table, search all migrations for `CREATE POLICY ... ON {table}`:
@@ -53,8 +54,9 @@ For each table that admins need to access:
 ### Step 5: Cross-Reference with Frontend
 Search frontend code for direct Supabase table operations:
 ```bash
-grep -r "supabase.from(" src/
+rg "supabase\.from\(" src/
 ```
+If `rg` is unavailable, use `grep -r` for the same search.
 For each direct table operation:
 1. What operation? (select, insert, update, delete)
 2. What table?

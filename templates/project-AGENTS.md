@@ -1,7 +1,7 @@
 # AGENTS.md — <PROJECT NAME>
 
-<!-- The kit-wide AGENTS.md skeleton. Base structure from proj-resume (fleet-best constitution);
-     "read 1–3 KB docs" rule + portability seam from proj-bootcamp/proj-prompt.
+<!-- The kit-wide AGENTS.md skeleton. Base structure follows the fleet's best observed constitution;
+     the "read 1–3 KB docs" rule and portability seam come from prior project practice.
      Sections marked <…> are project-authored. Everything above the Portability Seam is
      kit-portable; everything below it is this project's own. -->
 

@@ -17,12 +17,14 @@ real copies — the root cause of the fleet's drift. Everything below is plain c
    directly is drift — supported (check detects it, adopt flows it back), but never silent.
 3. **Every generated text file carries a header** naming its source and the resync command.
    Deterministic content only — no timestamps — so sync stays idempotent.
-4. **The lockfile is the shipped-state record.** `.agentkit.lock` (committed) maps every shipped
-   file to its out-hash + source-hash + kit version. A lock entry means "sync wrote this"; absence
-   means "project-owned". All drift verdicts derive from it: IN-SYNC / STALE / LOCALLY-EDITED /
-   CONFLICT (+ NEW / ORPHAN / UNTRACKED-DIFFERS at the edges). A REFUSED PRUNE stays lock-recorded
-   (`refusedPrune: true`) until actually pruned or adopted; "absence from the lock means
-   project-owned" holds only because refusals never leave the lock.
+4. **The lockfile is the shipped-state record for consumer projects.** A committed
+   `.agentkit.lock` maps every shipped file to its out-hash + source-hash + kit version. A lock
+   entry means "sync wrote this"; absence means "project-owned". All drift verdicts derive from it:
+   IN-SYNC / STALE / LOCALLY-EDITED / CONFLICT (+ NEW / ORPHAN / UNTRACKED-DIFFERS at the edges).
+   A REFUSED PRUNE stays lock-recorded (`refusedPrune: true`) until actually pruned or adopted;
+   "absence from the lock means project-owned" holds only because refusals never leave the lock.
+   The distribution repository itself is the exception: its derived lock is local and regenerated
+   during self-sync.
 5. **Nothing is silently clobbered.** Sync refuses to overwrite content whose hash differs from the
    lock's shipped hash without `--force`, and prints the 3-way base (kit git history at the lock's
    kit version tag). Adopt applies the same guard in reverse.
@@ -34,10 +36,11 @@ real copies — the root cause of the fleet's drift. Everything below is plain c
    (TOML). Everything else in those files is project-owned and never touched.
 8. **No mtime, ever.** Staleness and recency come from the lock and git history; cloud-synced churns
    mtime (decisions 25/37).
-9. **Why generated vendor surfaces are committed.** Three dependencies make committing them
-   contractual, not incidental: (1) fresh-clone runtime discovery — an agent session must find its
-   rules/skills without the CLI installed; (2) the revert guarantee (decision 36) — every sync must
-   be trivially revertible via git; (3) dirty-managed-path detection — the sync collision guard and
-   TICKET-18 warning read git status on managed paths and go blind if those paths are ignored.
-   Churn is managed by session-boundary syncs and the lock's `syncedAt` attribution — not by
-   gitignoring the contract away.
+9. **Why consumer projects commit generated vendor surfaces.** Three dependencies make committing
+   them contractual, not incidental: (1) fresh-clone runtime discovery — an agent session must find
+   its rules and skills without the CLI installed; (2) the revert guarantee (decision 36) — every
+   sync must be trivially revertible via git; (3) dirty-managed-path detection — the sync collision
+   guard and TICKET-18 warning read git status on managed paths and go blind if those paths are
+   ignored. Churn is managed by session-boundary syncs and the lock's `syncedAt` attribution.
+   The distribution repository keeps derived mirrors local because `.agent/` is its public source
+   and publishing a second generated copy would add noise without adding consumer state.

@@ -279,7 +279,8 @@ session, single orchestrator, interactive); an undeclared run defaults to lock-r
 - **Lock hygiene: `.orchestrator.lock` MUST be gitignored.** A worker that commits this file
   permanently blocks all future orchestrators (the lock exists on `main` → every fresh clone finds it
   held). Add `.orchestrator.lock` to the repo's `.gitignore`. Cross-ref: the kit's own `.gitignore`
-  fix belongs to `docs/backlog/IDEA-post-v06-feedback.md` item **F-gitignore**; this rule applies
+  fix belongs to the project's feedback pool (for example, `docs/backlog/IDEA-<feedback-pool>.md`)
+  under item **F-gitignore**; this rule applies
   to every repo using the orchestration pattern, not only the kit itself.
 - **Partition is a hypothesis.** Re-scan actual surfaces with `git diff --name-only` at merge time, not
   just the ticket's `**Files**` globs — static prediction misses new deps and unlisted shared modules.

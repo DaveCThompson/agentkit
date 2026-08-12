@@ -78,4 +78,4 @@ stale when `last-verified` exceeds threshold — that is the trigger to re-read 
   verified against `official-codex-docs/CODEX-OFFICIAL-DOCS-RESEARCH.md` (researched from live docs
   2026-07). Antigravity `.agent/` nativeness verified against `help-docs/antigravity_docs_skills.md`
   + `antigravity_docs_rules+workflows.md`. Gemini command TOML shape verified against the working
-  generated commands in `proj-portfolio/.gemini/commands/` + geminicli.com docs.
+  generated commands in a representative consumer project's `.gemini/commands/` + geminicli.com docs.

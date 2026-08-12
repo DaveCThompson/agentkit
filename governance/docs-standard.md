@@ -5,9 +5,9 @@
 > CONSOLIDATION-PLAN decisions **20–24, 31, 35** and the Phase-D detail section.
 >
 > `last-verified: 2026-07-03`
-> Exemplars canonized here: `proj-web-a/CHANGELOG.md` (dialect + roll mechanics),
-> `proj-bootcamp/docs/knowledge-base/README.md` (trigger index + drift markers),
-> `proj-portfolio/docs/knowledge-base/overview/docs-structure-convention.md` (four-dir base).
+> Exemplars canonized here: a representative project's `CHANGELOG.md` (dialect + roll mechanics),
+> a representative project's `docs/knowledge-base/README.md` (trigger index + drift markers),
+> and a representative project's convention doc (four-directory base).
 
 Templates that implement this standard live in `templates/docs-scaffold/`, `templates/kb-doc.md`,
 `templates/project-CHANGELOG.md`, and `templates/project-AGENTS.md`. This doc is the *why and the
@@ -50,15 +50,14 @@ is a durable statement of what is true** about the project. If it fails all five
 behavior, not a truth, not an event, not in-flight, not finished work — it is **evidence**, and
 evidence never lives in the KB (see section f).
 
-Worked applications of the test (all fleet-cited):
+Worked applications of the test (all backed by prior project evidence):
 - A raw multi-model research dump (`A2-2-DOMAIN-HR-CHATGPT.md`) — not a truth, it is source material
-  an agent synthesized *from*. → evidence, quarantine out of KB. (audit-proj-prompt L129–132;
-  audit-proj-bootcamp L173–177)
-- A testimonial bank / person profile (`testimonial-bank.md`, `mike-thompson-profile.md`) — product
+  an agent synthesized *from*. → evidence, quarantine out of KB. (prior audit evidence)
+- A testimonial bank / person profile (`testimonial-bank.md`, `person-profile.md`) — product
   content, not project-standard truth. → evidence/content store, not KB.
-  (audit-proj-diagnostics L14, L161)
+  (prior audit evidence)
 - A session log (`LOG-2026-07-*.md`) — an event record of finished work. → archive, after harvesting
-  any durable fact it contains into the KB. (audit-proj-resume L145)
+  any durable fact it contains into the KB. (prior audit evidence)
 - A settled architectural question ("do we use junctions or generated files?") — a truth going
   forward. → KB as a `DECISION-` doc (see section c).
 
@@ -99,14 +98,14 @@ the same harvest rule the wrap-up applies to session docs, applied to requiremen
 
 ## (b) The single CHANGELOG dialect + the hard roll rule (harvest first)
 
-There is **one** CHANGELOG dialect fleet-wide: the `proj-web-a` exemplar
-(audit-proj-web-a L149–174 — the fleet GOLD candidate). Four dialects existed pre-consolidation
+There is **one** CHANGELOG dialect fleet-wide: the selected exemplar
+(the fleet's gold candidate). Four dialects existed pre-consolidation
 (CONSOLIDATION-PLAN L13); this is the survivor.
 
 ### Dialect
 
 ```
-# Changelog                          ← H1 title is mandatory (proj-bootcamp lacked it — L20)
+# Changelog                          ← H1 title is mandatory
 
 ## [YYYY-MM-DD] — Short title
 <1–3 sentence session summary: what/why + link to the session log or working doc>
@@ -134,15 +133,13 @@ When `CHANGELOG.md` exceeds **~400 lines**:
 
 1. **HARVEST FIRST.** Read the entries about to be rolled and extract any durable fact into the KB
    (a spec update, a new `DECISION-`, a corrected truth). **Rolling without harvesting is truth
-   deletion** (decision 22) — the proj-resume archive proves the failure mode: 363 archived files, raw
-   session logs that rode to the archive with their durable learnings never distilled
-   (audit-proj-resume L145).
+   deletion** (decision 22) — a prior archive proved the failure mode: hundreds of archived files,
+   raw session logs that rode to the archive with their durable learnings never distilled.
 2. **THEN archive.** Move the rolled entries to `docs/archive/YYYY-MM/CHANGELOG-YYYY-MM.md` with a
-   dated banner explaining the cut point (exemplar: "Changelog Archive (Pre-May 18, 2026)";
-   audit-proj-web-a L169–171).
+   dated banner explaining the cut point (for example, "Changelog Archive (Pre-May 18, 2026)").
 3. **Leave a provenance backlink.** The live CHANGELOG keeps a one-line pointer to the archive chain;
    the archive footer back-links to any prior-repo archive so the chain is never broken
-   (audit-proj-web-a L172).
+   so the chain is never broken.
 
 The live file is a rolling window (~400 lines / ~last month), never a permanent ledger.
 
@@ -150,8 +147,8 @@ The live file is a rolling window (~400 lines / ~last month), never a permanent 
 
 ## (c) KB taxonomy — prefixes, kebab-case, no spaces
 
-KB documents are named with a semantic prefix (proj-resume's taxonomy, audit-proj-resume L135, extended
-with `DECISION-` per decision 24):
+KB documents are named with a semantic prefix (the consolidated project taxonomy, extended with
+`DECISION-` per decision 24):
 
 | Prefix | Holds |
 |---|---|
@@ -213,7 +210,7 @@ in `LOG-`/`RESEARCH-` tails.
 
 The KB root is **flat**: every durable doc carries a type prefix, so `ls SPEC-*` and glob routing
 never lie. Nesting is the **exception**, reserved for a genuinely large single-topic library (rule
-of thumb ≥10 docs of one type, e.g. proj-b's 17 runbooks) — and files **keep their prefix inside
+of thumb ≥10 docs of one type, e.g. a large runbook library) — and files **keep their prefix inside
 the subdir**. Every subdir carries a README trigger table (section d). **One-hop rule:** a KB doc
 reached from a router (README, `check --kb`, a skill pointer) must not require chasing a further
 doc — agents partial-read second-hop files (`head -100`), so a doc-chain silently truncates. Any KB
@@ -224,7 +221,7 @@ doc over ~100 lines carries a table of contents so a partial read still reveals 
 ## (d) The KB routing contract
 
 The read side is the gap, not the write side (decision 20): fleet evidence shows KB *writes* happen
-(proj-resume specs touched same-day) but nothing routes an agent **to** a doc at the moment of need, so
+but nothing routes an agent **to** a doc at the moment of need, so
 skills reference the KB only generically ("follow the convention"). This contract closes that.
 
 ### Every README index is a trigger table
@@ -240,7 +237,7 @@ it*** — like a skill description, not a bare title list. A list of titles is a
 ```
 
 The trigger table is the KB's routing surface. It is also where the **⚠ drift-marker convention**
-lives (proj-bootcamp gold, audit L132–137): a doc with known drift is marked `⚠` in the index with
+lives in the selected convention: a doc with known drift is marked `⚠` in the index with
 **commit provenance** and a one-line note:
 
 ```
@@ -274,19 +271,19 @@ plan/implement skills gain one standard step: match the files about to be touche
 This is the same principle as manifest `appliesTo` for skills: everything declares when it's relevant,
 so nothing depends on being remembered.
 
-Pair it with the **"read 1–3 KB docs" rule** (proj-bootcamp gold, audit L138–140): *"Read only the 1–3
+Pair it with the **"read 1–3 KB docs" rule**: *"Read only the 1–3
 docs relevant to your task — not none, not all."* That rule is only honest because the trigger tables
 make the relevant 1–3 findable instantly.
 
-Rules link back to the KB with `> **Related Knowledge Base:** <path>` (proj-bootcamp: 17/26 rules;
-audit L141–143) — cheap bidirectional drift detection.
+Rules link back to the KB with `> **Related Knowledge Base:** <path>` — cheap bidirectional drift
+detection.
 
 ---
 
 ## (e) Archive discipline — out of the default search path
 
 Completed work flows to `docs/archive/YYYY-MM/` and then **leaves the search path** (decision 23).
-350+ superseded files pollute every agent grep (proj-resume 363, proj-portfolio + proj-resume ~358 each).
+Hundreds of superseded files can pollute every agent grep.
 
 Mechanism — a repo-root **`.ignore`** file (template: `templates/docs-scaffold/dot-ignore`):
 
@@ -308,9 +305,8 @@ old work keeps its home without costing context.
 
 The five-store test (section a) is the gate: a raw research dump, a scraped-marketing corpus, client
 coaching notes, or a testimonial bank is none of the five stores. It is source material an agent
-reasons *from*, and treating it as truth misleads every future agent
-(proj-bootcamp's own README already says of its `research/` dir: "evidence only — never treat as an
-implemented contract"; audit L173).
+reasons *from*, and treating it as truth misleads every future agent. Prior project guidance describes
+its research directory as "evidence only — never treat as an implemented contract."
 
 Where evidence goes:
 - **Reusable evidence** (a research corpus you may consult again) → `docs/raw-research/` as a **peer
@@ -399,9 +395,9 @@ than none (K10). The **`research-curate` skill** is the enforcement.
 
 **Distill before you quarantine.** Before bulk-archiving a research dir, check for synthesized
 `CURRENT`/spec files hiding in the pile — they are durable contracts, not dumps, and blanket
-quarantine deletes the only usable knowledge there. The proj-prompt corpus is the proof case: 5
-`A2-*-CURRENT.md` files are synthesized IA contracts, not model transcripts, and must be **promoted
-to `SPEC-` docs first**, then the ~40 raw pairs quarantined (ideas-proj-prompt L8–28). Add
+quarantine deletes the only usable knowledge there. A prior corpus provided the proof case: several
+`A2-*-CURRENT.md` files were synthesized IA contracts, not model transcripts, and had to be
+**promoted to `SPEC-` docs first**, with the raw pairs quarantined afterward. Add
 this check to the quarantine step of any remediation.
 
 ---
@@ -460,8 +456,8 @@ different reason, same principle: hold it to the standard's **hygiene**, waive o
 
 Prefixing, indexing, and quarantine (sections a–f) fix *structure*. They do **not** make a doc
 *true*. A separate content scrub runs whenever a project's docs are reconciled or after any large
-migration — it is the difference between "the KB is well-filed" and "the KB is up to date." Proven on
-proj-web-a's 2026-07-04 reconcile; every item below caught a real defect there.
+migration — it is the difference between "the KB is well-filed" and "the KB is up to date." Proven
+during a prior project reconciliation; every item below caught a real defect there.
 
 ### The lenient-pass move trap (the one automation misses)
 `agentkit check --content` **lenient-passes** a citation whose *parent directory* still exists (the
@@ -590,13 +586,13 @@ time. *The index that restates drifts; the index that points does not.*
   wrong, and §(f)'s three tiers replace it. Evidence has exactly one lifecycle — *drop → curate →
   promote* — and denying it is what produced corpora with no naming convention, no provenance, and no
   route into the KB. It is still not a **work** lifecycle: no ticket, no status board, no assignee.
-- Did **not** invent a new CHANGELOG dialect or "improve" the proj-web-a exemplar — the whole point was
+- Did **not** invent a new CHANGELOG dialect or "improve" the selected exemplar — the whole point was
   to stop having four dialects. The `KB consulted:` line is the only addition, and it is telemetry,
   not ceremony.
 - Did **not** mandate deleting the archive. `.ignore` removes it from the *search path*, not from git;
   the prune rule stays optional (decision 23). Truth deletion is the failure mode we are fixing, not
   adopting.
-- Did **not** force proj-b's monorepo/backlog/nested-KB layout into the standard shape — only its
+- Did **not** force a consuming project's monorepo/backlog/nested-KB layout into the standard shape — only its
   hygiene is held to the standard (section g).
 - Did **not** remediate any fleet project here — this doc is the standard; the per-project executor
   checklists are `reports/docs-remediation-<project>.md`, run by Phase E.

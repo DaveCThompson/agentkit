@@ -30,7 +30,7 @@ convention doc, it points here rather than paraphrasing.
 Evidence is a **peer** of the four stores, never inside the KB, and it moves through three tiers —
 canonical spec: `governance/docs-standard.md` §(f). Run the `research-curate` skill to walk it.
 
-- `docs/raw-research/inbox/` — drop zone. **No naming convention, no header, no index row.** Filing
+- `docs/raw-research/inbox/` — drop zone. **No naming convention, no header, no index row.** Filing <!-- taxonomy-ignore-line -->
   must cost nothing or sources stop being captured. **Nothing may cite the inbox** — an `inbox/`
   path in a doc, ticket, or commit message is a defect.
 - `docs/raw-research/` — curated: `SOURCE-` (externally authored, body immutable) / `ANALYSIS-` (our

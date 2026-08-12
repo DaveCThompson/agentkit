@@ -47,7 +47,7 @@ a sync is drift that the next real sync will fight.
 routing anything, determine each learning's producer — the completion report's `producer` field, or
 this session's own tier/model if the learning is session-local. **Junior-produced or
 provenance-absent learnings are `candidate`s, not adoptable items**: file them in the live feedback
-pool (`docs/backlog/IDEA-post-v06-feedback.md`) with a `**Provenance**:` line and route them no
+pool (for example, `docs/backlog/IDEA-<feedback-pool>.md`) with a `**Provenance**:` line and route them no
 further. Adopt/codify a candidate only after a senior/staff role re-verifies the evidence (prefer
 re-running the claim to T1/T2 strength; cite the re-verification in the changelog entry).
 
