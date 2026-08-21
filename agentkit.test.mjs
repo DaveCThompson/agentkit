@@ -6,14 +6,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import {
+  delegationAudit, promptOverlap, tokenSet, DELEGATION_AUDIT_DEFAULTS,
   sha, globToRegex, matchesGlobs, classifyAgentFile, tierOf, selectEntries, scanKitAgent,
   planSync, syncProject, checkProject, adoptFile, mergeSettings, kbMatch, compileManifest, initProject,
   checkContentIntegrity, stackLint, taxonomyLint, renderWorkflowMap, runDoctor, harvestChecks, runVerify, changelogRoll, main, checkHygiene,
   orchestratorLock, surfaceOverlap, scaffoldGateScripts, scanSettingsHygiene, loadConfig, KIT_ROOT, printCheck,
   resolveBrowserProfile, validateBrowserProfile, verificationTreeIdentity, createVerificationReceipt, checkVerificationReceipt,
 } from './agentkit.mjs';
-import { parseFrontmatter, injectHeader, stripHeader, tomlMultiline, adapters, claudePermissionsBaseline } from './adapters.mjs';
+import { parseFrontmatter, injectHeader, stripHeader, tomlMultiline, adapters, claudePermissionsBaseline, CODEX_DELEGATION_CONTAINMENT } from './adapters.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TMP = path.join(HERE, '.tmp-test');
@@ -1867,7 +1869,7 @@ test('CLI general help and subcommand help print usage and exit 0', () => {
     for (const verb of ['--help', '-h', 'help']) {
       out = '';
       assert.equal(main([verb]), 0, `general help ${verb} exits 0`);
-      assert.ok(out.includes('usage: agentkit <init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version>'), `general help ${verb} contains usage`);
+      assert.ok(out.includes('usage: agentkit <init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|delegation-audit|--version>'), `general help ${verb} contains usage`);
     }
 
     // 2. Subcommand help
@@ -1883,6 +1885,7 @@ test('CLI general help and subcommand help print usage and exit 0', () => {
       { verb: 'surfaces', expected: 'usage: agentkit surfaces --base <ref>' },
       { verb: 'inventory', expected: 'usage: agentkit inventory' },
       { verb: 'doctor', expected: 'usage: agentkit doctor [project-path]' },
+      { verb: 'delegation-audit', expected: 'usage: agentkit delegation-audit [--state <path>]' },
     ];
     
     for (const sc of subcommands) {
@@ -2973,4 +2976,325 @@ test('init never overwrites an authored AGENTS.md or CLAUDE.md', () => {
   assert.ok(r.ok && !r.rootContract.agents, 'existing AGENTS.md must not be re-scaffolded: ' + JSON.stringify(r.rootContract));
   assert.equal(read(proj, 'AGENTS.md'), '# authored constitution\nno markers here\n', 'authored AGENTS.md byte-identical');
   assert.equal(read(proj, 'CLAUDE.md'), '# hand-written\n', 'authored CLAUDE.md byte-identical');
+});
+
+// ---------------------------------------------------------------------------
+// Codex delegation containment (pattern-agent-orchestration.md §14)
+//
+// Two layers, because the defect has two halves. The COMPILER tests prove the constraint reaches
+// Codex at all — before this it did not: `codex()` dropped every `agent` and `rule` entry on the
+// floor, so the orchestration rule was Claude-only and no per-agent surface existed. The HARNESS
+// tests prove a violation is detectable after the fact, which under the instructions-only posture
+// is the only mechanical guard there is.
+//
+// Fixture data is SYNTHETIC. The real ~/.codex state DB holds the user's entire prompt history and
+// must never be copied into this repo, in whole or in part.
+// ---------------------------------------------------------------------------
+
+const requireCjs = createRequire(import.meta.url);
+
+const AGENT_MD = {
+  srcRel: '.agent/agents/review-peer.md',
+  subPath: 'agents/review-peer.md',
+  type: 'agent',
+  name: 'review-peer',
+  owner: 'core',
+  fm: { name: 'review-peer', description: 'Verdict-first peer review.', model: 'opus', tools: 'Read, Grep' },
+  body: '# Review Peer\n\nJudge the work. Cite file:line.\n',
+  raw: '',
+};
+
+const ORCH_RULE = {
+  srcRel: '.agent/rules/pattern-agent-orchestration.md',
+  subPath: 'rules/pattern-agent-orchestration.md',
+  type: 'rule',
+  name: 'pattern-agent-orchestration',
+  owner: 'core',
+  fm: { trigger: 'model-decision', description: 'Consult when orchestrating parallel agents.' },
+  body: '# Orchestration\n\nSection 14 depth-0.\n',
+  raw: '',
+};
+
+test('codex emits a custom agent TOML with the three required keys + the containment preamble', () => {
+  const cx = adapters.codex([AGENT_MD], { hooks: [], mcpServers: {} });
+  const toml = cx.files.find((f) => f.rel === '.codex/agents/review-peer.toml');
+  assert.ok(toml, 'codex emits .codex/agents/<name>.toml — the documented custom-agent surface');
+  // The three keys the official schema marks required (verified 2026-07-26).
+  assert.ok(/^name = "review-peer"$/m.test(toml.content), 'required key: name');
+  assert.ok(/^description = "Verdict-first peer review\."$/m.test(toml.content), 'required key: description');
+  assert.ok(/^developer_instructions = """$/m.test(toml.content), 'required key: developer_instructions');
+  // The agent's own body survives...
+  assert.ok(toml.content.includes('Judge the work. Cite file:line.'), 'agent body carried into developer_instructions');
+  // ...behind the containment preamble. This is the payload the whole ticket exists to deliver.
+  assert.ok(toml.content.includes(CODEX_DELEGATION_CONTAINMENT), 'containment preamble present verbatim');
+  assert.ok(toml.content.includes('codex_app.create_thread'), 'the escape hatch is named, not gestured at');
+  assert.ok(toml.content.includes('AGENTKIT GENERATED from .agent/agents/review-peer.md'), 'generated header');
+});
+
+test('codex agent: unsupported canonical fields degrade LOUDLY, never silently (decision 4)', () => {
+  const cx = adapters.codex([AGENT_MD], { hooks: [], mcpServers: {} });
+  const toml = cx.files.find((f) => f.rel === '.codex/agents/review-peer.toml');
+  // `model: opus` is a Claude alias and `tools:` has no flat Codex equivalent — both are dropped.
+  assert.ok(!/^model = /m.test(toml.content), 'a Claude model alias never leaks into Codex TOML');
+  assert.ok(!/^tools = /m.test(toml.content), 'Claude tools: has no faithful Codex mapping');
+  const msgs = cx.validations.map((v) => v.msg).join('\n');
+  assert.match(msgs, /declares model 'opus' — dropped/, 'the model drop is a recorded degradation');
+  assert.match(msgs, /declares tools: — dropped/, 'the tools drop is a recorded degradation');
+  assert.ok(cx.validations.every((v) => v.level === 'warn'), 'degradations warn, they do not fail the sync');
+});
+
+test('codex routes a model-decision rule to a rule- skill — the only path that reaches Codex at all', () => {
+  const cx = adapters.codex([ORCH_RULE], { hooks: [], mcpServers: {} });
+  const skill = cx.files.find((f) => f.rel === '.agents/skills/rule-pattern-agent-orchestration/SKILL.md');
+  assert.ok(skill, 'model-decision rule becomes a description-gated skill on the Codex skills surface');
+  assert.ok(skill.content.includes('name: rule-pattern-agent-orchestration'));
+  assert.ok(skill.content.includes('description: Consult when orchestrating parallel agents.'), 'description drives routing');
+  assert.ok(skill.content.includes('Section 14 depth-0.'), 'rule body carried');
+  // Codex has no user-facing skill menu to hide from — that key is Claude-only and must not appear.
+  assert.ok(!skill.content.includes('user-invocable'), 'no Claude-only frontmatter leaks into Codex');
+});
+
+test('codex leaves always/glob rules on the AGENTS.md path (emitting them would downgrade them)', () => {
+  const always = { ...ORCH_RULE, srcRel: '.agent/rules/foundation-security.md', subPath: 'rules/foundation-security.md', name: 'foundation-security', fm: { trigger: 'always' } };
+  const glob = { ...ORCH_RULE, srcRel: '.agent/rules/tech-react.md', subPath: 'rules/tech-react.md', name: 'tech-react', fm: { trigger: 'glob', globs: ['src/**'] } };
+  const cx = adapters.codex([always, glob], { hooks: [], mcpServers: {} });
+  assert.equal(cx.files.length, 0, 'an always-on rule must not become a discretionary skill');
+});
+
+test('codex rule- collision fails CLOSED — a colliding write would clobber a real skill', () => {
+  const realSkill = { srcRel: '.agent/skills/rule-x/SKILL.md', subPath: 'skills/rule-x/SKILL.md', type: 'skill', name: 'rule-x', owner: 'core', fm: { name: 'rule-x', description: 'A real skill named rule-x.' }, body: '# Real\n', raw: '' };
+  const rule = { ...ORCH_RULE, srcRel: '.agent/rules/x.md', subPath: 'rules/x.md', name: 'x' };
+  const cx = adapters.codex([realSkill, rule], { hooks: [], mcpServers: {} });
+  const at = cx.files.filter((f) => f.rel === '.agents/skills/rule-x/SKILL.md');
+  assert.equal(at.length, 1, 'exactly one write at the contested path');
+  assert.ok(at[0].content.includes('# Real'), 'the REAL skill survives; the rule is refused');
+  assert.ok(cx.validations.some((v) => v.level === 'error' && /collides/.test(v.msg)), 'collision reported as an error');
+});
+
+test('non-codex vendors are unaffected by the new agent/rule branches', () => {
+  const ctx = { hooks: [], mcpServers: {} };
+  // Claude keeps its own agent + rule- mappings, and never picks up the Codex preamble.
+  const cl = adapters.claude([AGENT_MD, ORCH_RULE], ctx);
+  assert.ok(cl.files.some((f) => f.rel === '.claude/agents/review-peer.md'), 'claude agent surface unchanged');
+  assert.ok(cl.files.some((f) => f.rel === '.claude/skills/rule-pattern-agent-orchestration/SKILL.md'), 'claude rule- mapping unchanged');
+  assert.ok(!cl.files.some((f) => f.content.includes(CODEX_DELEGATION_CONTAINMENT)), 'Codex preamble is scoped to codex()');
+  for (const vendor of ['gemini', 'opencode', 'antigravity']) {
+    const out = adapters[vendor]([AGENT_MD, ORCH_RULE], ctx);
+    assert.equal(out.files.length, 0, `${vendor} emits nothing for agent/rule entries`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// delegation-audit harness
+// ---------------------------------------------------------------------------
+
+// Deterministic token vocabularies. Overlap is arithmetic, not English: `alpha0..alpha39` vs
+// `alpha0..alpha29` is containment (overlap 1.0), and `beta*` shares nothing (overlap 0.0). Every
+// prompt clears DELEGATION_AUDIT_DEFAULTS.minComparableTokens so the size floor is never what a
+// given assertion is actually testing.
+const vocab = (n, prefix) => Array.from({ length: n }, (_, i) => `${prefix}${i}`).join(' ');
+const ASSIGNMENT = vocab(40, 'alpha');
+const CLONE = vocab(30, 'alpha');          // subset of ASSIGNMENT -> overlap 1.0
+const NEAR_CLONE = vocab(28, 'alpha');     // subset of ASSIGNMENT -> overlap 1.0
+const UNRELATED = vocab(40, 'beta');       // disjoint             -> overlap 0.0
+
+const T0 = 1787247800000;                  // fixed epoch — Date.now() is banned in fixtures
+const delegationTitle = (srcId, input) => `<codex_delegation>\n  <source_thread_id>${srcId}</source_thread_id>\n  <input>${input}</input>\n</codex_delegation>`;
+
+// Builds a synthetic pair of Codex databases. Every override the red proofs need is a parameter, so
+// a proof flips one field rather than hand-rolling a second fixture that could drift from this one.
+function mkCodexFixture(over = {}) {
+  const home = fs.mkdtempSync(path.join(TMP, 'codex-'));
+  const { DatabaseSync } = requireCjs('node:sqlite');
+
+  const state = new DatabaseSync(path.join(home, 'state_5.sqlite'));
+  state.exec(`create table threads (id text primary key, title text not null, name text, thread_source text not null,
+    cwd text not null, created_at_ms integer, agent_nickname text);
+    create table thread_spawn_edges (parent_thread_id text not null, child_thread_id text primary key, status text not null);`);
+  const addThread = (t) => state.prepare('insert into threads (id,title,name,thread_source,cwd,created_at_ms,agent_nickname) values (?,?,?,?,?,?,?)')
+    .run(t.id, t.title, t.name ?? null, t.thread_source, t.cwd, t.created_at_ms, t.agent_nickname ?? null);
+  const addEdge = (p, c, s) => state.prepare('insert into thread_spawn_edges values (?,?,?)').run(p, c, s);
+
+  const repo = 'C:\\dev\\DAVE CODE\\demo';
+  // The orchestrator.
+  addThread({ id: 't-user', title: ASSIGNMENT, thread_source: 'user', cwd: repo, created_at_ms: T0 });
+  // A properly-credited worker: spawn edge present, thread_source 'subagent'.
+  addThread({ id: 't-worker', title: ASSIGNMENT, thread_source: 'subagent', cwd: repo, created_at_ms: T0 + 1000, agent_nickname: 'Euclid' });
+  addEdge('t-user', 't-worker', over.workerEdgeStatus ?? 'open');
+  // A SECOND credited worker with an identical prompt — legitimate orchestrator fan-out. Must never
+  // be flagged: §14D governs a worker cloning work, not a parent deliberately parallelizing.
+  addThread({ id: 't-worker2', title: ASSIGNMENT, thread_source: 'subagent', cwd: repo, created_at_ms: T0 + 2000, agent_nickname: 'Euler' });
+  addEdge('t-user', 't-worker2', 'closed');
+  // The escape: created BY t-worker via create_thread. No edge; stamped user-originated.
+  if (!over.omitEscape) {
+    addThread({
+      id: 't-escape',
+      title: delegationTitle('t-worker', over.escapePrompt ?? CLONE),
+      thread_source: over.escapeSource ?? 'user',
+      cwd: repo,
+      created_at_ms: T0 + 60000,
+    });
+    if (over.creditEscape) addEdge('t-worker', 't-escape', 'open');
+  }
+  // A second escape by the same worker, near-duplicate of the first.
+  if (over.secondEscape !== false) {
+    addThread({
+      id: 't-escape2',
+      title: delegationTitle('t-worker', over.secondEscapePrompt ?? NEAR_CLONE),
+      thread_source: 'user',
+      cwd: repo,
+      created_at_ms: T0 + 60000 + (over.secondEscapeDeltaMs ?? 120000),
+    });
+  }
+  // A delegation from a TOP-LEVEL thread — the normal way a user opens a follow-up task. Never a finding.
+  addThread({ id: 't-followup', title: delegationTitle('t-user', UNRELATED), thread_source: 'user', cwd: repo, created_at_ms: T0 + 3000 });
+  state.close();
+
+  if (!over.omitHistory) {
+    const hist = new DatabaseSync(path.join(home, 'thread_history_1.sqlite'));
+    hist.exec('create table thread_turns (thread_id text not null, turn_id text not null, status text not null, primary key (thread_id, turn_id));');
+    const addTurn = (t, id, s) => hist.prepare('insert into thread_turns values (?,?,?)').run(t, id, s);
+    addTurn('t-worker', 'turn-1', over.workerTurnStatus ?? 'completed');
+    addTurn('t-worker2', 'turn-1', 'completed');
+    hist.close();
+  }
+  return home;
+}
+
+const idsOf = (r, id) => r.findings.filter((f) => f.id === id).map((f) => f.threadId).sort();
+
+test('delegation-audit: the metric is overlap-coefficient, not Jaccard (a clone is CONDENSED)', () => {
+  // The live miss this encodes: a 112-token re-issue of a 164-token assignment sharing 88 tokens
+  // scores 0.79 by overlap and 0.47 by Jaccard. Jaccard divides by the union, so it punishes exactly
+  // the asymmetry that identifies the clone.
+  const big = tokenSet(vocab(164, 'a'));
+  const small = new Set([...Array.from({ length: 88 }, (_, i) => `a${i}`), ...Array.from({ length: 24 }, (_, i) => `z${i}`)]);
+  assert.equal(small.size, 112);
+  const overlap = promptOverlap(big, small);
+  const inter = 88;
+  const jaccard = inter / (big.size + small.size - inter);
+  assert.ok(overlap > 0.75, `overlap ${overlap.toFixed(3)} flags the clone`);
+  assert.ok(jaccard < 0.5, `jaccard ${jaccard.toFixed(3)} would have missed it`);
+  assert.equal(promptOverlap('', 'anything'), 0, 'an empty side is never a match');
+});
+
+test('delegation-audit: detects the three violation classes on a synthetic fixture', () => {
+  const r = delegationAudit({ codexHome: mkCodexFixture() });
+  assert.ok(!r.error, r.error);
+
+  // 1. Uncredited nested delegation — both escapes, and ONLY the escapes.
+  assert.deepEqual(idsOf(r, 'uncredited-nested-delegation'), ['t-escape', 't-escape2']);
+  const f1 = r.findings.find((f) => f.id === 'uncredited-nested-delegation');
+  assert.equal(f1.severity, 'critical');
+  assert.equal(f1.delegatedBy, 't-worker');
+  assert.equal(f1.grandparentId, 't-user', 'the real lineage is reconstructed from the edge table');
+  assert.equal(f1.stampedSource, 'user', 'records the laundering: a subagent-created thread stamped user');
+
+  // 2. The redundant work that escape produced.
+  assert.deepEqual(idsOf(r, 'self-cloning-delegation'), ['t-escape', 't-escape2']);
+  assert.deepEqual(idsOf(r, 'duplicate-sibling-task'), ['t-escape2']);
+
+  // 3. Unreconciled completion — t-worker's edge is open while its only turn is terminal.
+  assert.deepEqual(idsOf(r, 'unreconciled-completion'), ['t-worker']);
+  assert.equal(r.findings.find((f) => f.id === 'unreconciled-completion').severity, 'medium');
+
+  // Neither legitimate shape is ever flagged.
+  const flagged = new Set(r.findings.map((f) => f.threadId));
+  assert.ok(!flagged.has('t-worker2'), 'a credited sibling with an IDENTICAL prompt is legitimate fan-out');
+  assert.ok(!flagged.has('t-followup'), 'a top-level thread opening a follow-up task is normal use');
+});
+
+test('delegation-audit: findings never carry prompt text (privacy is a hard constraint)', () => {
+  const r = delegationAudit({ codexHome: mkCodexFixture() });
+  const serialized = JSON.stringify(r);
+  // Every fixture prompt token would appear if any field echoed the prompt.
+  for (const probe of ['alpha0', 'alpha29', 'beta0']) {
+    assert.ok(!serialized.includes(probe), `no prompt token '${probe}' may reach the output`);
+  }
+  assert.ok(!serialized.includes('<input>'), 'no delegation payload in the output');
+});
+
+test('delegation-audit: clean state produces zero findings and exits clean', () => {
+  // Everything credited, nothing cloned, every edge reconciled.
+  const home = mkCodexFixture({ omitEscape: true, secondEscape: false, workerEdgeStatus: 'closed' });
+  const r = delegationAudit({ codexHome: home });
+  assert.deepEqual(r.findings, [], 'a well-behaved session is silent');
+  assert.equal(r.clean, true);
+  assert.deepEqual(r.counts, {});
+});
+
+test('delegation-audit: --repo scopes findings; absent history disables only check 3', () => {
+  const home = mkCodexFixture();
+  // 2 uncredited + 2 self-clone + 1 sibling-duplicate + 1 unreconciled.
+  assert.equal(delegationAudit({ codexHome: home, repo: 'demo' }).findings.length, 6, 'repo matches → all findings');
+  assert.deepEqual(delegationAudit({ codexHome: home, repo: 'other-repo' }).findings, [], 'repo filter excludes everything');
+
+  const noHist = delegationAudit({ codexHome: mkCodexFixture({ omitHistory: true }) });
+  assert.ok(noHist.note && /unreconciled-completion was not evaluated/.test(noHist.note), 'the gap is stated, not hidden');
+  assert.equal(idsOf(noHist, 'unreconciled-completion').length, 0);
+  assert.ok(idsOf(noHist, 'uncredited-nested-delegation').length > 0, 'the other checks still run');
+});
+
+test('delegation-audit: a live turn is never reported as unreconciled (fail toward still-working)', () => {
+  const r = delegationAudit({ codexHome: mkCodexFixture({ workerTurnStatus: 'in_progress' }) });
+  assert.deepEqual(idsOf(r, 'unreconciled-completion'), [], 'a non-terminal turn means the worker may still be running');
+});
+
+test('delegation-audit: reports a changed Codex schema instead of trusting a partial read', () => {
+  const home = fs.mkdtempSync(path.join(TMP, 'codex-bad-'));
+  const { DatabaseSync } = requireCjs('node:sqlite');
+  const db = new DatabaseSync(path.join(home, 'state_5.sqlite'));
+  db.exec('create table threads (id text primary key);');   // thread_spawn_edges missing
+  db.close();
+  const r = delegationAudit({ codexHome: home });
+  assert.match(r.error, /thread_spawn_edges/, 'names the missing table');
+  assert.match(r.error, /re-verify/, 'tells the reader what to do');
+
+  const missing = delegationAudit({ codexHome: fs.mkdtempSync(path.join(TMP, 'codex-empty-')) });
+  assert.match(missing.error, /no Codex state database found/);
+});
+
+// --- Red proofs (foundation-testing.md §1C): each gate is SEEN to go red. ---
+
+test('RED PROOF: removing the containment clause fails the compiler gate', () => {
+  // Simulates the preamble being weakened. The assertion the real test makes must not pass on it.
+  const gutted = CODEX_DELEGATION_CONTAINMENT.split('\n').filter((l) => !l.includes('create_thread')).join('\n');
+  assert.ok(!gutted.includes('codex_app.create_thread'), 'the clause is gone in the mutated text');
+  assert.throws(
+    () => assert.ok(gutted.includes('codex_app.create_thread'), 'the escape hatch is named'),
+    /escape hatch is named/,
+    'the compiler assertion is what catches the removal — it is not vacuous',
+  );
+});
+
+test('RED PROOF: crediting the escape with a spawn edge silences check 1', () => {
+  const before = delegationAudit({ codexHome: mkCodexFixture() });
+  const after = delegationAudit({ codexHome: mkCodexFixture({ creditEscape: true }) });
+  assert.ok(idsOf(before, 'uncredited-nested-delegation').includes('t-escape'), 'red: flagged while uncredited');
+  assert.ok(!idsOf(after, 'uncredited-nested-delegation').includes('t-escape'), 'green: silent once the edge exists');
+  // And the checks that feed off `escaped` go quiet with it — proving the scoping is real.
+  assert.ok(!idsOf(after, 'self-cloning-delegation').includes('t-escape'));
+});
+
+test('RED PROOF: dropping overlap below threshold silences the duplicate checks', () => {
+  const r = delegationAudit({ codexHome: mkCodexFixture({ escapePrompt: UNRELATED, secondEscapePrompt: UNRELATED }) });
+  // Still laundered — check 1 must keep firing, or this proof would be testing nothing.
+  assert.deepEqual(idsOf(r, 'uncredited-nested-delegation'), ['t-escape', 't-escape2']);
+  assert.deepEqual(idsOf(r, 'self-cloning-delegation'), [], 'no overlap with the assignment → no self-clone');
+  // The two escapes still match EACH OTHER (both UNRELATED), so the sibling check must still fire —
+  // this asserts the two duplicate checks are independent, not one check reported twice.
+  assert.deepEqual(idsOf(r, 'duplicate-sibling-task'), ['t-escape2']);
+});
+
+test('RED PROOF: the time window and token floor both actually gate', () => {
+  const outside = delegationAudit({ codexHome: mkCodexFixture({ secondEscapeDeltaMs: DELEGATION_AUDIT_DEFAULTS.duplicateWindowMs + 60000 }) });
+  assert.deepEqual(idsOf(outside, 'duplicate-sibling-task'), [], 'outside the window → no sibling finding');
+  assert.equal(idsOf(outside, 'uncredited-nested-delegation').length, 2, 'the window gates ONLY the duplicate check');
+
+  // A short prompt carries no comparable signal — the real false positive this floor kills was a
+  // sharded fan-out titled "Review security shard 0002" / "…0003", which scores 0.75 on four tokens.
+  const short = delegationAudit({ codexHome: mkCodexFixture({ escapePrompt: 'review security shard 0002', secondEscapePrompt: 'review security shard 0003' }) });
+  assert.deepEqual(idsOf(short, 'duplicate-sibling-task'), [], 'below the token floor → no similarity claim');
+  assert.deepEqual(idsOf(short, 'self-cloning-delegation'), []);
+  assert.equal(idsOf(short, 'uncredited-nested-delegation').length, 2, 'the floor gates ONLY the similarity checks');
 });

@@ -1,5 +1,5 @@
 {
-  "vendors": ["claude", "antigravity"],
+  "vendors": ["claude", "codex", "antigravity"],
   "stack": [],
   "kinds": ["app"],
   "tools": ["codebase-mcp"],

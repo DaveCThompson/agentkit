@@ -147,6 +147,32 @@ function workflowAsSkill(e) {
   };
 }
 
+// The set of real SKILL.md names in a merged tree. Both claude() and codex() synthesize skills into
+// that same namespace (`wf-`, `rule-`) and must check for a collision against it first.
+function skillNameSet(entries) {
+  return new Set(
+    entries.filter((e) => e.type === 'skill' && e.subPath.endsWith('SKILL.md')).map((e) => String(e.fm?.name || e.name)),
+  );
+}
+
+// A `model-decision` rule rendered as a description-gated skill — the shared half of a mapping both
+// Claude and Codex need. Claude adds its hide-from-menu key on top and writes to .claude/skills/;
+// Codex writes the same frontmatter to .agents/skills/. Returns the synthesized name + frontmatter
+// plus any validation the caller should record; the caller owns the path and the vendor extras.
+function modelDecisionRuleSkill(e, vendor, skillNames) {
+  const name = `rule-${e.name}`;
+  return {
+    name,
+    collision: skillNames.has(name)
+      ? { level: 'error', msg: `${vendor}: rule ${e.srcRel} collides with existing skill '${name}'` }
+      : null,
+    warn: e.fm?.description
+      ? null
+      : { level: 'warn', msg: `${vendor}: model-decision rule ${e.srcRel} lacks description: — routing degraded to its name` },
+    fmOut: { name, description: e.fm?.description || `${e.name} rule — consult before work it governs.` },
+  };
+}
+
 // TOML multiline basic string escaping for Gemini command prompts.
 export function tomlMultiline(s) {
   const esc = normalizeEol(s).replace(/\\/g, '\\\\').replace(/"""/g, '""\\"');
@@ -272,9 +298,7 @@ function claude(entries, ctx) {
   // Cross-entry logic: compileManifest calls adapters one entry at a time and so never sees a
   // pairing — harmless there (the manifest records target rels only, validations are discarded);
   // do NOT "fix" that by trying to pair inside the per-entry loop.
-  const skillNames = new Set(
-    entries.filter((e) => e.type === 'skill' && e.subPath.endsWith('SKILL.md')).map((e) => String(e.fm?.name || e.name)),
-  );
+  const skillNames = skillNameSet(entries);
   const pairedSkills = new Set();
   for (const e of entries) {
     if (e.type !== 'workflow' || !e.fm?.skill) continue;
@@ -301,15 +325,15 @@ function claude(entries, ctx) {
         // semantics; emitting these as .claude/rules/ made them always-on (~19K tokens/session
         // over-served). The `rule-` prefix mirrors the codex `wf-` collision guard. `always`
         // and `glob` rules keep the native rules surface below.
-        const name = `rule-${e.name}`;
-        if (skillNames.has(name)) {
-          validations.push({ level: 'error', msg: `claude: rule ${e.srcRel} collides with existing skill '${name}'` });
-        }
-        if (!e.fm?.description) {
-          validations.push({ level: 'warn', msg: `claude: model-decision rule ${e.srcRel} lacks description: — routing degraded to its name` });
-        }
-        const fmOut = { name, description: e.fm?.description || `${e.name} rule — consult before work it governs.`, ...CLAUDE_HIDE_FROM_MENU };
-        files.push({ rel: `.claude/skills/${name}/SKILL.md`, content: injectHeader(serializeFrontmatter(fmOut) + '\n' + e.body, e.srcRel, '.md') });
+        const r = modelDecisionRuleSkill(e, 'claude', skillNames);
+        // NOTE: on collision claude() records the error and emits ANYWAY, clobbering the real skill at
+        // that path. That is pre-existing behavior, not a deliberate design — it is preserved verbatim
+        // here because changing it would alter a shipped surface across the whole fleet, which is out
+        // of this ticket's scope. codex() below fails closed instead. Reconciling the two is follow-up.
+        if (r.collision) validations.push(r.collision);
+        if (r.warn) validations.push(r.warn);
+        const fmOut = { ...r.fmOut, ...CLAUDE_HIDE_FROM_MENU };
+        files.push({ rel: `.claude/skills/${r.name}/SKILL.md`, content: injectHeader(serializeFrontmatter(fmOut) + '\n' + e.body, e.srcRel, '.md') });
       } else {
         // Claude Code native rules surface (verified 2026-07-03, code.claude.com/docs/en/memory):
         // .claude/rules/*.md, path-scoped via `paths:` frontmatter. Canonical `trigger: glob` maps 1:1.
@@ -343,14 +367,53 @@ function claude(entries, ctx) {
   return { files, settings, validations };
 }
 
+// A Codex custom agent IS a delegated worker by construction, so the depth-0 contract
+// (pattern-agent-orchestration.md §14A) must hold for it UNCONDITIONALLY — it cannot depend on the
+// `rule-` skill below having been loaded, because skill discovery inside a spawned Codex thread is
+// model-discretionary. This preamble is therefore prepended to every emitted agent's
+// `developer_instructions`; it is the Codex analogue of the two Claude-only frontmatter injections
+// in claude(), and like those it is scoped to this one adapter.
+// WHY it exists (live incident 2026-08-20, recorded in ~/.codex/state_5.sqlite): a depth-1 Codex
+// subagent enumerated its tool namespace — reasoning summary "Inspecting tools for spawning …" —
+// found `codex_app.create_thread`, and fanned out an unrequested duplicate review task. Unlike
+// `spawnAgent`, that tool writes NO `thread_spawn_edges` row and stamps the new thread
+// `thread_source: "user"`, so the nesting was invisible to the parent AND to the lineage table.
+// Every `create_thread` call in that machine's entire history was made by a subagent.
+export const CODEX_DELEGATION_CONTAINMENT = [
+  '## Delegation containment (non-negotiable)',
+  '',
+  'You are a delegated worker. You run at depth 0 and you do not fan out.',
+  '',
+  '- Do NOT spawn, fork, branch, or delegate to another agent, task, chat, thread, or worktree.',
+  '  This explicitly includes `codex_app.create_thread`, `spawnAgent`, and any `<codex_delegation>`',
+  '  wrapper. A tool being reachable is not permission to call it.',
+  '- If you believe further delegation is warranted, write the PROPOSAL into your final report and',
+  '  stop. Proposing is free; spawning is not.',
+  '- The only exception is an authorization from your parent or the user that you can quote',
+  '  verbatim. An unquoted approval is no approval.',
+  '- Before creating any task, check it against work already running under your parent. Report a',
+  '  near-duplicate; never create one.',
+  '- Open your first and final message with:',
+  '  `Lineage: parent=<parent-id|user> · self=<own-id|nickname> · depth=<n> · scope=<one line>`',
+  '',
+  'Canonical contract: `.agent/rules/pattern-agent-orchestration.md` §14.',
+].join('\n');
+
 // CODEX — root AGENTS.md is the durable entry; native skill discovery is .agents/skills (plural,
 // per official docs — decision 6/41). Config key-merge target is .codex/config.toml (managed block).
 // Codex has NO commands-from-workflows surface (skills only), so workflows ride in as `wf-`prefixed
 // skills at .agents/skills/wf-<name>/ — the only path that makes them discoverable in Codex.
+// Project custom agents ARE a documented surface (`.codex/agents/*.toml`, required keys name /
+// description / developer_instructions — verified 2026-07-26, learn.chatgpt.com/docs/agent-configuration/subagents),
+// and `model-decision` rules ride in as `rule-`prefixed skills exactly as they do for Claude.
 function codex(entries, ctx) {
   const files = [];
   const settings = [];
   const validations = [];
+  // Collision guard for the two synthesized skill namespaces (`wf-`, `rule-`), mirroring claude().
+  const skillNames = new Set(
+    entries.filter((e) => e.type === 'skill' && e.subPath.endsWith('SKILL.md')).map((e) => String(e.fm?.name || e.name)),
+  );
   for (const e of entries) {
     if (e.type === 'skill') {
       const ext = extOf(e.subPath);
@@ -362,6 +425,40 @@ function codex(entries, ctx) {
     } else if (e.type === 'workflow') {
       const w = workflowAsSkill(e);
       files.push({ rel: '.agents/' + w.subPath, content: injectHeader(stripFmTo(w, ['name', 'description']), e.srcRel, '.md') });
+    } else if (e.type === 'rule') {
+      // Codex has no native rules surface — the capability matrix's "via AGENTS.md text" was the whole
+      // story, which meant a `model-decision` rule reached Codex only as a prose pointer the model may
+      // or may not follow. A model-decision rule is description-gated BY DEFINITION, and that is
+      // precisely what a skill is here, so mirror claude()'s `model-decision → rule-` mapping onto
+      // Codex's skills surface. `always` and `glob` rules stay on the AGENTS.md path: Codex has no
+      // always-on rules file and no path-scoping primitive, so emitting them as skills would convert a
+      // mandatory rule into a discretionary one — a silent downgrade, not a port.
+      if (e.fm?.trigger !== 'model-decision') continue;
+      const r = modelDecisionRuleSkill(e, 'codex', skillNames);
+      // Fail closed on collision — this is new code, so it takes the correct behavior rather than
+      // inheriting claude()'s emit-anyway (see the note there). A colliding write would overwrite a
+      // real skill at the same .agents/skills/<name>/SKILL.md path.
+      if (r.collision) { validations.push(r.collision); continue; }
+      if (r.warn) validations.push(r.warn);
+      files.push({ rel: `.agents/skills/${r.name}/SKILL.md`, content: injectHeader(serializeFrontmatter(r.fmOut) + '\n' + e.body, e.srcRel, '.md') });
+    } else if (e.type === 'agent') {
+      const name = String(e.fm?.name || e.name);
+      const instructions = CODEX_DELEGATION_CONTAINMENT + '\n\n' + normalizeEol(e.body).trim() + '\n';
+      const lines = [
+        `name = ${JSON.stringify(name)}`,
+        `description = ${JSON.stringify(String(e.fm?.description || name))}`,
+        `developer_instructions = ${tomlMultiline(instructions)}`,
+      ];
+      // Decision 4 (unsupported semantics fail VISIBLY, never a silent strip). Two canonical agent
+      // fields have no faithful Codex mapping and are dropped with a recorded degradation:
+      //   `model:` — canonical agents carry a Claude alias (`haiku`, `opus`); Codex wants its own
+      //     provider IDs, and decision 3 forbids leaking vendor model IDs into canonical sources.
+      //     A tier→model resolver is the compiler ticket's job, not this adapter's.
+      //   `tools:` — Claude's flat allow-list has no equivalent; Codex scopes tools per MCP server
+      //     table (`enabled_tools`/`disabled_tools`), so a flat list cannot be translated 1:1.
+      if (e.fm?.model) validations.push({ level: 'warn', msg: `codex: agent ${e.srcRel} declares model '${e.fm.model}' — dropped (no canonical tier→model mapping yet); the agent inherits the session model` });
+      if (e.fm?.tools) validations.push({ level: 'warn', msg: `codex: agent ${e.srcRel} declares tools: — dropped (Codex scopes tools per mcp_servers table, not a flat list); the agent inherits the parent tool surface` });
+      files.push({ rel: `.codex/agents/${e.name}.toml`, content: injectHeader(lines.join('\n') + '\n', e.srcRel, '.toml') });
     }
   }
   if (Object.keys(ctx.mcpServers).length) {

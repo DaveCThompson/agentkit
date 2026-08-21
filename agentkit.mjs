@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // agentkit — one canonical .agent/ source, generated vendor surfaces, drift detection, flowback.
 // Verbs: init | sync | check | adopt | lock | surfaces | inventory | doctor          (decision 14)
+//        | delegation-audit   (read-only Codex containment diagnostic, pattern-agent-orchestration §14)
 // State model:
 //   .agentkit.json  = pure intent (vendors, stack, tools, overlay, pins)          (decision 36)
 //   .agentkit.lock  = shipped state (per-file out-hash + src-hash + kitVersion),  COMMITTED (decisions 25/36)
@@ -12,6 +13,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   adapters, VENDORS, parseFrontmatter, normalizeEol, injectHeader, stripHeader,
@@ -1951,6 +1953,271 @@ export function runVerify(projectRoot, opts = {}) {
   return { project: projectRoot, sourceRoots: h.sourceRoots, checkCount: h.checks.length, ruleCount: ruleSet.size, harvestErrors: h.errors, findings, counts, clean: findings.length === 0 };
 }
 
+// ---------- delegation-audit: Codex nested-delegation containment (READ-ONLY diagnostic) ----------
+// pattern-agent-orchestration.md §14 states the delegation contract in prose. Prose is the whole
+// enforcement posture for Codex — there is no hook block — so this is the mechanical half: it does not
+// PREVENT a violation, it makes one impossible to miss afterwards.
+//
+// The kit is a config compiler and must not become a runtime (no scheduling, no brokering, no state).
+// This stays on the right side of that line: it opens the Codex app's own local databases READ-ONLY,
+// reports, and exits. It never writes, never launches, never reconciles anything itself.
+//
+// PRIVACY (hard constraint): the state DB holds the user's entire prompt history. Findings carry
+// thread IDs, timestamps and similarity scores ONLY. Prompt text is read into memory to compute
+// overlap and is never emitted, logged, or persisted. Do not add a field that echoes it.
+//
+// The three violation classes map 1:1 onto observed Codex runtime defects (2026-08-20):
+//   1. `codex_app.create_thread` is reachable from a subagent, writes no spawn edge, and stamps the
+//      new thread `thread_source: "user"` — nesting is laundered into a user-originated task.
+//   2. the same escape produces unrequested duplicate siblings (3 of 3 recorded calls did).
+//   3. spawn-edge `status` is never driven to closed, so a parent reading it sees a finished worker
+//      as still open — which is how a wait timeout gets reported as "still running".
+
+export const DELEGATION_AUDIT_DEFAULTS = {
+  // Thresholds are named constants, not literals buried in a branch: the fixture pins them, so a
+  // tuning change shows up as a test diff rather than as silently different output.
+  duplicateWindowMs: 15 * 60 * 1000,
+  duplicateSimilarity: 0.6,
+  // Below this many distinct tokens a prompt carries no comparable signal and Jaccard is noise. Tuned
+  // against real data: a sharded fan-out titled "Review security shard 0002" / "…0003" scores 0.60 on
+  // four tokens and is entirely legitimate. Real delegation prompts run to 100+ tokens.
+  minComparableTokens: 25,
+};
+
+// Terminal turn statuses. Anything NOT listed here counts as live — fail toward "still working" so a
+// vocabulary change in a future Codex build cannot turn a running agent into a false "unreconciled"
+// finding. An unknown status is a reason to under-report, never to over-report.
+const TERMINAL_TURN_STATUS = new Set(['completed', 'failed', 'aborted', 'cancelled', 'canceled']);
+
+const DELEGATION_SOURCE_RE = /<codex_delegation>\s*<source_thread_id>\s*([^<\s]+)\s*<\/source_thread_id>/;
+const DELEGATION_INPUT_RE = /<input>([\s\S]*?)<\/input>/;
+
+export function tokenSet(s) {
+  return new Set(String(s || '').toLowerCase().match(/[a-z0-9]+/g) || []);
+}
+
+// Overlap coefficient (Szymkiewicz–Simpson): |A∩B| / min(|A|,|B|) — NOT Jaccard.
+// A re-issued task is usually a CONDENSED restatement, and Jaccard divides by the union, so it
+// penalizes exactly the asymmetry that identifies a clone. Measured on the live incident: the
+// subagent's re-issue shared 88 of its 112 tokens with the 164-token assignment it was already
+// given — overlap 0.79 (correctly flagged), Jaccard 0.47 (missed at any usable threshold).
+// The known weakness of this metric is inflation when one set is tiny; `minComparableTokens` is the
+// guard, and it must be applied to BOTH sets by the caller — a 4-token title scores 0.75 against
+// anything that happens to contain its words.
+export function promptOverlap(a, b) {
+  const wa = a instanceof Set ? a : tokenSet(a);
+  const wb = b instanceof Set ? b : tokenSet(b);
+  if (!wa.size || !wb.size) return 0;
+  let inter = 0;
+  for (const w of wa) if (wb.has(w)) inter++;
+  return inter / Math.min(wa.size, wb.size);
+}
+
+// Codex stamps a schema generation into the filename (`state_5.sqlite`, `thread_history_1.sqlite`),
+// so hardcoding either would break on the next migration. Pick the highest generation present.
+function newestCodexDb(dir, prefix) {
+  if (!fs.existsSync(dir)) return null;
+  const gen = (f) => Number((f.match(new RegExp(`^${prefix}_(\\d+)\\.sqlite$`)) || [])[1] ?? -1);
+  const best = fs.readdirSync(dir).filter((f) => gen(f) >= 0).sort((a, b) => gen(b) - gen(a))[0];
+  return best ? path.join(dir, best) : null;
+}
+
+// `\\?\C:\dev\DAVE CODE\resumint` → `resumint`. Codex records extended-length Windows paths verbatim.
+function repoOfCwd(cwd) {
+  const clean = String(cwd || '').replace(/^\\\\\?\\/, '').replace(/[/\\]+$/, '');
+  return (clean.split(/[/\\]/).pop() || '').toLowerCase();
+}
+
+function openReadOnly(DatabaseSync, file) {
+  // readOnly is what keeps this a diagnostic. Never relax it — the caller's live session may be
+  // writing these files, and the WAL is not ours to touch.
+  return new DatabaseSync(file, { readOnly: true });
+}
+
+function tableExists(db, name) {
+  return !!db.prepare("select 1 from sqlite_master where type='table' and name=?").get(name);
+}
+
+export function delegationAudit(opts = {}) {
+  const codexHome = opts.codexHome || process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+  const statePath = opts.statePath || newestCodexDb(codexHome, 'state');
+  const historyPath = opts.historyPath || newestCodexDb(codexHome, 'thread_history');
+  const windowMs = Number(opts.windowMs ?? DELEGATION_AUDIT_DEFAULTS.duplicateWindowMs);
+  const threshold = Number(opts.similarity ?? DELEGATION_AUDIT_DEFAULTS.duplicateSimilarity);
+  const minTokens = Number(opts.minTokens ?? DELEGATION_AUDIT_DEFAULTS.minComparableTokens);
+  const repoFilter = opts.repo ? String(opts.repo).toLowerCase() : null;
+
+  if (!statePath || !fs.existsSync(statePath)) {
+    return { error: `no Codex state database found (looked for state_*.sqlite in ${codexHome}) — pass --state <path>`, codexHome };
+  }
+  let DatabaseSync;
+  try {
+    ({ DatabaseSync } = createRequire(import.meta.url)('node:sqlite'));
+  } catch {
+    return { error: `node:sqlite is unavailable on ${process.version} — delegation-audit needs Node >= 22.5`, codexHome };
+  }
+
+  const state = openReadOnly(DatabaseSync, statePath);
+  try {
+    for (const t of ['threads', 'thread_spawn_edges']) {
+      if (!tableExists(state, t)) {
+        return { error: `Codex state schema changed: table '${t}' not found in ${statePath} — re-verify against the current Codex build before trusting this audit`, statePath };
+      }
+    }
+    const threads = state.prepare('select id, title, name, thread_source, cwd, created_at_ms, agent_nickname from threads').all();
+    const edges = state.prepare('select parent_thread_id, child_thread_id, status from thread_spawn_edges').all();
+
+    const byId = new Map(threads.map((t) => [t.id, t]));
+    const edgeParentOf = new Map(edges.map((e) => [e.child_thread_id, e.parent_thread_id]));
+
+    // Turn state lives in a separate DB and is optional: absent history only disables check 3, it
+    // must not fail the whole audit (older threads are pruned from history routinely).
+    const turnsByThread = new Map();
+    let historyRead = false;
+    if (historyPath && fs.existsSync(historyPath)) {
+      const hist = openReadOnly(DatabaseSync, historyPath);
+      try {
+        if (tableExists(hist, 'thread_turns')) {
+          for (const r of hist.prepare('select thread_id, status from thread_turns').all()) {
+            if (!turnsByThread.has(r.thread_id)) turnsByThread.set(r.thread_id, []);
+            turnsByThread.get(r.thread_id).push(r.status);
+          }
+          historyRead = true;
+        }
+      } finally { hist.close(); }
+    }
+
+    const delegationSourceOf = (t) => (String(t.title || '').match(DELEGATION_SOURCE_RE) || [])[1] || null;
+    // The comparable text: for a delegation-wrapped thread the real prompt is inside <input>, not the
+    // XML envelope — comparing envelopes would score every wrapped pair as similar on the wrapper alone.
+    const promptOf = (t) => (String(t.title || '').match(DELEGATION_INPUT_RE) || [])[1] || String(t.title || '');
+    const inScope = (t) => !repoFilter || repoOfCwd(t.cwd) === repoFilter;
+
+    const findings = [];
+
+    // 1. Uncredited nested delegation — a subagent created a task and the runtime recorded no edge.
+    const escaped = [];   // the laundered threads, reused as the ONLY input to check 2
+    for (const t of threads) {
+      if (!inScope(t)) continue;
+      const srcId = delegationSourceOf(t);
+      if (!srcId || edgeParentOf.has(t.id)) continue;   // no wrapper, or properly credited — fine
+      const src = byId.get(srcId);
+      if (!src || src.thread_source !== 'subagent') continue; // a top-level thread delegating is normal
+      escaped.push({ thread: t, creator: src });
+      findings.push({
+        id: 'uncredited-nested-delegation',
+        severity: 'critical',
+        threadId: t.id,
+        delegatedBy: srcId,
+        delegatedByNickname: src.agent_nickname || null,
+        grandparentId: edgeParentOf.get(srcId) || null,
+        stampedSource: t.thread_source,
+        repo: repoOfCwd(t.cwd),
+        createdAtMs: t.created_at_ms,
+        message: `thread was created by subagent ${srcId}${src.agent_nickname ? ` (${src.agent_nickname})` : ''} but carries no spawn edge and is stamped thread_source='${t.thread_source}' — nesting is invisible to the parent (§14A)`,
+      });
+    }
+
+    // 2. Redundant work created through that escape. Scoped DELIBERATELY to `escaped` threads only.
+    // An orchestrator that deliberately fans out N similar-shaped workers is legitimate parallel work
+    // (§0/§5), it is visible to the user, and comparing those pairs produces pure noise — a real
+    // sharded security scan spawned siblings titled "Review security shard 0002"/"…0003" that score
+    // 0.60 on four tokens. §14D governs a WORKER cloning work, which is exactly the `escaped` set.
+    const comparable = (t) => {
+      const set = tokenSet(promptOf(t));
+      return set.size >= minTokens ? set : null;
+    };
+
+    // 2a. Self-clone — the worker re-issued its OWN assignment as a new task. This is the shape the
+    // live incident took: the parent-child pair, not a sibling pair, so a sibling-only check misses it.
+    for (const { thread, creator } of escaped) {
+      const a = comparable(thread);
+      const b = comparable(creator);
+      if (!a || !b) continue;
+      const sim = promptOverlap(a, b);
+      if (sim < threshold) continue;
+      findings.push({
+        id: 'self-cloning-delegation',
+        severity: 'high',
+        threadId: thread.id,
+        clonedFrom: creator.id,
+        clonedFromNickname: creator.agent_nickname || null,
+        similarity: Number(sim.toFixed(3)),
+        repo: repoOfCwd(thread.cwd),
+        createdAtMs: thread.created_at_ms,
+        message: `task duplicates ${(sim * 100).toFixed(0)}% of the assignment already given to its own creator ${creator.id}${creator.agent_nickname ? ` (${creator.agent_nickname})` : ''} — the worker re-issued its own task instead of doing it (§14D)`,
+      });
+    }
+
+    // 2b. Sibling clones — one worker created two near-identical tasks.
+    const byCreator = new Map();
+    for (const { thread, creator } of escaped) {
+      if (!byCreator.has(creator.id)) byCreator.set(creator.id, []);
+      byCreator.get(creator.id).push(thread);
+    }
+    for (const [creatorId, group] of byCreator) {
+      const sorted = group.slice().sort((a, b) => (a.created_at_ms || 0) - (b.created_at_ms || 0));
+      for (let i = 0; i < sorted.length; i++) {
+        for (let j = i + 1; j < sorted.length; j++) {
+          const dt = Math.abs((sorted[j].created_at_ms || 0) - (sorted[i].created_at_ms || 0));
+          if (dt > windowMs) break;                                   // sorted — no later j can be closer
+          if (repoOfCwd(sorted[i].cwd) !== repoOfCwd(sorted[j].cwd)) continue;
+          const a = comparable(sorted[i]);
+          const b = comparable(sorted[j]);
+          if (!a || !b) continue;
+          const sim = promptOverlap(a, b);
+          if (sim < threshold) continue;
+          findings.push({
+            id: 'duplicate-sibling-task',
+            severity: 'high',
+            createdBy: creatorId,
+            threadId: sorted[j].id,
+            siblingId: sorted[i].id,
+            similarity: Number(sim.toFixed(3)),
+            deltaSeconds: Math.round(dt / 1000),
+            repo: repoOfCwd(sorted[j].cwd),
+            createdAtMs: sorted[j].created_at_ms,
+            message: `subagent ${creatorId} created two tasks overlapping ${(sim * 100).toFixed(0)}%, ${Math.round(dt / 1000)}s apart in the same repo — a near-duplicate must be reported, not created (§14D)`,
+          });
+        }
+      }
+    }
+
+    // 3. Unreconciled completion — the edge still reads open while every turn is terminal.
+    for (const e of edges) {
+      if (e.status !== 'open') continue;
+      const child = byId.get(e.child_thread_id);
+      if (child && !inScope(child)) continue;
+      const turns = turnsByThread.get(e.child_thread_id);
+      if (!turns || !turns.length) continue;                    // no evidence either way — say nothing
+      if (!turns.every((s) => TERMINAL_TURN_STATUS.has(s))) continue;
+      findings.push({
+        id: 'unreconciled-completion',
+        severity: 'medium',
+        threadId: e.child_thread_id,
+        parentId: e.parent_thread_id,
+        nickname: (child && child.agent_nickname) || null,
+        turns: turns.length,
+        repo: child ? repoOfCwd(child.cwd) : null,
+        createdAtMs: child ? child.created_at_ms : null,
+        message: `spawn edge still reads status='open' but all ${turns.length} turn(s) are terminal — a parent reading this field reports a finished worker as still running (§14F)`,
+      });
+    }
+
+    const order = { critical: 0, high: 1, medium: 2, low: 3 };
+    findings.sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9) || (a.createdAtMs || 0) - (b.createdAtMs || 0));
+    const counts = {};
+    for (const f of findings) counts[f.severity] = (counts[f.severity] || 0) + 1;
+    return {
+      statePath, historyPath: historyRead ? historyPath : null,
+      threadCount: threads.length, edgeCount: edges.length,
+      repo: repoFilter, windowMs, similarity: threshold, minTokens,
+      findings, counts, clean: findings.length === 0,
+      ...(historyRead ? {} : { note: 'no readable thread-turn history — unreconciled-completion was not evaluated' }),
+    };
+  } finally { state.close(); }
+}
+
 // ---------- changelog-roll (R13): assemble changelog.d/ fragments into CHANGELOG.md ----------
 // Parallel lanes each drop a fragment `changelog.d/<slug>.md` (own file → no merge conflict); the
 // merge-train rolls them into one dated section in a single commit, then deletes the fragments. Makes
@@ -2292,7 +2559,10 @@ function parseArgs(argv) {
       else if (key === 'project') flags.project = argv[++i] || '';
       else if (key === 'version' || key === 'date' || key === 'id' || key === 'base' || key === 'fail-on'
         || key === 'lane' || key === 'command' || key === 'status' || key === 'exit-code' || key === 'notes'
-        || key === 'out' || key === 'check') flags[key] = argv[++i] || '';
+        || key === 'out' || key === 'check'
+        // delegation-audit value flags
+        || key === 'state' || key === 'history' || key === 'codex-home' || key === 'repo'
+        || key === 'window' || key === 'similarity' || key === 'min-tokens') flags[key] = argv[++i] || '';
       else if (key === 'kb') { flags.kb = argv.slice(i + 1); i = argv.length; }
       else if (key === 'waive') {
         const pathVal = argv[++i] || '';
@@ -2330,7 +2600,7 @@ export function printCheck(c, json) {
 }
 
 function printGeneralUsage() {
-  console.log('usage: agentkit <init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version> [project-path] [flags]');
+  console.log('usage: agentkit <init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|delegation-audit|--version> [project-path] [flags]');
   console.log('  init      [--vendors a,b] [--stack x,y] [--kinds k,l] [--tools t] [--clone-rebind] [--no-sync]');
   console.log('  sync      [--dry-run] [--force] [--json] [--allow-branch]');
   console.log('  check     [--quick] [--all] [--json] [--kb <paths…>] [--content] [--taxonomy] [--waive <path> <reason>] [--hygiene] [--count-only] [--allow-branch]');
@@ -2341,6 +2611,7 @@ function printGeneralUsage() {
   console.log('  surfaces  --base <ref> <branchA> <branchB> [...]   (branch surface-disjointness)');
   console.log('  inventory');
   console.log('  doctor    [project-path] [--quick] [--json] [--project <name>] [--all]');
+  console.log('  delegation-audit [--state <path>] [--history <path>] [--codex-home <dir>] [--repo <name>] [--window <s>] [--similarity <0-1>] [--json]');
 }
 
 export function main(argv = process.argv.slice(2)) {
@@ -2641,6 +2912,37 @@ export function main(argv = process.argv.slice(2)) {
           if (r.flowbackQueue.length) console.log(`  flowback queue: ${r.flowbackQueue.length} deferred item(s)`);
         }
         return 0;
+      }
+      case 'delegation-audit': {
+        if (showHelp) {
+          console.log('usage: agentkit delegation-audit [--state <path>] [--history <path>] [--codex-home <dir>] [--repo <name>] [--window <seconds>] [--similarity <0-1>] [--json]');
+          console.log('  Read-only containment check over the Codex app\'s local databases (pattern-agent-orchestration.md §14).');
+          console.log('  Reports thread IDs, timestamps and similarity scores only — never prompt text.');
+          return 0;
+        }
+        const r = delegationAudit({
+          statePath: flags.state, historyPath: flags.history, codexHome: flags['codex-home'],
+          repo: flags.repo,
+          windowMs: flags.window ? Number(flags.window) * 1000 : undefined,
+          similarity: flags.similarity ? Number(flags.similarity) : undefined,
+          minTokens: flags['min-tokens'] ? Number(flags['min-tokens']) : undefined,
+        });
+        if (r.error) {
+          if (flags.json) console.log(JSON.stringify(r, null, 2));
+          else console.log(`agentkit delegation-audit: ${r.error}`);
+          return 1;
+        }
+        if (flags.json) { console.log(JSON.stringify(r, null, 2)); return r.clean ? 0 : 1; }
+        console.log(`agentkit delegation-audit — ${r.threadCount} thread(s), ${r.edgeCount} spawn edge(s)`);
+        if (r.note) console.log(`  note: ${r.note}`);
+        if (r.clean) { console.log('  clean — no containment violations found'); return 0; }
+        for (const f of r.findings) {
+          console.log(`  [${f.severity}] ${f.id}${f.repo ? ` (${f.repo})` : ''}`);
+          console.log(`    thread ${f.threadId}${f.nickname ? ` "${f.nickname}"` : ''}`);
+          console.log(`    ${f.message}`);
+        }
+        console.log(`  ${r.findings.length} finding(s): ${JSON.stringify(r.counts)}`);
+        return 1;
       }
       default:
         printGeneralUsage();
