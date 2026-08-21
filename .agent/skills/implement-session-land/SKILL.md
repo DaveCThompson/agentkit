@@ -77,7 +77,10 @@ marked "required follow-up" after a later wave deleted every file on its `**File
    one exists. `agentkit check . --taxonomy` (dead-index lint) arbitrates: a moved file still named
    in an index is a finding. A DONE `PRD-` is **dissolved, not just archived**: landed subset →
    `SPEC-`, unlanded remainder → strategy/backlog, record → archive with a closing header — the
-   contract is `governance/docs-standard.md` §a; never `git mv` a PRD into the KB.
+   contract is `governance/docs-standard.md` §a; never `git mv` a PRD into the KB. When the shipped
+   implementation differs from an older PRD, record the explicit disposition **implementation
+   supersedes PRD** unless an accepted owner decision reopens the behavior; drift alone is not a
+   regression ticket.
 3. **Status-of-record** (`PROGRAM-STATUS.md` or the repo's equivalent): rewrite to current truth —
    version, active front, what shipped this session, open remainder. Apply the self-contradiction
    lens (`audit-docs` step 7) to the result: its header must not contradict its body.

@@ -1,5 +1,29 @@
 # Changelog
 
+## [2026-08-21] — v0.2.6 adopt: .agent/rules/pattern-docs-artifacts.md
+- Content fix adopted from `resumint` (.agent/rules/pattern-docs-artifacts.md)
+
+
+## [2026-08-21] — v0.2.5 adopt: .agent/skills/audit-docs/SKILL.md
+- Content fix adopted from `resumint` (.agent/skills/audit-docs/SKILL.md)
+
+
+## [2026-08-21] — v0.2.4 adopt: .agent/skills/maintain-docs/SKILL.md
+- Content fix adopted from `resumint` (.agent/skills/maintain-docs/SKILL.md)
+
+
+## [2026-08-21] — v0.2.3 adopt: .agent/skills/implement-session-land/SKILL.md
+- Content fix adopted from `resumint` (.agent/skills/implement-session-land/SKILL.md)
+
+
+## [2026-08-21] — v0.2.2 adopt: .agent/skills/plan-prd/SKILL.md
+- Content fix adopted from `resumint` (.agent/skills/plan-prd/SKILL.md)
+
+
+## [2026-08-21] — v0.2.1 adopt: .agent/workflows/prd.md
+- Content fix adopted from `resumint` (.agent/workflows/prd.md)
+
+
 ## Unreleased
 
 ### Changed

@@ -75,6 +75,8 @@ are useless here: they rot under any edit.
 
 5. **Archival Integrity**:
    - Verify that PRDs marked as "Implemented" in the changelog have been moved to `docs/archive/`.
+   - Verify that archived or superseded PRDs have a closing disposition and links to their durable
+     spec/strategy or backlog remainder. A moved file without this record is an incomplete lifecycle.
 
 6. **Status-Drift Check**:
    - Plans and status docs carry point-in-time state that rots (a cover plan claimed "Phase 1

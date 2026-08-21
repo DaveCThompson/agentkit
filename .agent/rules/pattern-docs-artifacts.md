@@ -18,6 +18,9 @@ convention doc, it points here rather than paraphrasing.
 ### Work Items
 - Active tickets and plans: `docs/working/TICKET-{name}.md` (flat, no nesting)
 - Future/unstarted items: `docs/backlog/TICKET-{name}.md` (flat, no nesting)
+- Active product requirements: `docs/working/TICKET-PRD-{name}.md`. On landing, promote only
+  durable truth, route unfinished ideas to strategy/backlog, and archive the PRD record. Historical
+  `PRD-*` files are not regression specifications.
 
 ### Reports
 - Store audits, findings, and vet reports in `docs/working/REVIEW-{name}.md`

@@ -81,8 +81,11 @@ Moving a file breaks every reference to it, silently. Do the sweep first, then t
 4. **Rewrite the FULL path, not the basename.** A move that keeps the filename but changes the
    directory is a no-op for a basename find-replace — and it leaves every old citation broken while
    a resolve-check reports all clear (the lenient-pass move trap, §(i)).
-5. Move not-yet-started items to `docs/backlog/`.
-6. Do not archive docs that still define current truth.
+5. For every archived PRD, verify a closing header names one disposition — `current truth`,
+   `durable rule`, `future backlog`, `implementation supersedes`, or `manual review` — and links to
+   the durable/backlog destination. A PRD without that disposition is not closed.
+6. Move not-yet-started items to `docs/backlog/`.
+7. Do not archive docs that still define current truth.
 
 ### Phase 3b: Close the pass with the checker
 

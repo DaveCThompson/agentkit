@@ -26,9 +26,14 @@ success criteria (with a Definition of Done).
 
 ## Procedure
 1. **Context**: Follow `plan-prd`'s `SKILL.md`; read the project vision in `docs/knowledge-base/`.
-2. **Reconnaissance**: Scan for similar existing features to keep patterns consistent.
-3. **Draft**: Generate the PRD in `docs/working/TICKET-PRD-{name}.md`.
-4. **Review**: Notify the user and request approval; present the reasoning behind key requirements.
+2. **Reconcile**: Before turning an older PRD or proposal into work, inspect the current app, current
+   code, and accepted owner decisions. Classify each conflict as `current truth`, `durable rule`,
+   `future backlog`, `implementation supersedes`, or `manual review`. A mismatch alone is not a
+   product defect. Include a compact claim-disposition table only when the existing document predates
+   substantial shipped work or conflicts with the current surface.
+3. **Reconnaissance**: Scan for similar existing features to keep patterns consistent.
+4. **Draft**: Generate the active PRD in `docs/working/TICKET-PRD-{name}.md`.
+5. **Review**: Notify the user and request approval; present the reasoning behind key requirements.
 
 ## Notes
 - After approval, proceed to `/architect`. This workflow is the pipeline's PRD node — it maps 1:1 to

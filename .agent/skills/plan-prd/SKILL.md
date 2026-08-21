@@ -17,6 +17,12 @@ If request is vague, ask first:
 ## Approach
 
 ### Phase 1: Discovery
+0. **Reconcile existing intent**: If an existing PRD, proposal, or vision document predates
+   substantial shipped work, read the current app/code and accepted owner decisions first. Record
+   only the claims that need classification in a compact table:
+   `claim | current evidence | disposition | destination`. Use exactly one disposition:
+   `current truth`, `durable rule`, `future backlog`, `implementation supersedes`, or `manual review`.
+   Never create a regression ticket from PRD drift alone.
 1. **Proof of Understanding**: One-sentence problem summary
 2. **User Stories**: "As [user], I want [action], so that [benefit]"
 3. **Non-Goals**: Explicit out-of-scope items
@@ -61,7 +67,7 @@ Before delivering:
 - Flag hallucinated tokens as violations
 
 ## Output
-`docs/working/PRD-{name}.md` containing the requirements and ending with: "Ready for architecture
+`docs/working/TICKET-PRD-{name}.md` containing the requirements and ending with: "Ready for architecture
 planning?" (A PRD is a lifecycle artifact — it specifies the to-be and is dissolved on landing per
 `governance/docs-standard.md` §a; it is never promoted whole into the KB.)
 
