@@ -25,7 +25,7 @@ developed using its own skills. Your fleet roster, MCP config, and working docs 
 5. The governance `DECISION-*.md` records — only for why-questions about a settled choice (append-only decision log).
 
 ## Operations
-- `node agentkit.mjs sync .` — self-sync (regenerates this repo's own `.claude/`).
+- `node agentkit.mjs sync .` — self-sync (regenerates this repo's local vendor surfaces).
 - `node agentkit.mjs check . --quick` — drift check (also runs from the session-start hook).
 - `node agentkit.mjs doctor` — fleet rollup; `inventory` — variant matrix.
 - `npm test` — REQUIRED green before committing CLI or adapter changes.
@@ -60,17 +60,23 @@ Defaults:
 | `/audit` | Universal audit router. Run a scoped or full, scan-only health audit citing rule/invariant violations. |
 | `/backlog-status` | Generate an ephemeral backlog view from distributed TICKET-* files — no second manual backlog. |
 | `/build` | Implement a feature from an approved plan, with per-phase verification and a hostile-QA gate. |
+| `/close` | Prepare a task for archive by resolving session state, finalizing durable work, and closing session-owned resources. |
 | `/debug` | Debug with systematic root-cause analysis; a failing reproduction test is mandatory before any fix. |
 | `/explore` | Exploration hub. Routes an ideation request to the matching explore-* skill before any plan is drafted. |
+| `/huh` | Repeat the latest explanation in one line of simple English. |
 | `/land` | Land the session on origin/main — wrap-up + changelog, backlog/working archived clean, READMEs + status current with next steps, worktrees and merged branches closed, ff-merge pushed. |
 | `/onboard` | Rapidly load project context by reading the routers (indexes), not the corpus — deep pass only for an unfamiliar repo. |
 | `/plan` | Scale-evaluate a request, then produce an approved implementation plan (feature or architecture). |
 | `/prd` | Create an approved Product Requirements Document for a large feature or epic. |
 | `/quick-fix` | Atomic fix for small bugs or tweaks (≤30 lines, ≤5 files) with a scope guard. |
 | `/refactor` | Restructure code with zero behavior change, guarded by an invariant + DX-standards check. |
+| `/remind` | Reorient the user to the session purpose, completed work, current state, and next action. |
 | `/research` | Conduct external research and synthesize findings into project-specific recommendations. |
 | `/ship` | Take a ticket and ship it — contract-driven implementation from Decision lines through Acceptance to a drift-proof closeout. |
 | `/test` | Generate unit/integration/reproduction tests following the project's existing test patterns. |
+| `/tldr` | Give exactly three bullets summarizing the requested scope, each under ten words. |
+| `/todo` | List every known completed and outstanding session step as Markdown checkboxes. |
 | `/verify-pre-deploy` | Pre-production GO/NO-GO verification — automated checks plus a project-defined manual-flow gate. |
+| `/walk` | Walk through the current explanation one point per user-controlled turn. |
 | `/wrap-up` | Session exit protocol — cite-or-run technical gate, changelog, archival, and opportunistic branch closure; full wrap (codify, session log) only on deterministic triggers. |
 <!-- <<< AGENTKIT WORKFLOWS <<< -->

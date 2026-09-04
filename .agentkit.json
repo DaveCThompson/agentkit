@@ -1,5 +1,5 @@
 {
-  "vendors": ["claude", "antigravity"],
+  "vendors": ["claude", "codex", "antigravity"],
   "stack": [],
   "kinds": ["app"],
   "tools": ["codebase-mcp"],
@@ -17,7 +17,7 @@
     }
   },
   "taxonomyEnforce": true,
-  "taxonomyBaseline": 12,
+  "taxonomyBaseline": 3,
   "taxonomyWaivers": [
     { "path": "docs/knowledge-base/research/**", "owner": "kit-owner", "reason": "tier-3 research ledger (docs-standard §f); promoted corpora keep their source-run filenames as provenance" },
     { "path": "docs/knowledge-base/prompts/**", "owner": "kit-owner", "reason": "imported prompt corpus — externally authored, body and filenames immutable (docs-standard §f, SOURCE- rules)" },

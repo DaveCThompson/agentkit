@@ -1,6 +1,6 @@
 {
-  "kitVersion": "0.2.0",
-  "compiledAt": "2026-08-11",
+  "kitVersion": "0.3.0",
+  "compiledAt": "2026-09-04",
   "note": "COMPILED by agentkit sync/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
     {
@@ -1204,6 +1204,32 @@
       }
     },
     {
+      "path": ".agent/skills/close/SKILL.md",
+      "type": "skill",
+      "name": "close",
+      "tier": "core",
+      "sha256": "44c86589bef83d0732353527a9df47e385f7888a28a4518a57b91ef0d5e59765",
+      "triggers": [
+        "close session",
+        "prepare archive",
+        "session cleanup"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/close/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/close/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/close/SKILL.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/skills/debug-deep/SKILL.md",
       "type": "skill",
       "name": "debug-deep",
@@ -1409,6 +1435,32 @@
         ],
         "opencode": [
           ".opencode/skills/health-agent/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/huh/SKILL.md",
+      "type": "skill",
+      "name": "huh",
+      "tier": "core",
+      "sha256": "014cf410341d4a76e6237004e3cd234556c7e95f66ea078279e290ecb0636032",
+      "triggers": [
+        "huh",
+        "simple English",
+        "say that again"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/huh/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/huh/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/huh/SKILL.md"
         ]
       }
     },
@@ -2128,6 +2180,32 @@
       }
     },
     {
+      "path": ".agent/skills/remind/SKILL.md",
+      "type": "skill",
+      "name": "remind",
+      "tier": "core",
+      "sha256": "cf245076d137a3f1ec90902516155acf7aeba2196335fae6b34b2b3dc02fcc5f",
+      "triggers": [
+        "remind",
+        "session recap",
+        "where are we"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/remind/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/remind/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/remind/SKILL.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/skills/research-curate/SKILL.md",
       "type": "skill",
       "name": "research-curate",
@@ -2310,6 +2388,58 @@
       }
     },
     {
+      "path": ".agent/skills/tldr/SKILL.md",
+      "type": "skill",
+      "name": "tldr",
+      "tier": "core",
+      "sha256": "8015b548f617b3d7b251a3722c8f4d9dc06d064efb4749fc32e31bdcb165a6bb",
+      "triggers": [
+        "tldr",
+        "short recap",
+        "three bullets"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/tldr/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/tldr/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/tldr/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/todo/SKILL.md",
+      "type": "skill",
+      "name": "todo",
+      "tier": "core",
+      "sha256": "156a73c728edc3b529b7f2a55dfacef00809b1c19a1916b430aa9e454486cad7",
+      "triggers": [
+        "todo",
+        "progress checklist",
+        "completed and outstanding"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/todo/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/todo/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/todo/SKILL.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/skills/use-codegraph/SKILL.md",
       "type": "skill",
       "name": "use-codegraph",
@@ -2438,6 +2568,33 @@
         ],
         "opencode": [
           ".opencode/skills/vet-simple/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/walk/SKILL.md",
+      "type": "skill",
+      "name": "walk",
+      "tier": "core",
+      "sha256": "391b4c4ed3ef284f77a36dc042199ddb0d2dc1fb660b66d2cf9e2690271db4e0",
+      "triggers": [
+        "walk",
+        "walkthrough",
+        "one by one",
+        "step by step"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/walk/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/walk/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/walk/SKILL.md"
         ]
       }
     },
@@ -2660,6 +2817,31 @@
       }
     },
     {
+      "path": ".agent/workflows/close.md",
+      "type": "workflow",
+      "name": "close",
+      "tier": "core",
+      "sha256": "d4a3c9aea580f68f372fed91b3db7e4e56417c6e2c651caf5fb310232070e6a5",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/close.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-close/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/close.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/close.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/workflows/debug.md",
       "type": "workflow",
       "name": "debug",
@@ -2706,6 +2888,31 @@
         ],
         "opencode": [
           ".opencode/commands/explore.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/huh.md",
+      "type": "workflow",
+      "name": "huh",
+      "tier": "core",
+      "sha256": "a39c69bff678725945cbfa689aa0679e6e85d04463b6981e0e4cf4983e2baa89",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/huh.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-huh/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/huh.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/huh.md"
         ]
       }
     },
@@ -2860,6 +3067,31 @@
       }
     },
     {
+      "path": ".agent/workflows/remind.md",
+      "type": "workflow",
+      "name": "remind",
+      "tier": "core",
+      "sha256": "da3a5fe77e65d119a73e3b42897baf49f1e6e40cf2664d24fa803edf64eb8eca",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/remind.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-remind/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/remind.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/remind.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/workflows/research.md",
       "type": "workflow",
       "name": "research",
@@ -2935,6 +3167,56 @@
       }
     },
     {
+      "path": ".agent/workflows/tldr.md",
+      "type": "workflow",
+      "name": "tldr",
+      "tier": "core",
+      "sha256": "84e1af95a27f766fbf3648f0492768bb9e99ef67a200f1b5df051ef20c303042",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/tldr.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-tldr/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/tldr.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/tldr.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/todo.md",
+      "type": "workflow",
+      "name": "todo",
+      "tier": "core",
+      "sha256": "cf76cb776eae3af22bfac922c927c2380810546fbe922cd1e305266a37e3e5a7",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/todo.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-todo/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/todo.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/todo.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/workflows/verify-pre-deploy.md",
       "type": "workflow",
       "name": "verify-pre-deploy",
@@ -2956,6 +3238,31 @@
         ],
         "opencode": [
           ".opencode/commands/verify-pre-deploy.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/walk.md",
+      "type": "workflow",
+      "name": "walk",
+      "tier": "core",
+      "sha256": "578b8f780d49658aca979c34e643377a5c341398219eb77a239de6283cfe4761",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/walk.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-walk/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/walk.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/walk.md"
         ]
       }
     },
