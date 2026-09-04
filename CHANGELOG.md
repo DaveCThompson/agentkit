@@ -11,6 +11,7 @@
   test matrix.
 - Evidence: official action releases identify v7 as the current major; the GitHub-hosted runner is
   v2.337.0, above v7's minimum runner requirement of v2.327.1.
+- KB consulted: none.
 
 ### Verification
 - `node agentkit.mjs sync .` twice — both runs wrote 0 and pruned 0.
