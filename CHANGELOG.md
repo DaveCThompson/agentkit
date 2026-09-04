@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.1] — 2026-09-04 — CI runtime maintenance
+
+### Changed
+- Upgraded `actions/checkout` and `actions/setup-node` from v4 to v7. Both actions now use the
+  Node.js 24 runtime instead of the deprecated Node.js 20 runtime.
+
+### Evidence and provenance
+- Need: keep the public CI workflow on supported action runtimes without changing its Node.js 22
+  test matrix.
+- Evidence: official action releases identify v7 as the current major; the GitHub-hosted runner is
+  v2.337.0, above v7's minimum runner requirement of v2.327.1.
+
+### Verification
+- `node agentkit.mjs sync .` twice — both runs wrote 0 and pruned 0.
+- `node agentkit.mjs check . --quick` — passed at kit/lock v0.3.1.
+- `node agentkit.mjs check . --content` — all citations resolved.
+- `node agentkit.mjs check . --taxonomy` — exit 0 at the existing baseline of 3.
+- `npm test` — 150/150 passed.
+- `git diff --check` — passed.
+
 ## [0.3.0] — 2026-09-04 — session control commands
 
 ### Added
