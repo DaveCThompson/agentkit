@@ -7,6 +7,6 @@ Load canonical truth from:
 
 Use this bridge only to focus the audit:
 
-- Prefer project-specific focus-ring and landmark rules over generic web advice.
+- Check both applicable WCAG requirements and project focus/landmark policy; label their evidence separately.
 - Check icon-only controls, heading hierarchy, reduced-motion handling, and skip-link behavior first.
-- If this bridge conflicts with `.agent/rules/*`, the canonical rule files win.
+- This bridge supplies a lens, not a conformance verdict. Use `audit-accessibility` for criterion-level runtime questions.

@@ -1,106 +1,75 @@
-# JavaScript Micro-Optimization Rules
+# JavaScript hot-path candidates
 
-**Impact: LOW-MEDIUM**
+Use only after a profile identifies significant JavaScript cost. Most syntax rewrites do not
+establish a speedup. Preserve inputs, output identity requirements, ordering, mutation behavior
+and error semantics before comparing representative workloads.
 
-Micro-optimizations for hot paths that can add up to meaningful improvements.
+## Early returns
 
-## Early Return Pattern
+An early return can flatten control flow. It avoids computation only when the old branch actually
+performed extra work. These shapes do the same mapping work for nonempty input:
 
-Exit functions early to avoid unnecessary computation.
-
-**Incorrect:**
-```tsx
-function processItems(items: Item[]) {
-  let result = null
-  if (items && items.length > 0) {
-    result = items.map(item => transform(item))
-  }
-  return result
+```javascript
+function processItems(items) {
+  if (!items?.length) return null;
+  return items.map(item => transform(item));
 }
 ```
 
-**Correct:**
-```tsx
-function processItems(items: Item[]) {
-  if (!items?.length) return null
-  return items.map(item => transform(item))
+This contract intentionally maps absent/empty input to `null`; do not silently replace an
+existing empty-array result or validation error. Prefer the clearer local style without a
+performance claim when the execution paths are equivalent.
+
+## Repeated lookups
+
+A reusable `Set` or `Map` can reduce repeated scans over a large collection. Include construction
+cost and memory in the measurement; building a new Set for one lookup can cost more than a scan.
+Check equality and duplicates semantics and invalidate it when the source changes.
+
+```javascript
+const allowedIds = new Set(['a', 'b', 'c', 'd', 'e']);
+const isAllowed = id => allowedIds.has(id);
+```
+
+The small example shows the API, not evidence of a useful optimization. JavaScript specifies
+average sublinear access, not a universal constant-time guarantee; see [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set).
+
+## Cache pure calculations
+
+Cache only when the key covers every input and reuse avoids enough work to justify retention.
+For a fixed light/dark theme calculation, this bounded key space can be reasonable:
+
+```javascript
+const themeCache = new Map();
+function getTheme(mode) {
+  if (mode !== 'light' && mode !== 'dark') throw new Error('Unsupported mode');
+  if (!themeCache.has(mode)) themeCache.set(mode, expensiveThemeCalculation(mode));
+  return themeCache.get(mode);
 }
 ```
 
-## Use Set/Map for O(1) Lookups
+The calculation must be pure and depend only on `mode`. Treat returned themes as immutable.
+Include locale, configuration or user identity in keys when they affect the result, with an
+appropriate lifetime/eviction strategy. Never share request-private data through a global cache.
 
-Replace array `.includes()` with Set for repeated lookups.
+## Nonmutating sort
 
-**Incorrect:**
-```tsx
-const allowedIds = ['a', 'b', 'c', 'd', 'e']
+Both forms below preserve the original array for ordinary dense arrays:
 
-function isAllowed(id: string) {
-  return allowedIds.includes(id) // O(n)
-}
+```javascript
+const byName = (a, b) => a.name.localeCompare(b.name);
+const sortedCopy = [...items].sort(byName);
+const sortedModern = items.toSorted(byName);
 ```
 
-**Correct:**
-```tsx
-const allowedIds = new Set(['a', 'b', 'c', 'd', 'e'])
+Choose based on supported runtimes, typings and local style. `toSorted` requires runtime support
+or an approved existing polyfill; a TypeScript target does not supply it. Neither form is a
+universal performance winner. Check [toSorted](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted)
+when sparse arrays, custom iterators or subclass behavior are part of the contract.
 
-function isAllowed(id: string) {
-  return allowedIds.has(id) // O(1)
-}
-```
+## Empty input and iteration
 
-## Cache Function Results
-
-Memoize expensive pure functions.
-
-**Incorrect:**
-```tsx
-function getTheme(mode: 'light' | 'dark') {
-  return expensiveThemeCalculation(mode) // Runs every call
-}
-```
-
-**Correct:**
-```tsx
-const themeCache = new Map<string, Theme>()
-
-function getTheme(mode: 'light' | 'dark') {
-  if (!themeCache.has(mode)) {
-    themeCache.set(mode, expensiveThemeCalculation(mode))
-  }
-  return themeCache.get(mode)!
-}
-```
-
-## Use toSorted() for Immutability
-
-Modern JS immutable sort (ES2023+).
-
-**Incorrect:**
-```tsx
-const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name))
-```
-
-**Correct:**
-```tsx
-const sorted = items.toSorted((a, b) => a.name.localeCompare(b.name))
-```
-
-## Length Check Before Iteration
-
-Check length before expensive operations.
-
-**Incorrect:**
-```tsx
-function processAll(items: Item[]) {
-  return items.flatMap(item => processItem(item))
-}
-```
-
-**Correct:**
-```tsx
-function processAll(items: Item[]) {
-  if (items.length === 0) return []
-  return items.flatMap(item => processItem(item))
-}
-```
+An empty ordinary array's `flatMap` does not invoke its callback. Adding `if (!items.length)
+return []` does not avoid callback work already absent. Add a guard only when it skips other
+measured setup work or clarifies an intentional contract. Do not file this syntax difference as
+a performance finding without evidence.

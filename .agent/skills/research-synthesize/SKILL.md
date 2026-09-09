@@ -10,6 +10,7 @@ required-tools: [codebase-mcp]
 Apply external research findings to the project.
 
 ## When to Use
+
 - Have research documents to process
 - Need to map findings to project constraints
 - Filtering relevant insights
@@ -17,48 +18,71 @@ Apply external research findings to the project.
 ## Approach
 
 ### Phase 1: Research Ingestion
-- Document inventory
-- Cross-reference themes
+
+- Identify the caller's question, accepted project decisions, exclusions and report destination.
+  Reuse the current work item; separate accepted constraints from provisional assumptions.
+- Inventory supplied findings with their provenance, evidence limits and contradictions. Cross-reference
+  themes without treating repeated upstream claims as independent corroboration.
+- Resolve the project's docs root and sanctioned layout through repository instructions. A forensic
+  report may cite exact inbox material with content identity and uncurated status. Use `research-curate`
+  when durable curation or claim promotion is needed; no filing-only move, extra source folder or
+  copied report is required. Direct upstream links need no local copy or full promotion.
 
 ### Phase 2: Relevance Filtering
-Score each finding:
 
-**Finding Evaluation Format**:
-- **Finding**: [Description] — Relevance: 1-5, Feasibility: 1-5, Alignment: 1-5
-
-**Threshold**: Discard if Relevance < 3 OR Feasibility < 3.
+Assess relevance to the decision separately from evidence confidence, likely benefit/risk, and
+implementation effort. Unknown is a valid assessment. Map material findings to actual project
+constraints before judging feasibility. Retain relevant but difficult findings as constraints,
+risks or deferred options with reasons. Dismiss irrelevant findings briefly; do not silently drop
+a compatibility limit or costly migration requirement. Use scoring only with meaningful anchors
+when it helps compare real alternatives.
 
 ### Phase 3: Mapping to Existing Systems
 
-#### Comprehension: Code Graph First
-Build understanding from the code graph before proposing or making changes (see
-`integrations/codebase-mcp.md`):
-1. **Confirm availability + freshness** — `list_projects`; if this repo is absent, `index_repository`
-   on its root; check `index_status` when freshness matters, and re-index if relevant files are
-   dirty/untracked.
-2. **Locate + disambiguate** — `search_graph` (symbols / feature language) or `search_code` (imports,
-   exact call syntax); pick the exact `qualified_name`; `trace_path` on that full name for
-   callers / callees / data flow.
-3. **Read exact source** — `get_code_snippet` on the chosen `qualified_name`; `get_architecture` for
-   module boundaries.
-4. **Reconcile Before Acting** — the current file + `git diff` outrank a stale graph. If a snippet
-   range is stale or a trace contradicts an exact `search_code`, re-index once, then trust the
-   working tree.
-5. **Fallback** — if the MCP server is unreachable, use Grep/Read for targeted discovery and note in
-   the handoff that graph comprehension was degraded. Never block on the graph.
-- Map to design tokens/components
-- Note adaptation requirements
-- Check dependency constraints
+Identify the affected project contract and select evidence for that question:
+
+- Current code structure: use `use-codegraph`, which owns reachability, bounded refresh and targeted
+  source fallback. The declared graph dependency applies only to this structural discovery. Current
+  files and relevant diffs settle claims about current code when an index is stale.
+- Intended behavior or strategy: read accepted requirements and decisions; do not infer acceptance
+  from existing code or an external recommendation.
+- Operational or domain constraints: use relevant runtime evidence, runbooks, policy or primary
+  documentation. State version/environment and unsupported applicability assumptions.
+
+Map findings to concrete affected surfaces: an API contract, data lifecycle, deployment constraint
+or, for UI work, design tokens/components. Note adaptation, dependency and compatibility costs.
+Bound discovery to the decision. Do not index a repository for a question that code cannot answer.
 
 ### Phase 4: Recommendation Synthesis
-- Ranked recommendations
-- Implementation hints
-- Open questions
+
+- Prioritize recommendations by decision impact, support and constraints, with implementation hints
+  tied to inspected project surfaces.
+- Keep adopted decisions, recommendations, deferred options and unresolved conflicts distinct.
+  No change is a valid supported conclusion; evidence promotion is not acceptance of a commitment.
+- State what could change the recommendation and any remaining check/decision owner. Stop when the
+  project implications are supported or the precise remaining uncertainty is identified.
 
 ## Output
-`docs/working/REVIEW-research-application-<feature>.md` ending with: "These are the top recommendations. Ready for PRD scoping?"
+
+Write to the caller's supplied report destination. For direct invocation without a destination,
+use `<docs-root>/working/REVIEW-research-<topic>.md` in the resolved layout. The research router
+passes this same destination; do not create a second application report.
+
+Include findings and evidence, project mappings, recommendation dispositions and relevant next
+actions. End with `What we deliberately did NOT do`. A PRD or implementation handoff is appropriate
+only when the requested work calls for it; no fixed sign-off question is required.
 
 ## Constraints
+
 - No original ideation — recommendations trace to research
 - No new dependencies without approval
 - No code generation
+- No strategy/spec commitment changes without authority for those decisions. Report an unaccepted
+  recommendation with evidence and its decision owner instead.
+
+## Definition of Done
+
+- Material findings map to inspected project constraints or an explicit applicability gap.
+- Important hard findings and contradictory evidence retain a disposition.
+- One report preserves the caller's work identity, accepted decisions and unresolved assumptions.
+- Recommendations are distinguishable from accepted or implemented behavior; code remains unchanged.

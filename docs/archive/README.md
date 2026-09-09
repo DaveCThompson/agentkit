@@ -3,12 +3,13 @@
 What's **FINISHED** — completed tickets, session logs, superseded plans, rolled CHANGELOG segments.
 Grouped by month: `archive/2026-07/`, flat within each month. Files keep their original names.
 
-This directory is **excluded from default agent search** via the repo-root `.ignore` (it stays tracked
-in git). Search it on demand with `rg --no-ignore <pattern> docs/archive`.
+The repo-root `.ignore` excludes this directory from default ripgrep search. Search it on demand
+with `rg --no-ignore <pattern> docs/archive`. Search policy is separate from Git tracking: this
+distribution repository tracks the index only. Preserve its local archives and evidence explicitly.
 
-**Before anything lands here, harvest it.** A durable fact inside a finished doc must be promoted to
-`knowledge-base/` first — archiving without harvesting is truth deletion. The rolled CHANGELOG lands
+Before archiving completed work, preserve any unique durable truth in its declared KB and keep
+pending acceptance discoverable in an active artifact. The rolled CHANGELOG lands
 here as `CHANGELOG-YYYY-MM.md` with a dated banner and a provenance backlink.
 
-Pruning is optional once the archive is out of the search path; delete old months only when they carry
-no unique historical value.
+Pruning is optional and needs scoped cleanup authority, verified ownership and preservation of useful
+content. Age, search exclusion and clean Git status do not establish that local history is disposable.

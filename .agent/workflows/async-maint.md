@@ -1,54 +1,39 @@
 ---
-description: Run non-blocking maintenance jobs (deps, bundle, git, a11y) that emit timestamped health reports.
+description: Run requested or configured background diagnostics and return uniquely identified health reports.
 gemini: false
 ---
 
 # Async Maintenance Workflow
 
-Run asynchronous maintenance jobs that generate health reports without blocking development.
-Ops-internal — not part of the curated interactive command set.
+Run a requested job or an already configured recurring diagnostic. This catalog does not create a
+schedule, authorize remediation, or grant ongoing access. Use the host's scheduling mechanism when
+the user requests recurring work, preserving their notification preferences.
 
-## Core pattern: timestamped artifacts
-Every job writes a unique, dated file so runs never collide:
-```
-docs/working/REVIEW-{JOB}-{YYYY-MM-DD}.md
-```
-Benefits: zero merge conflicts, historical tracking, easy diffing, and simple age-based cleanup.
+## Select and bound the job
 
-## Job catalog (adapt commands to the project's runner)
-| Job | Frequency | Output | Purpose |
-| :-- | :-- | :-- | :-- |
-| Dependency audit | Weekly | `REVIEW-deps-YYYY-MM-DD.md` | Outdated packages + known CVEs |
-| Bundle size | After build | `REVIEW-bundle-YYYY-MM-DD.json` | Bundle/chunk size tracking |
-| Git history | Monthly | `REVIEW-git-analysis-YYYY-MM.md` | Churn, hotspots, contributors |
-| Accessibility | On-demand | `REVIEW-a11y-YYYY-MM-DD.md` | Automated WCAG checks |
-| Contrast | On-demand | `REVIEW-contrast-YYYY-MM-DD.md` | Contrast ratios vs WCAG AA/AAA |
-| Report cleanup | Monthly | — | Archive stale reports to `docs/archive/` |
+| Job | Evidence and limit |
+| --- | --- |
+| Dependencies | Project-supported audit/outdated report; distinguish advisories, applicability and unavailable data. |
+| Bundle | Comparable build/chunk measurements with configuration and baseline identity. |
+| Git history | Churn and ownership leads, corroborated before treating them as defects. |
+| Accessibility or contrast | Route to `audit-accessibility`; automated coverage is not a complete WCAG verdict. |
+| Code/docs/hygiene/agent sweep | Route to `sweep-codebase` with the requested scope. |
 
-## Procedure
-1. **Select** the job to run.
-2. **Run** the project's corresponding maintenance command.
-3. **Review** the generated report in `docs/working/`.
-4. **Action**: Open `TICKET-*` items for critical findings; archive old reports periodically.
+Choose a cadence only when configuring a requested schedule. It depends on project risk and cost,
+not a universal weekly/monthly rule. Report archival is a separate `maintain-docs` operation,
+not an age-triggered deletion job.
 
-## CI schedule template (GitHub Actions)
-```yaml
-name: Async Maintenance
-on:
-  schedule:
-    - cron: '0 2 * * 1'   # Weekly, Monday 02:00
-  workflow_dispatch:
-jobs:
-  maintenance:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: <project maintenance command>          # emit REVIEW-*.md
-      - uses: actions/upload-artifact@v4
-        with: { name: maintenance-reports, path: docs/working/REVIEW-*.md }
-```
+## Execute and return
 
-## Best practices
-- Always timestamp outputs; never overwrite existing reports.
-- Artifact-only: these jobs generate files, never modify source.
-- Reports must carry recommendations, not just data.
+1. Resolve the actual project command and read its side effects. Bound runtime, output, network and
+   shared resource use. Installing tools, upgrading dependencies or changing CI needs separate scope.
+2. Give this run a unique identity and exclusive report path in the resolved working-docs store,
+   such as `REVIEW-<job>-<UTC-time>-<run-id>.md`. A date alone does not prevent collisions.
+   Keep raw artifacts in the project's existing evidence store; do not invent nested directories.
+3. Run the diagnostic and record source/candidate identity, command, coverage, result and limits.
+   Failures, timeouts and missing data are outcomes, not clean attestations.
+4. Return actionable findings and recommendations. File canonical tickets only when filing is part
+   of the grant. Do not overwrite another run, update shared indexes without their writer, publish
+   reports, or repair source as an incidental maintenance step.
+
+Source changes remain out of scope. Retain pending work with its owner and next action.

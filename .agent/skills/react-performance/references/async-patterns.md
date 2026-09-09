@@ -1,111 +1,73 @@
-# Async Optimization Rules
+# Async patterns
 
-**Impact: HIGH**
+Use for an observed request waterfall or delayed independent work. Draw the dependency chain
+before moving awaits. Concurrent requests still make separate network calls; wall time depends
+on connections, server limits, cache state and contention.
 
-Eliminating waterfalls in async operations yields significant performance gains.
+## Independent work
 
-## Promise.all for Independent Operations
+When these reads are independent and the view needs all results, start them together:
 
-When async operations have no interdependencies, execute concurrently.
-
-**Incorrect (sequential, 3 round trips):**
-```tsx
-async function loadDashboard() {
-  const user = await fetchUser()
-  const settings = await fetchSettings()
-  const notifications = await fetchNotifications()
-  return { user, settings, notifications }
-}
-```
-
-**Correct (parallel, 1 round trip):**
-```tsx
+```javascript
 async function loadDashboard() {
   const [user, settings, notifications] = await Promise.all([
-    fetchUser(),
-    fetchSettings(),
-    fetchNotifications()
-  ])
-  return { user, settings, notifications }
+    fetchUser(), fetchSettings(), fetchNotifications(),
+  ]);
+  return { user, settings, notifications };
 }
 ```
 
-## Defer Await Until Needed
+The fetch functions are application adapters. If one depends on another's identity or authority,
+keep that dependency. `Promise.all` rejects when an input rejects; it does not cancel the other
+operations or roll back side effects. For large fan-out, bound concurrency to the service's
+capacity and respect rate limits. Do not parallelize dependent mutations for a speed claim.
 
-Move `await` into branches where actually used.
+## Defer work that a branch does not need
 
-**Incorrect:**
-```tsx
+A bypass branch can skip fetching rules only when bypassing validation is already part of the
+application contract. Do not introduce that bypass as an optimization.
+
+```javascript
 async function handleSubmit(data, skipValidation) {
-  const rules = await fetchValidationRules() // Always waits
-  
-  if (skipValidation) {
-    return saveData(data)
-  }
-  
-  return validateAndSave(data, rules)
+  if (skipValidation) return saveData(data);
+  const rules = await fetchValidationRules();
+  return validateAndSave(data, rules);
 }
 ```
 
-**Correct:**
-```tsx
-async function handleSubmit(data, skipValidation) {
-  if (skipValidation) {
-    return saveData(data) // Returns immediately
-  }
-  
-  const rules = await fetchValidationRules() // Only when needed
-  return validateAndSave(data, rules)
-}
-```
+## Start early, await at the dependency boundary
 
-## Start Early, Await Late
+After loading an order, inventory and pricing checks may run together if neither consumes the
+other's result. This example assumes reads/quotes, not inventory reservations or payment writes:
 
-Start promises immediately, await when result is needed.
-
-**Incorrect:**
-```tsx
+```javascript
 async function processOrder(orderId) {
-  const order = await fetchOrder(orderId)
-  const inventory = await checkInventory(order.items)
-  const pricing = await calculatePricing(order)
-  return finalizeOrder(order, inventory, pricing)
-}
-```
-
-**Correct:**
-```tsx
-async function processOrder(orderId) {
-  const orderPromise = fetchOrder(orderId)
-  
-  const order = await orderPromise
-  
-  // These can run in parallel once we have order
+  const order = await fetchOrder(orderId);
   const [inventory, pricing] = await Promise.all([
-    checkInventory(order.items),
-    calculatePricing(order)
-  ])
-  
-  return finalizeOrder(order, inventory, pricing)
+    checkInventory(order.items), calculatePricing(order),
+  ]);
+  return finalizeOrder(order, inventory, pricing);
 }
 ```
 
-## Error Handling with Promise.allSettled
+Starting a promise early is useful only if useful work overlaps it. Attach rejection handling
+promptly and arrange cancellation when supported; do not leave speculative promises unobserved.
 
-When you need all results even if some fail:
+## Partial failures
 
-```tsx
+Use `Promise.allSettled` when independent sections can fail separately. Preserve a failure state;
+turning every rejection into an empty list makes an unavailable result look like no data.
+
+```javascript
 async function loadUserData(userId) {
-  const results = await Promise.allSettled([
-    fetchProfile(userId),
-    fetchPosts(userId),
-    fetchFollowers(userId)
-  ])
-  
-  return {
-    profile: results[0].status === 'fulfilled' ? results[0].value : null,
-    posts: results[1].status === 'fulfilled' ? results[1].value : [],
-    followers: results[2].status === 'fulfilled' ? results[2].value : []
-  }
+  const [profile, posts, followers] = await Promise.allSettled([
+    fetchProfile(userId), fetchPosts(userId), fetchFollowers(userId),
+  ]);
+  return { profile, posts, followers };
 }
 ```
+
+Consumers render fulfilled results and a suitable error/retry state for each rejection. Redact
+error details before exposing them. For search and navigation, prevent older requests from
+replacing newer results through cancellation or a request identity check. Compare response
+latency and failure behavior under the same workload before claiming an improvement.

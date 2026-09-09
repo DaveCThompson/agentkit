@@ -3,6 +3,7 @@ name: blindspot-pass
 description: Surface the unknown-unknowns before work starts in an unfamiliar code area or domain — landmines, hidden constraints, exemplars, and the expert questions to ask. Use when entering an unfamiliar module/subsystem/domain or when asked for a "blindspot pass".
 tier: core
 triggers: [blindspot, unknown unknowns, unfamiliar area, reconnaissance, recon]
+required-tools: [codebase-mcp]
 ---
 
 # Blindspot Pass
@@ -28,36 +29,52 @@ recon is cheap; finding it after you've built on top of it is not.
 ## Approach
 
 ### Phase 1: Establish context
+
 - What is the user trying to accomplish in this area, and how familiar are they (and you) with it?
 - Name the exact surface in scope: the module path, package, or domain.
 
 ### Phase 2: Explore the territory (evidence, not memory)
-Build understanding from the code graph + history before reporting (see `integrations/codebase-mcp.md`):
-- `search_graph` / `get_architecture` for the area's shape and boundaries; `trace_path` for who
-  depends on it (blast radius of a change here).
-- `git log` / blame on the surface for prior decisions and churn hot-spots.
-- Existing conventions and patterns already established in the area; for an unfamiliar *domain*, the
-  domain's best-practices.
-- Fallback to Grep/Read if the graph is unavailable; note the degrade.
 
-### Phase 3: Report four sections
-1. **Landmines** — the common errors someone new to this area makes, plus repo-specific gotchas
+Use evidence suited to the scoped uncertainty:
+
+- For structural code questions, use `use-codegraph` for the area's boundaries and dependencies.
+  It owns reachability, freshness, query selection and fallback; the graph dependency is conditional
+  on this code-discovery need.
+- `git log` / blame on the surface for prior decisions and churn hot-spots.
+- Read established conventions, accepted decisions and representative implementations. For a domain
+  question, consult applicable primary documentation or supplied evidence and state its limits.
+- Treat churn as a lead, not proof of fragility. Check the changed behavior and rationale before
+  calling it a constraint. Use targeted source reads if graph discovery is unavailable.
+
+### Phase 3: Report the material findings
+
+Use these categories where they add information; empty categories need no invented findings:
+
+1. **Landmines** — evidenced errors someone new to this area could make, plus repo-specific gotchas
    (fragile exceptions, ordering constraints, `// WHY:` / `// CONSTRAINT:` markers).
 2. **Hidden context** — prior decisions that constrain the work (why it is the way it is) — the ones
    a fresh reader would unknowingly violate.
-3. **What good looks like** — 2–3 high-quality exemplars already in the codebase to calibrate against.
-4. **Questions to ask** — 3–5 expert-level questions that would change the approach, each with your
-   best initial answer drawn from the Phase 2 evidence (not a bare question list).
+3. **What good looks like** — relevant exemplars and why their behavior or structure fits this task.
+4. **Questions to ask** — unresolved questions that could change the approach, with an initial
+   evidence-based answer or an explicit unknown.
+
+Distinguish verified constraints, plausible risks and unresolved questions. For each material
+uncertainty, state the consequence and cheapest useful check. End discovery when further checks
+repeat known evidence, the relevant constraints are understood, or a task budget is reached;
+name uncovered surfaces. No findings is a valid result.
 
 ### Phase 4: Reframe the request
-Restate the user's original goal, now incorporating the discovered constraints. The reframed request
-is the handoff into `plan-feature` / `plan-architecture`.
+
+Carry the original goal and exclusions into a handoff with discovered constraints, evidence and
+remaining assumptions. An inference does not become an accepted requirement. Reuse the caller's
+work item or conversation; a new planning artifact is not required. Return to the caller's
+authorized work, using `plan-feature` / `plan-architecture` only when planning is needed.
 
 ## Verification / Definition of Done
 
-- [ ] Every landmine / hidden-context claim is backed by a `file:line`, a commit, or a named
-      convention — not asserted from intuition (cite-or-run, `foundation-testing.md` §1B).
-- [ ] The four sections are present; questions carry initial answers.
+- [ ] Claims cite inspected source/symbols, decisions, commits or applicable documentation;
+      hypotheses remain labeled (see `foundation-testing.md`, "Evidence identity and cite-or-run").
+- [ ] Material questions carry initial answers or unknowns, consequences and useful next checks.
 - [ ] Output stops at understanding — no code, no edits.
 
 ## Constraints
@@ -69,4 +86,5 @@ is the handoff into `plan-feature` / `plan-architecture`.
 
 ## Output
 
-A short report (the four sections + the reframed request), ready to feed a planning skill.
+A concise understanding handoff with findings, exemplars and remaining uncertainty. If a durable
+report is requested, use its assigned path and end with `What we deliberately did NOT do`.

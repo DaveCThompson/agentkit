@@ -1,92 +1,75 @@
 ---
 name: audit-web-interface
-description: Review UI code for Vercel Web Interface Guidelines compliance. Use when reviewing CSS, components, or checking accessibility, forms, animation, typography, or performance patterns.
+description: Use for bounded static triage of web UI code covering accessibility, forms, motion, typography and loading patterns. Route unanswered runtime questions to the relevant specialist audit.
 argument-hint: <file-or-pattern>
 tier: tech:web
 ---
 
 # Web Interface Guidelines Audit
 
-Review files for compliance with Web Interface Guidelines.
+Review the requested files or pattern (`$ARGUMENTS`) without editing them. If no target is supplied,
+infer a bounded surface from the task and state it. This is static triage, not whole-site
+conformance or measured performance verification.
 
-**Files to review:** $ARGUMENTS
+## When to Use
 
-## Quick Reference
+Use for a focused UI-code review across several interface concerns. Use a specialist audit when
+the request already names a deeper accessibility, layout, typography, token or performance question.
 
-**Quick Reference Checklist**:
+## Context Loading
 
-- **Accessibility** — aria-labels, semantic HTML, focus states. See: `references/accessibility.md`
-- **Animation** — `prefers-reduced-motion`, compositor property targeting. See: `references/animation.md`
-- **Composition** — Radix-style primitives, state decoupling. See: `references/composition.md`
-- **Forms** — labels, autocomplete, error handling patterns. See: `references/forms.md`
-- **Images** — dimensions, lazy loading, priority markers. See: `references/images.md`
-- **Hydration** — controlled inputs, date guards. See: `references/hydration.md`
-- **Interactive States** — hover, active, focus feedback. See: `references/interactive-states.md`
-- **Performance** — virtualization, layout thrashing prevention. See: `references/performance.md`
-- **Typography** — ellipsis, quotes, text-wrap. See: `references/typography.md`
+Identify the actual framework, rendered surface and applicable project policy before choosing lenses.
+Read relevant rules and bridge notes only:
 
-These `references/` files are bridge notes for this skill. Canonical project truth still lives in `.agent/rules/*.md` and `docs/knowledge-base/*`.
+| Lens | Bridge | Read when |
+| --- | --- | --- |
+| Accessibility | [accessibility](references/accessibility.md) | Controls, semantics or input access change |
+| Animation | [animation](references/animation.md) | Motion, interruption or animation ownership changes |
+| Composition | [composition](references/composition.md) | Component/state boundaries change |
+| Forms | [forms](references/forms.md) | Input, validation or submission changes |
+| Images | [images](references/images.md) | Media sizing, loading or alternatives change |
+| Hydration | [hydration](references/hydration.md) | Server/client rendering must reconcile |
+| Interactive states | [interactive states](references/interactive-states.md) | Focus, hover, active or touch states change |
+| Performance | [performance](references/performance.md) | Rendering or delivery may affect responsiveness |
+| Typography | [typography](references/typography.md) | Reading, wrapping or numeric comparison changes |
 
-## Additional Categories (inline)
+Canonical policy lives in the applicable `.agent/rules/` and project specs. Load `tech-react.md`
+only for React; framework-specific notes are not universal requirements. Read `pattern-ui-copy.md`
+when reviewing product text. A bridge or filename prefix cannot override a conflicting requirement;
+report the exact conflict and use the governing task/project contract.
 
-### Navigation & State
-- URL reflects state—filters, tabs, pagination in query params
-- Links use `<a>`/`<Link>` (Cmd/Ctrl+click support)
-- Destructive actions need confirmation or undo
+## Approach
 
-### Touch & Interaction
-- `touch-action: manipulation` (prevents double-tap zoom)
-- `overscroll-behavior: contain` in modals
-- `autoFocus` sparingly—desktop only
+### Static Triage
 
-### Dark Mode
-- `color-scheme: dark` on `<html>`
-- `<meta name="theme-color">` matches background
+Inspect source and affected primitives, including accessible naming through labels or composition.
+Use `verify-rules` for relevant harvested checks rather than copying grep recipes.
+Assess pattern matches in context: computed values, runtime setters, framework behavior and
+documented exceptions can change the conclusion.
 
-### Locale
-- Use `Intl.DateTimeFormat` for dates
-- Use `Intl.NumberFormat` for numbers
+Consider these additional lenses when applicable:
 
-### Content & Copy
-- Active voice: "Install the CLI" not "The CLI will be installed"
-- Sentence case by default; follow an established product style when one exists
-- Buttons use concise actions; include the object only when context does not make it clear
-- Add UI text only when it clarifies an action, state, decision, risk, or accessibility need
-- Tooltips explain non-obvious, non-critical controls; critical instructions must remain visible
-- Error messages state the problem and next action, with the cause when known and useful
-- Use consistent terms for the same object or action
+- Navigation: preserve browser link behavior and URL state for views that should be bookmarkable
+  or shareable. Do not require every transient UI state in a query parameter.
+- Destructive actions: assess confirmation, undo and recovery against consequence and product intent.
+- Touch: inspect scroll containment, gesture ownership and focus without unnecessarily disabling zoom.
+- Themes: check declared color scheme and browser chrome against shipped themes.
+- Locale: check locale-aware date/number output and its server/client consistency.
+- Copy: apply the shared UI-copy rule in the actual interface context.
 
+### Corroborate and Route
 
-## 2. Context Loading (Active Router)
-This skill is a router. You must load the relevant Verification checklists before auditing.
+State whether a candidate is a demonstrated code/policy defect or an unverified runtime risk.
+Follow `foundation-testing.md` for evidence and `foundation-browser-usage.md` for applicable
+runtime capabilities. Route a material unanswered question to `audit-accessibility`,
+`audit-layout`, `audit-typography`, `audit-design-system` or `audit-performance`.
+Do not invoke every specialist merely because its lens appears in this menu.
 
-1.  **System Rules**: Read [.agent/rules/foundation-design-system.md](../../../.agent/rules/foundation-design-system.md) (Section `## Verification`).
-2.  **React Rules**: Read [.agent/rules/tech-react.md](../../../.agent/rules/tech-react.md) (Section `## Verification`).
-3.  **A11y Rules**: Read [.agent/rules/foundation-accessibility.md](../../../.agent/rules/foundation-accessibility.md) (Section `## Verification`).
-4.  **Token Rules**: Read [.agent/rules/foundation-design-tokens.md](../../../.agent/rules/foundation-design-tokens.md) (Section `## Verification`).
-5.  **Skill Bridge Notes**: Read only the `references/*.md` files that materially apply to the audit target.
-6.  **Copy Rules**: If the target contains product UI text, read `.agent/rules/pattern-ui-copy.md`.
+## Output and Definition of Done
 
-## 3. Execution (The Verification)
-For each file in `Files to review`:
-1.  Run the **Invariant (Automated)** checks from the loaded rule sections (e.g. `grep "margin:"`).
-2.  Evaluate the **Logic (Reasoning)** checks from the loaded rule sections.
-3.  Log any violations in the Output Format below.
-4.  If multiple rules conflict, `patterns/*` trump `foundations/*`.
-5.  Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
-
-## Output Format
-
-Group by file. Use `file:line` format. Terse findings.
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
-
-```text
-## src/Button.tsx
-
-src/Button.tsx:42 - icon button missing aria-label
-src/Button.tsx:55 - animation missing prefers-reduced-motion
-
-## src/Card.tsx
-
-✓ pass
-```
+Group concise findings by file with source location, behavior, evidence, impact and applicable
+rule/blocking policy. Each selected lens is `finding | checked-clean | not-applicable |
+not-verified`, with scope and reason; pending proof names the check and owner.
+A clean source scan is not a runtime pass. Zero findings is valid.
+Use the caller's existing report/evidence location, retaining only needed redacted output.
+No source, rule or configuration changes are part of this audit.

@@ -1,37 +1,49 @@
 ---
 trigger: model-decision
-description: Consult when designing hover/click/completion states for cards and lists — sync-hover promotion, inert completed items, whole-card hit targets (Fitts's law), neutral scannability.
+description: Consult when designing hover, focus, click and completion states for cards and lists — coordinated feedback, actual action availability, semantic hit targets and scannability.
 tier: kind:app
 domain: layout
 ---
 
 # Interaction Patterns
 
-Premium interaction standards for the the application.
+Make affordances match the action actually available. Preserve navigation, selection, completion
+and secondary actions; a particular hover palette or card implementation is a project convention.
 
 ## 1. Promoted Indicator Pattern (Sync-Hover)
-When using a whole-card click model, internal Call-to-Action (CTA) elements MUST synchronize their visual state with the parent card.
-*   **Rule:** If the card is hovered, the CTA (button/chevron) should automatically enter its 'highlight' or 'active' visual state.
-*   **Implementation:** Use parent-selector targeting in CSS Modules (e.g., `.card:hover .cta { ... }`).
-*   **Why:** Creates a unified, premium feel where the entire component responds as a single intelligent unit.
 
-## 2. Inert Completion Policy
-Completed or terminal states MUST be visually distinguished as non-interactive.
-*   **Rule:** Completed items (cards, rows, tasks) MUST:
-    *   Remove all hover shadows and lift effects.
-    *   Remove `cursor: pointer`.
-    *   Be excluded from keyboard tab order if no longer actionable.
-*   **Styling:** Use flat backgrounds or subtle "recessed" gradients. Avoid "raised" shadows on completed work.
-*   **Why:** Provides clear visual feedback that a task is finished and requires no further action (REDUCED COGNITIVE LOAD).
+For a card with one primary action, coordinating the parent and its decorative CTA can clarify
+the target. Use the project's selectors, including focus-visible/focus-within where appropriate.
+Do not show a pressed/selected state merely because a pointer hovered it, or highlight an unrelated
+secondary action as if it were the primary one. Verify touch has sufficient cues without hover.
+
+<a id="2-inert-completion-policy"></a>
+
+## 2. Completion and action availability
+
+Distinguish completion from availability. A completed task may still support viewing, reopening,
+downloading or another action. Keep those actions operable and visibly discoverable.
+Only a genuinely unavailable action loses its interactive affordance and, where appropriate,
+its Tab stop. Preserve readable status and avoid leaving a focusable invisible control.
+Flat or recessed styling is optional; do not impose a shadow policy on all terminal records.
 
 ## 3. Whole-Card Interaction Model (Fitts's Law)
-For list-based navigation (Tasks, Sessions, Resources), the entire card/row SHOULD be the primary hit target.
-*   **Rule:** The interactive area should be maximized (whole card) rather than limited to a small text link or button.
-*   **A11y:** The card MUST have `role="button"`, proper `aria-labels`, and handle `Enter`/`Space` keys.
-*   **Nested Links:** Discrete secondary actions (e.g., "View Terms") MUST use `e.stopPropagation()` to prevent double-triggering the primary card action.
+
+An enlarged target can improve acquisition, but is not suitable for every selectable row or card.
+Use a real link for navigation, preserving modified-click/open-in-new-tab behavior; use a button
+for an action. A custom button needs equivalent keyboard semantics, including Enter/Space, but
+`role="button"` is not correct for a navigation link.
+
+Keep secondary controls as separate valid targets rather than nesting interactive elements in a
+primary button/link. A stretched-link or delegated-card pattern needs tests for text selection,
+overlap, focus and event ordering. `stopPropagation()` can stop bubbling; it does not cancel a
+link's default action or repair invalid nested markup. Use event handling only for the intended
+semantics. See [HTML links](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-a-element)
+and `foundation-accessibility.md`.
 
 ## 4. Neutral Scannability
-Avoid aggressive brand colors or alert colors (red/pink) for standard interaction transitions in high-density lists.
-*   **Rule:** Standard hover borders SHOULD use theme-aware neutral tokens (e.g., `var(--surface-border-strong)`).
-*   **Action:** Darken in light mode, lighten in dark mode.
-*   **Why:** Prevents "rainbow fatigue" and keeps the focus on the content during scanning.
+
+Prefer subdued feedback in dense lists when it fits the design, while preserving meaning and
+contrast. Brand or alert colors can be correct for their actual roles; neither a neutral token nor
+“darken light mode/lighten dark mode” proves legibility. Inspect composed backgrounds and focus,
+hover, selected, unavailable and completed states across supported themes.

@@ -7,109 +7,148 @@ domain: error-handling
 
 # Error Handling Patterns
 
-Standards for error states, loading states, and user feedback.
+Make failures and pending states understandable without losing data or concealing invalid results.
+Use actual framework/data-layer boundaries and shared components; the names below describe useful
+roles, not required APIs. Follow `foundation-security.md` for sensitive diagnostics.
 
 ## 1. Error Boundaries
-*   **Rule:** Wrap feature areas with React Error Boundaries.
-*   **Fallback:** Use the shared `ErrorState` component as the fallback UI — never a blank screen.
-*   **Reporting:** The boundary's catch hook reports to the project's error-telemetry service (e.g., Sentry) for production visibility.
-*   **Logging:** Errors logged to console in development via the project's dev-logging instrumentation.
+
+- In React, place error boundaries at recoverable UI fault domains. They catch descendant render
+  failures, not arbitrary event-handler, asynchronous callback or server errors. Handle those at
+  their actual boundary. A framework integration can surface an async failure to a boundary,
+  such as supported React transition actions; inspect that version's contract. Other frameworks
+  have different mechanisms.
+- Provide a usable fallback and preserve unaffected work. Reuse an existing `ErrorState` when it
+  fits; a component name alone does not establish recovery.
+- Use the project's reporting/logging policy with redaction and deduplication. Development and
+  production environments may differ; neither telemetry installation nor universal logging is required.
+  See [React error boundaries](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary).
 
 ## 2. Shared UI Components
 
-The project's shared-UI layer (location in `project-invariants.md`) owns three primitives. Never build ad-hoc equivalents.
+Discover the existing shared-UI layer and its supported variants before introducing another
+implementation. Extend or compose it when suitable; do not require primitives the project lacks.
 
 ### `ErrorState` (shared error-display component)
-Unified error display replacing all ad-hoc page error states.
-*   **Props:** `title`, `description`, `onRetry?`, `supportLink?`, `icon?`, `variant?: 'page' | 'section'`
-*   **Retry:** Wire `onRetry` to the data layer's refetch for data-fetching pages.
-*   **Token compliance:** All colors via semantic tokens — zero hardcoded values.
+
+A useful error display can expose a title, explanation, optional retry/support action and contextual
+page/section layout. Use the real prop contract. Retry only an operation that is safe to retry;
+a button must trigger a real recovery path, not just clear the displayed error. Style through the
+project's token system and justified exceptions.
 
 ### `EmptyState` (shared empty-state component)
-Unified empty display for "no data" scenarios.
-*   **Props:** `icon`, `title`, `description`, `action?: { label, onClick }`
-*   **Token Usage:** Uses `var(--text-tertiary)` for icon, `var(--text-secondary)` for description.
+
+Distinguish genuine empty data from loading, filtered-out data, forbidden access and failure.
+Include a relevant action only when one exists. Use semantic text/icon roles without prescribing
+specific token names; do not erase context to force every empty state into one component.
 
 ### `Skeleton` (shared loading-placeholder primitive)
-Animated placeholder primitive for loading states.
-*   **Variants:** `text`, `circular`, `rectangular` (via `data-variant`)
-*   **Shimmer:** Neutral `color-mix(in oklch, var(--surface-bg-tertiary), white 15%)` — not brand-tinted.
-*   **`@keyframes` co-location:** The shimmer animation MUST live in the component's own scoped stylesheet — CSS Modules scope keyframe names per file, so an animation referenced from another module silently fails.
+
+Match meaningful reserved geometry to reduce distracting changes. Text/circle/rectangle variants
+and shimmer are options, not required APIs. Respect reduced motion and avoid announcing decorative
+placeholders repeatedly. Co-locate keyframes or use the project's explicit global/export mechanism:
+CSS Modules can scope names, so verify the emitted animation reference rather than assuming a
+cross-file name resolves or that every stylesheet system behaves the same.
 
 ## 3. Loading Architecture (Three-Tier Skeleton)
 
+These tiers are a diagnostic model for client apps, not a requirement to hide useful server content.
+
 ### Tier 1: HTML Shell (Pre-JavaScript)
-*   The HTML entry document renders a minimal "Loading ..." screen before any JS executes.
-*   Blocking `<script>` in `<head>` reads the persisted theme and sets `data-theme` on `<html>` before first paint.
-*   Persistent `<style>` in `<head>` sets backgrounds for both light/dark modes — survives app mount.
-*   **CRITICAL:** Never put `<style>` inside the root mount node — the framework's first render destroys it.
-*   **CRITICAL:** Never use inline `style="background: ..."` for theme-aware properties — inline styles beat `<style>` selectors.
+
+Keep meaningful initial content or a usable bootstrap/failure fallback when startup is delayed.
+Use the actual server/theme initialization contract; an early theme script may need CSP and storage
+error handling. Do not add a blocking script by default. Place persistent styles where the framework
+owns them: replacing a client mount differs from hydrating server markup. Inline styles can be
+intentional, including token bridges; inspect cascade and theme behavior.
 
 ### Tier 2: App-Shell Skeleton (Auth Loading)
-*   A full app-frame skeleton (sidebar + header + content skeleton) shown while the main layout chunk loads or during auth bootstrap.
-*   Backgrounds match the real app shell (e.g., sidebar = `bg-secondary`, main = `bg-primary`) so the handoff is seamless.
+
+Retain the app shell where it is safe and useful during auth/chunk loading. Do not expose protected
+content while authorization is unresolved. Handle rejected, signed-out and expired states explicitly;
+an auth error must not leave a permanent skeleton.
 
 ### Tier 3: Per-Page Skeletons (Within the App Shell)
-*   Each lazy-loaded page has a matching skeleton component, wired at the route table via the project's lazy-route helper.
-*   Skeletons match their page's gaps, container widths, and layout structure.
-*   **Spinners reserved for:** Inline/button contexts only — never full-page loading.
+
+Choose skeletons, progress, spinners or retained stale content by expected wait and task.
+For layout-matching skeletons, verify gaps, widths and dynamic content rather than cloning every page.
+Wire the real router/data-layer loading and error mechanisms; settle success, empty and failure.
 
 ## 4. Toast Notifications
-*   **Duration:** Success = 3s, Warning = 5s, Error = persistent until dismissed.
-*   **Stacking:** Maximum 3 toasts visible; queue additional ones.
-*   **Position:** Bottom-right for non-blocking; top-center for critical.
-*   **Content:** Active voice, actionable. "Changes saved" not "Your changes have been saved successfully."
+
+Use local timing, placement and queue policy based on urgency, reading time and actionability.
+Do not impose fixed durations/counts or make every error persistent. Important instructions and
+recoverable work must remain available after a toast disappears. Avoid duplicate global/feature
+notifications; prefer concise result and next-action copy.
 
 ## 5. Form Validation
-*   **Inline Errors:** Show errors adjacent to the invalid field.
-*   **Error Styling:** Use the project's error tokens (see `project-invariants.md`) for error text and for invalid-field borders — via semantic tokens only, never hardcoded color values.
-*   **Timing:** Validate on blur for new fields; on change for fields with existing errors.
-*   **Error Clearing:** Clear error messages when user starts editing the field. Only clear error-tone messages, preserve success messages.
-*   **Summary:** For complex forms, show error summary at top with links to fields.
+
+- Associate inline errors/instructions with fields and expose invalid state. Use more than color.
+- Validate at appropriate interaction boundaries, including submission. Avoid premature noisy errors,
+  but do not clear a still-relevant error merely because editing began.
+- Use an error summary with field links when it helps navigate multiple failures. Focus the summary
+  or first invalid field according to the form's accessible flow.
+- Preserve entered data and distinguish validation, transport, permission and business-rule failures.
 
 ## 6. Network Errors
-*   **Retry Logic:** All data-fetching pages show `ErrorState` with a retry button wired to the data layer's refetch.
-*   **Offline Detection:** An online-status hook triggers a warning toast on connectivity loss/recovery.
-*   **Timeout:** Configure the shared HTTP client with a hard request timeout (e.g., 15 s). Prevents hung requests from blocking UI indefinitely.
-*   **Telemetry:** The shared caught-API-error helper reports to the error-telemetry service. Disabled in dev, enabled in staging/production.
-*   **Interceptor Boundary:** Shared API interceptors may normalize transport failures into typed app errors and handle auth redirects, but they MUST NOT fire generic user-facing error toasts for server/network failures by default.
-*   **Feature Ownership:** Feature hooks and local handlers own contextual user messaging. The shared caught-error helper must understand normalized app errors so feature-specific fallback copy survives transport normalization.
+
+- Keep initial loading, stale refresh, empty, offline and failed outcomes distinct. Connectivity
+  signals are hints; a successful network interface does not prove the API is reachable.
+- Choose timeout/cancellation behavior for the operation, including streaming and long jobs.
+  A client timeout does not prove a server write was cancelled. Reconcile ambiguous mutations and
+  use their idempotency contract before retrying under `pattern-external-mutation.md`.
+- Normalize transport errors without discarding status, safe context or caller-specific recovery.
+  Shared interceptors should not emit duplicate generic toasts by default.
+- Feature handlers usually own contextual user messaging. Centralized auth handling is valid where
+  it preserves the actual session/redirect contract and does not treat every denial as signed-out.
 
 ## 7. Accessibility
-*   **ARIA Live Regions:** Announce errors to screen readers with `aria-live="polite"`.
-*   **Focus Management:** Move focus to first error field on form submission failure.
-*   **Color Independence:** Don't rely solely on color; use icons and text.
+
+Choose status/live-region urgency by the message; `role="status"` is polite, an urgent alert may
+need assertive announcement. Avoid duplicate announcements and unsolicited focus changes.
+Test field associations, summary navigation, focus after recovery and non-color cues under
+`foundation-accessibility.md`; do not require both icons and text for every message.
 
 ## 8. Hyper-Defensive Component Wrappers
-*   **Slot Triggers:** Headless-library slot/`asChild` triggers (e.g., Radix Tooltip) are high-risk. Always wrap triggers in a `<span>` if they are raw strings, fragments, or potentially nullish.
-*   **Module Guards:** Add defensive string conversion `String(content)` to dynamic markdown/HTML outputs to prevent "Functions as React child" crashes.
-*   **Registry Gating:** Always use `Array.isArray()` or null-coalescing when mapping over external registry data to prevent boot-time whitescreens.
+
+Validate composition instead of masking faults. Slot/`asChild` triggers need the actual library's
+supported child, props, events and ref contract. Replacing a null/fragment/string with an arbitrary
+span does not give it button semantics or keyboard behavior. See
+[Radix composition](https://www.radix-ui.com/primitives/docs/guides/composition).
+
+Validate dynamic renderer input at its boundary. `String(content)` is not a sanitizer and can hide
+invalid function/object values. An `Array.isArray` check is useful when an array is required, but
+decide whether invalid data must be rejected, shown as unavailable or safely defaulted.
 
 ## 10. API Data Resilience (Staging Hardening)
-*   **Total Resilience Pattern:** Always assume the API may return `null` or omit keys for fields that should be strings, booleans, arrays, or numbers.
-*   **Resilient Primitives:** Use hardened schema primitives from the shared API-schema module (built on the project's schema library, e.g., Zod):
-    *   String schema: defaults to `""` on null/undefined.
-    *   Boolean schema: defaults to `false` on null/undefined.
-    *   Number schema: defaults to `0` on null/undefined.
-    *   Resilient date schema: defaults to epoch (0) instead of throwing on invalid/null dates.
-    *   Collection fields: always provide a default empty array (e.g., `z.array(...).default([])`).
-*   **ViewModel Filtering:** Never filter solely on the existence of optional nested objects. Always check the reliable top-level fields first (e.g., a top-level `status`).
+
+Treat external payloads as untrusted and validate the actual schema. Distinguish absent, null,
+invalid and legitimate falsy values. Use defaults only where the domain defines their meaning;
+do not turn malformed dates into epoch, missing entitlement into apparent success, or invalid
+numbers into zero. Preserve diagnostics without exposing sensitive payloads.
+
+Use the existing schema library and test its exact default/coercion/null behavior; an undefined
+default need not handle null. For collections, a legitimate empty fallback is different from a
+failed response. Filter view models by the authoritative domain contract, not always by a top-level
+status or always by optional nested-object presence.
 
 ## Verification
 
 ### Invariants (Automated)
-- [ ] **Error Boundaries:** `grep "ErrorBoundary"` under the project's source roots (see `project-invariants.md`) — should exist in feature roots.
-- [ ] **Loading States:** `grep "Skeleton\|isLoading"` under the source roots — content areas should have loading states.
-- [ ] **No Ad-Hoc Errors:** `grep "text-red\|color:.*red\|#[fF][0-9]"` under the source roots — must use the ErrorState component.
+
+- Use the project's collected tests for boundary fallback, typed errors, retry wiring and schema
+  validation. Include invalid/null/absent input and legitimate falsy values where meaningful.
+- Source searches can locate boundaries and state branches. No count of `ErrorBoundary` or
+  `Skeleton`, and no color grep, proves recovery or component compliance.
 
 ### Logic (Manual/Reasoning)
-- [ ] **Empty States:** Do all list/grid components use `EmptyState` for empty data?
-- [ ] **Form Validation:** Do forms show inline errors with accessible markup?
-- [ ] **Skeleton Fidelity:** Does each page skeleton match its page's layout structure?
 
----
+- Exercise initial loading, refresh, empty, rejection, offline/recovery and ambiguous submission.
+- Check accessible feedback, retained input, focus and readable layout through those transitions.
+- Report untested framework/browser/API boundaries under `foundation-testing.md`.
 
 ## See Also
-- `domain-content.md` — For error message tone and structure.
-- `foundation-accessibility.md` — For ARIA live region standards.
-- `foundation-performance.md` — For route prefetching (minimizes skeleton visibility).
+
+- `pattern-ui-copy.md` — contextual error text; a project's `domain-content.md` may add tone policy.
+- `foundation-accessibility.md` — naming, focus and status announcements.
+- `foundation-performance.md` — measured loading and delivery choices.

@@ -18,8 +18,10 @@ Turn the current explanation or plan into a user-paced walkthrough.
 1. Use the points from the latest relevant answer unless the user supplies another list.
 2. State how many points exist, then explain only the first point in plain language.
 3. Include the practical action or consequence when one exists.
-4. End with `Say next when you're ready.` Continue with exactly one point per user cue, in the
-   original order.
+4. While points remain, end with `Say next when you're ready.` Continue with exactly one point
+   per user cue, in the original order unless the user changes the sequence. On the final point,
+   end without a continuation prompt. If the user later says `next`, briefly state that the
+   walkthrough is complete.
 5. If no points are identifiable, ask which statement the user wants explained.
 
 ## Definition of Done
@@ -27,6 +29,7 @@ Turn the current explanation or plan into a user-paced walkthrough.
 - [ ] One point is explained per turn.
 - [ ] The original order and meaning are preserved.
 - [ ] The user controls when the walkthrough advances.
+- [ ] The final point ends the sequence without requesting another cue.
 
 ## Evidence and Provenance
 

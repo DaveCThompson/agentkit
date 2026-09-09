@@ -1,18 +1,22 @@
 ---
 applies-to:
-  - "src/example/**"          # code globs — what this doc is the truth ABOUT
+  - "src/example/**"
   - "src/other/**"
-last-verified: YYYY-MM-DD      # date last checked against the code; feeds doctor staleness
+last-verified: YYYY-MM-DD
 ---
 
 # SPEC-<topic>
 
 <!-- KB doc template. Canonical spec: governance/docs-standard.md §(c),(d).
-     - Prefix the FILENAME: SPEC- / PRD- / STRATEGY- / RUNBOOK- / DECISION- (kebab-case, no spaces).
+     - Prefix the FILENAME: SPEC- / STRATEGY- / RUNBOOK- / DECISION- (kebab-case, no spaces).
+       PRD- is a working lifecycle artifact; distill accepted as-is truth rather than moving it whole.
      - The `applies-to` + `last-verified` frontmatter is MANDATORY — it makes routing mechanical
-       (agentkit check --kb) and staleness detectable (agentkit doctor).
-     - Add this doc to its subdir README trigger table with a one-line "read it when…" phrasing.
-     - If you use the DECISION- prefix, use the four-heading body shown at the bottom instead. -->
+       (agentkit check --kb); it does not establish semantic freshness automatically.
+     - Replace all example globs, dates and paths with actual project values before filing.
+     - Keep the document flat in docs.kbRoot (default docs/knowledge-base), or use a declared
+       nested layout. Add it to the corresponding README trigger table.
+     - For DECISION-, use templates/DECISION.md instead; that template includes status frontmatter.
+     - Keep future requirements in the accepted ticket, PLAN or PRD. -->
 
 > **Related rule:** `.agent/rules/<rule>.md` (if a rule enforces this spec — bidirectional drift link).
 
@@ -26,18 +30,6 @@ The actual contract / spec content.
 
 - `src/example/thing.ts` — <what lives here>
 
-<!-- ============ DECISION- docs use THIS body instead of the above ============
-# DECISION-<question>
+## What we deliberately did NOT do
 
-## Status
-Accepted | Superseded by DECISION-<x> | Proposed
-
-## Context
-What forced the decision. What was true at the time.
-
-## Decision
-The choice, stated so no one re-litigates it.
-
-## Consequences
-What this makes easy, what it makes hard, what it forecloses.
-============================================================================= -->
+<Material exclusions or unsupported behavior relevant to this contract.>

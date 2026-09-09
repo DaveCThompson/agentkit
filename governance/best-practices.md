@@ -18,8 +18,62 @@ and adapters now enforce mechanically. Phase B refines this with the fleet's bes
   sharpen (`conflicts-with` documents the loser).
 - Body: When to Use · Approach/phases · Definition of Done. Supporting files in `references/`
   (never a `rules/` subfolder — that drift is normalized to `references/`).
-- A skill that leans on an external tool MUST declare it in `required-tools` and include fallback
-  instructions for when the tool is unreachable (`doctor` verifies callability).
+- Assume a capable recipient. Keep non-obvious methods, consequential constraints and useful
+  completion criteria. Do not mandate counts of options, questions, findings or personas without
+  a task-specific reason. Preserve exact formats when they define the requested capability.
+- Shared rules own authority/evidence/artifact contracts; workflows route; skills own distinctive
+  methods. Reference the shared owner rather than copying its recipe. Keep a short local reminder
+  when it prevents a wrong action. Direct invocation must not depend on hidden parent context.
+- Add supporting files only for substantial conditional detail, with an explicit read condition.
+  Read selected instruction files fully. Do not split solely to meet a length target or add empty
+  resource folders. Preserve useful specialist evidence instead of replacing it with generic checks.
+- Preserve user intent, settled choices and existing grants. Advice, diagnosis, preparation,
+  implementation, integration and publication have different endpoints. No template grants authority.
+- Consolidate entry points only when intent, authority, inputs, method and completion coincide;
+  inspect callers and generated routing first. Similar text or presumed low usage is not enough.
+- Declare fixed, registered dependencies in `required-tools`; describe conditional use and fallback
+  in the body. Use the dependency semantics below for native or runtime-selected capabilities.
+
+### Dependencies and capability evidence
+
+`required-tools` lists identifiers resolved through `integrations/<id>.md`, not arbitrary executable
+names or host tool IDs. It records a skill's known integration dependencies, including conditional
+ones. It does not enable a tool, select an execution mode, grant authority or prove availability.
+Use these existing surfaces; do not invent a parallel capability registry or new frontmatter keys.
+
+| Dependency | Declaration and task check |
+| --- | --- |
+| Fixed registered tool | Declare its integration ID, such as `codebase-mcp`, `fallow`, `agentkit` or `tailscale`. State the needed capability and fallback. |
+| Registered tool used only in one mode | Still declare the ID. Name the applicable mode in the body, such as Fallow for sweep's code scope. Missing tooling limits that mode's evidence, not unrelated work. |
+| Native host capability | Describe the needed search/fetch, shell, browser or interaction capability, current-runtime discovery and fallback in prose. Do not invent `web` or vendor API IDs for this registry. |
+| Runtime-selected service | Describe how to select the actual MCP server, endpoint, identity and schema. Declare fixed registered dependencies if any; an empty or omitted list does not mean operational proof needs no tools. |
+
+For example, `research-deep` discovers host retrieval and can use supplied evidence with stated
+limits. `mcp-server-ops` discovers the deployment being examined; there is no universal server ID.
+`health-agent` and `kit-contribute` use the registered agentkit CLI, with current-source fallback
+when shipped-state comparison is unavailable. A composed consumer uses the dependency owner's
+method; it need not copy every transitive probe or setup recipe.
+
+The current CLI compiles skill declarations into manifest `requiredTools`. `doctor` instead probes
+the selected fleet members' `.agentkit.json` `tools` lists; it does not derive those lists from skill
+frontmatter or infer conditional modes. Outside quick mode it resolves each integration and executes
+its `check-command` in each declaring project's directory through the platform shell, with a
+20-second timeout. The command string has no kit-root placeholder expansion. Missing registry entries
+fail; entries without a probe have unknown status; `--quick` skips these probes. Doctor also writes
+its local run record, so it is not a pure read-only capability query.
+
+An integration owns its capability reference, version-sensitive syntax, setup effects and a cheap
+non-installing, non-mutating probe valid under that execution contract. A CLI-only integration does
+not need an `mcp` block. A version/help exit establishes only that command's success in that context;
+it does not establish live agent access, authentication, index freshness, analysis coverage, binary
+provenance or successful service operation. Check the relevant live capability when the task needs
+it, using the actual runtime's catalog/schema. Never infer parent/worker inheritance or absence.
+
+Record unavailable, failed, stale, empty and non-applicable evidence distinctly. Follow the existing
+action/target and ownership grant for discovery or provisioning. Necessary setup already covered by
+that grant may proceed through its owner; a declaration or failed probe alone never authorizes
+installation, registration, configuration, indexing, cleanup or broader access. Otherwise use the
+documented fallback and identify which conclusion or transition remains unverified.
 
 ## Rules (`.agent/rules/<prefix>-<name>.md`)
 - Prefixes: `foundation-` (always-on invariants) · `tech-` (stack-conditional) · `pattern-`
@@ -65,3 +119,8 @@ and adapters now enforce mechanically. Phase B refines this with the fleet's bes
   requires senior/staff re-verification (`pattern-agent-orchestration.md` §1 codification gate).
 - No new folder or nesting level without proving a flat prefixed file can't do the job.
 - Every artifact/report ends with **"What we deliberately did NOT do"**.
+- Name the evidence kind as well as any tier: measured result, observed instruction text, observed
+  runtime behavior, or engineering judgment. Textual contradiction is not a measured model failure.
+- For material behavior changes, use realistic isolated forward tests when authorized. Give the
+  evaluator raw tasks/artifacts and candidate instructions, not the author's expected answer. Judge
+  actions, outcomes and preserved obligations; static metadata tests alone cannot prove judgment.

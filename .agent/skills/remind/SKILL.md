@@ -15,11 +15,16 @@ Reorient the user using the conversation and verified workspace state.
 
 ## Approach
 
-1. Separate completed actions from proposals, intentions, and failed attempts.
-2. Report four compact sections: **Purpose**, **Completed**, **Current state**, and **Next**.
-3. Put every unresolved user decision under **Next**. If none remains, state the next concrete
-   action.
-4. Label missing or uncertain history. Never reconstruct it as fact.
+1. Use available conversation and check results. Inspect only material facts likely to have
+   changed; do not run broad verification just to write a recap. Distinguish historical evidence
+   from current claims, and qualify current state when it cannot be checked.
+2. Reconcile the latest accepted scope and separate completed actions from proposals, intentions,
+   superseded work, and failed attempts.
+3. Report four compact sections: **Purpose**, **Completed**, **Current state**, and **Next**.
+4. Put unresolved decisions that still affect accepted work under **Next**. Otherwise state the
+   next concrete action, or `None; the requested work is complete` when supported.
+5. Label missing or uncertain history. Never reconstruct it as fact. This recap does not itself
+   authorize performing the actions it describes.
 
 ## Definition of Done
 

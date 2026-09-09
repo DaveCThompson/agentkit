@@ -1,50 +1,46 @@
 ---
-description: Universal audit router. Run a scoped or full, scan-only health audit citing rule/invariant violations.
+description: Route scoped or full scan-only audits and report findings with explicit coverage.
 ---
 
 # Audit Workflow
 
-Universal audit router — verifies system health by routing a scope to the matching scan-only
-`audit-*` skill, or running the full sequential sweep. **Scan-only: never auto-fix here.**
+Resolve the requested target and lenses. Default to `code` only when no lens can be inferred.
+An unknown explicit lens needs clarification, not silent substitution. Auditing authorizes
+inspection and the requested report, not repairs, deployments or destructive probes.
 
-## Goal
-A prioritized findings report citing specific rule/invariant violations, severity-ranked.
+## Skill routing
 
-## Inputs required (ask if missing)
-- Target scope (see routing table). Default: `code`.
-- Target files/directories (optional; default = whole project).
+| Lens | Skill |
+| --- | --- |
+| code, structure, dx | `audit-code` |
+| accessibility | `audit-accessibility` |
+| design | `audit-design-system` |
+| layout | `audit-layout` |
+| typography | `audit-typography` |
+| performance | `audit-performance` |
+| security | `audit-security` |
+| auth-db | `audit-auth-db`, when available for the stack |
+| rls | `verify-rls-policies`, when available for the stack |
+| web, web-interface | `audit-web-interface` |
+| docs | `audit-docs` |
+| refactor | `audit-refactor-opportunities` |
+| rules, invariants | `verify-rules` |
+| maintenance, hygiene | `audit-hygiene-enforcement` |
 
-## Skill routing (explicit) — choose exactly one
-- `accessibility` -> `audit-accessibility`
-- `code` -> `audit-code`
-- `design` -> `audit-design-system`
-- `layout` -> `audit-layout`
-- `typography` -> `audit-typography`
-- `performance` -> `audit-performance`
-- `security` -> `audit-security`
-- `web` / `web-interface` -> `audit-web-interface`
-- `docs` -> `audit-docs`
-- `refactor` -> `audit-refactor-opportunities`
-- `rules` / `invariants` -> `verify-rules`
-- `maintenance` / `hygiene` -> `audit-hygiene-enforcement`
-- `structure` / `dx` -> `audit-code` using the code-standards rule as the primary checklist
-- `full` / `all` -> **Full sweep** (below)
-- else -> `audit-code` (default)
+For `full` or `all`, inventory the project's applicable lenses across this table, including
+security, performance, docs and hygiene. Explain exclusions; unavailable required coverage remains
+incomplete. Deduplicate overlapping web/design checks without silently dropping obligations.
+Read each selected skill and its applicable references. Run serially unless parallel work is
+authorized and its resources and report ownership are disjoint.
 
-## Full sweep (scope = full)
-Run sequentially, then synthesize: `audit-code` -> `audit-design-system` -> `audit-layout` ->
-`audit-typography` -> `audit-web-interface`. Identify shared root causes across dimensions.
+## Synthesize and return
 
-## Procedure
-1. **Reconnaissance**: Identify scope; load the relevant rules from `.agent/rules/`.
-2. **Execute**: Read the selected skill's `SKILL.md` and follow its checklist exactly.
-3. **Synthesis**: Categorize findings by severity (Critical / High / Medium / Low). For a full
-   sweep, consolidate all dimensions into one report.
-4. **Report**: Persist to `docs/working/REVIEW-*.md` when a durable artifact is useful.
-   Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
-   Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
+Preserve the caller's report destination; otherwise use a flat `REVIEW-<topic>.md` in the resolved
+working store when a durable report is useful. Each lens ends with findings, checked-with-no-findings,
+not-applicable with a reason, or incomplete with the missing evidence and next check. State the
+actual surface and method; a clean subset is not a whole-project pass.
 
-## Notes
-- This router absorbs the per-dimension audit commands — there are no `audit-<dimension>` workflows.
-- To *remediate* (not just detect), route to the `*-fix` skills (e.g. `security-fix`,
-  `performance-fix`) or the `/async-maint` jobs. Use `/audit rules` as the alias for invariant checks.
+Consolidate repeated root causes while preserving affected surfaces, severity, evidence and
+consequences. Existing evidence storage and the shared documentation rules own raw artifacts.
+Recommended repairs may route to `security-fix`, `performance-fix` or an implementation skill,
+but execution requires repair authority. Background diagnostics are not a remediation shortcut.

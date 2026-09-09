@@ -2,51 +2,66 @@
 name: audit-hygiene-enforcement
 description: Verify project hygiene invariants — changelog rolled and titled, archives indexed, working docs within limits. Detect-only; maintain-docs performs the cleanup.
 tier: core
+required-tools: [agentkit]
 conflicts-with: [maintain-docs]
 ---
 
 # Hygiene Enforcement Skill
 
-Logic for automating project maintenance and documentation hygiene.
+Detect documentation and lifecycle drift. Use `maintain-docs` for authorized cleanup.
+An audit may write its requested report; it does not move files, change status or close tickets.
 
-## Instructions
+## When to Use
 
-This skill is **detect-only** — it flags violations but does not mutate files. Remediation is routed
-to `maintain-docs` and the TICKET-02 CLI backstop.
+Use for a scoped hygiene review of the changelog, active documents, archive navigation or stale
+work records. `audit-docs` handles semantic documentation truth.
 
-When performing a maintenance audit:
+## Approach
 
-1. **Changelog Management** (detect only):
-   - Check the total line count of `./CHANGELOG.md`. If > 500 lines, flag it.
-   - Identify the most recent milestone header.
-   - Check whether entries older than 3 days remain in the live file without an archive link.
-     Flag if found — do not extract or archive.
+### Run the Existing Checks
 
-2. **Documentation Hygiene** (detect only):
-   - Scan `docs/working` for `.md` files that have been marked as "Implemented" in `./CHANGELOG.md`.
-     Flag them — do not move them.
-   - Check that `docs/specs` is absent or empty. Flag if present (durable specs belong in
-     `docs/knowledge-base/specs/`; temporary planning artifacts belong in the four-directory model).
+Use the available AgentKit CLI's content, taxonomy and hygiene checks for the requested scope.
+Consult its local help for supported invocation. Record version, selected scope, errors and
+exclusions. If unavailable, perform a bounded manual check and label missing automated coverage.
+Do not rebuild the CLI or change configuration as part of detection.
 
-3. **Structural Rigor**:
-   - Enforce kebab-case for new directories in the feature tree and `.agent/skills`.
-   - Check for "Rule Drift": verify that any new patterns documented in recent `CHANGELOG.md` entries
-     have corresponding updates in `.agent/rules/`.
+### Check Lifecycle and Navigation
 
-4. **Drift Heuristics** (prose checks — the deterministic backstop is TICKET-02's CLI check):
-   - **SHA-contradiction check**: if an open ticket cites a commit SHA that is an ancestor of
-     `origin/main`, flag the ticket — the fix has merged while status says "Open".
-   - **Duplicated-status check**: if the same ticket's status is restated in more than one place
-     (ticket frontmatter + index + prose body), flag as drift-prone.
-   - **Stale-ticket check**: if a ticket is unchanged or carries `needs-human-verify` and its
-     `last-updated` is older than `thresholds.staleTicketDays` (from `.agentkit.json`), prompt to
-     close or re-prioritize.
+- Read `pattern-docs-artifacts.md`, **Changelog**, for the live rolling window; do not keep a
+  second numeric threshold here. Check title, dated entries and archive-chain links. Compare the
+  installed check's limits with that policy and report discrepancies.
+- Enumerate working documents from the filesystem, including ignored files within scope.
+  Compare filing locations with the artifact policy and applicable project layout exceptions.
+- Recommend archival only after checking completion evidence, remaining acceptance and successor
+  pointers. A changelog claim is a lead, not proof that every requirement is complete.
+- Check archive indexes and both incoming and outgoing links for proposed or historical moves.
+  No archive, deletion or untracking is authorized by a hygiene finding.
+- Apply directory naming and rule-coverage checks only where an applicable project convention
+  requires them. Not every new implementation pattern needs a new rule.
 
-## Notes
-- Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
-- Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
-- Archival target is always `docs/archive/YYYY-MM/` derived dynamically from `(Get-Date -Format 'yyyy-MM')`
-  (PowerShell) or `date +%Y-%m` — never hardcoded.
-- No standalone scripts exist for these operations; implement the detection logic directly.
-- Tickets flagged by these heuristics should be surfaced in a hygiene report for human triage;
-  automated close/re-prioritize is the TICKET-02 CLI's domain.
+### Triage Status Signals
+
+Use the ticket's frontmatter as status of record, including `updated` and verified `landed`
+ancestry. Preserve supported legacy parsing; use `pattern-agent-orchestration.md` and
+`pattern-docs-artifacts.md` for shared semantics.
+
+An ancestor SHA can identify a base, reference or partial implementation. Flag contradictory
+completion claims only with completion-context evidence and the remaining acceptance checked.
+Do not infer publication from ancestry or completion from a removed branch.
+
+Staleness is a triage signal, using configured thresholds and Git history or explicit record
+dates, never filesystem mtime. A pending required proof lane keeps its owner and gating transition.
+Derived scheduling views are allowed; conflicting manually maintained status copies are findings.
+Heuristic flags do not authorize automatic closure or reprioritization.
+An unresolved target ref or ancestry error makes that lane incomplete; preserve actual findings
+alongside the error. Age of `last-verified` does not prove semantic drift. Evidence-capture filenames
+are outside lifecycle naming checks; an exemption there must not hide a violating active ticket.
+
+## Output and Definition of Done
+
+Report each selected lens as `finding | checked-clean | not-applicable | not-verified`.
+Include the policy, evidence, proposed correction or destination, uncertainty and next owner.
+Preserve tool disagreements with concrete counterevidence; zero tool findings do not prove complete
+coverage. Reuse the caller's report/work identity and approved evidence location.
+The audit is complete when the bounded checks and gaps are reported. No cleanup or status mutation
+is implied.

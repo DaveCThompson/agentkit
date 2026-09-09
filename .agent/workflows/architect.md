@@ -1,36 +1,17 @@
 ---
-description: Produce a technical architecture specification after PRD approval.
+description: Create a technical architecture specification from an accepted problem and constraints.
 skill: plan-architecture
 ---
 
 # Architect Workflow
 
-Create a technical architecture spec — the second node in the epic pipeline
-(`/prd` -> `/architect` -> `/build`). Also the target of `/explore architecture`.
+Use `plan-architecture` when the problem is sufficiently defined and the request needs technical
+design. An accepted PRD is one valid input, not a compulsory precursor for non-product work.
 
-## Goal
-An architectural blueprint in `docs/working/TICKET-{name}.md` (or `ARCH-{name}.md`): data model,
-component hierarchy, state management, file manifest, and risk analysis.
+Carry the caller's artifact identity, decisions, exclusions and authority into the skill.
+Preserve an existing PLAN, ARCH, ticket or linked contract; do not manufacture a replacement
+because of its filename. For open-ended architecture comparison, route to `explore-tech` first.
 
-## Inputs required (ask if missing)
-- Approved PRD (or a clear feature brief for the architecture branch of `/plan`).
-- Existing architecture docs in `docs/knowledge-base/`.
-
-## Safety + scope
-- Do NOT modify application code.
-- Only touch `docs/working/`.
-
-## Skill routing (explicit)
-- `plan-architecture`.
-
-## Procedure
-1. **Foundation**: Follow `plan-architecture`'s `SKILL.md`; review the relevant foundation/tech rules.
-2. **Options**: Evaluate 3–4 architectural approaches with trade-offs.
-3. **Specification**: Document the data model, component hierarchy, and file manifest; use diagrams
-   for complex flows.
-4. **Risk analysis**: Hostile review for failure modes.
-5. **Review**: Present to the user for approval.
-
-## Notes
-- After approval, proceed to `/build`. This is the pipeline's architecture node; `/plan` routes its
-  architecture branch here rather than duplicating the spec.
+Return the architecture and unresolved consequential decisions. Planning alone does not authorize
+implementation. If implementation is already requested and the remaining decisions are within
+that grant, continue through `/build` using the same contract; do not ask for the same approval again.

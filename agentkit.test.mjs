@@ -1,14 +1,16 @@
 // agentkit.test.mjs — Phase-0 test suite (decision 27). The destructive paths — the ones that must
+
+
 // never be wrong across 7 repos — can only be trusted through tests. Run: npm test
 import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
-  sha, globToRegex, matchesGlobs, classifyAgentFile, tierOf, selectEntries, scanKitAgent,
-  planSync, syncProject, checkProject, adoptFile, mergeSettings, kbMatch, compileManifest, initProject,
+  sha, globToRegex, matchesGlobs, classifyAgentFile, tierOf, selectEntries, scanKitAgent, scanProjectOverlay,
+  planSync, syncProject, checkProject, adoptFile, mergeSettings, kbMatch, compileManifest, initProject, recoverOperation, setupLauncher, loadLock,
   checkContentIntegrity, stackLint, taxonomyLint, renderWorkflowMap, runDoctor, harvestChecks, runVerify, changelogRoll, main, checkHygiene,
   orchestratorLock, surfaceOverlap, scaffoldGateScripts, scanSettingsHygiene, loadConfig, KIT_ROOT, printCheck,
   resolveBrowserProfile, validateBrowserProfile, verificationTreeIdentity, createVerificationReceipt, checkVerificationReceipt,
@@ -16,7 +18,8 @@ import {
 import { parseFrontmatter, injectHeader, stripHeader, tomlMultiline, adapters, claudePermissionsBaseline } from './adapters.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const TMP = path.join(HERE, '.tmp-test');
+fs.mkdirSync(path.join(HERE, '.tmp-test'), { recursive: true });
+const TMP = fs.mkdtempSync(path.join(HERE, '.tmp-test', 'run-'));
 
 function write(root, rel, content) {
   const abs = path.join(root, ...rel.split('/'));
@@ -123,9 +126,7 @@ function mkProject(cfg = {}) {
   return proj;
 }
 
-fs.rmSync(TMP, { recursive: true, force: true });
-fs.mkdirSync(TMP, { recursive: true });
-after(() => fs.rmSync(TMP, { recursive: true, force: true }));
+after(() => console.log('Original-suite fixtures retained: ' + TMP));
 
 // ---------- unit: utils ----------
 
@@ -201,6 +202,24 @@ test('clean receipt reuses an identical tree after metadata-only commit changes'
   assert.equal(checkVerificationReceipt(proj, metadataOnly).reusable, true);
 });
 
+test('receipt identity resolves filesystem aliases without claiming nested directories', () => {
+  const proj = mkProject();
+  write(proj, 'app/example.ts', 'export const value = 1;\n');
+  execFileSync('git', ['init', '-q'], { cwd: proj });
+  execFileSync('git', ['add', '.'], { cwd: proj });
+  execFileSync('git', ['-c', 'user.name=AgentKit Test', '-c', 'user.email=agentkit@example.test', 'commit', '-qm', 'initial'], { cwd: proj });
+  // A fixture-only junction/symlink reproduces alternate filesystem spelling without depending on 8.3 being enabled.
+  const alias = path.join(TMP, 'alias-' + path.basename(proj));
+  fs.symlinkSync(proj, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const receipt = createVerificationReceipt(proj, { lane: 'machine', command: 'npm test', status: 'passed', exitCode: 0 });
+  assert.equal(receipt.tree.kind, 'commit');
+  assert.deepEqual(verificationTreeIdentity(alias), receipt.tree, 'same physical root must have the same identity');
+  assert.equal(checkVerificationReceipt(alias, receipt).reusable, true);
+  assert.equal(verificationTreeIdentity(path.join(alias, 'app')).commit, null, 'a child is not its enclosing Git root');
+  write(alias, 'app/example.ts', 'export const value = 2;\n');
+  assert.equal(checkVerificationReceipt(alias, receipt).reusable, false, 'aliases must not hide edits');
+});
+
 test('frontmatter: superset parse + nested map + lists', () => {
   const { fm, body } = parseFrontmatter(SKILL_MD);
   assert.equal(fm.name, 'implement-feature');
@@ -238,7 +257,7 @@ test('claude adapter maps glob-triggered rule to path-scoped rule', () => {
   const entry = { srcRel: '.agent/rules/pattern-state.md', subPath: 'rules/pattern-state.md', type: 'rule', name: 'pattern-state', owner: 'core', fm, body, raw: '' };
   const out = adapters.claude([entry], { hooks: [], mcpServers: {} });
   const rule = out.files.find((f) => f.rel === '.claude/rules/pattern-state.md');
-  assert.ok(rule.content.includes('paths: [**/*Atom*.ts]'));
+  assert.deepEqual(parseFrontmatter(rule.content).fm.paths, ['**/*Atom*.ts']);
   assert.ok(rule.content.includes('# State rules'));
 });
 
@@ -250,8 +269,8 @@ test('claude adapter maps model-decision rule to a menu-hidden rule- skill', () 
 
   const skill = out.files.find((f) => f.rel === '.claude/skills/rule-pattern-error-handling/SKILL.md');
   assert.ok(skill, 'model-decision rule emits a rule- skill');
-  assert.ok(skill.content.includes('name: rule-pattern-error-handling'));
-  assert.ok(skill.content.includes('description: Consult before error handling work.'));
+  assert.equal(parseFrontmatter(skill.content).fm.name, "rule-pattern-error-handling");
+  assert.equal(parseFrontmatter(skill.content).fm.description, "Consult before error handling work.");
   assert.ok(skill.content.includes('user-invocable: false'), 'rule- skill hidden from the / menu');
   assert.ok(skill.content.includes('# Error rules'), 'rule body rides in the skill');
   assert.ok(!out.files.some((f) => f.rel === '.claude/rules/pattern-error-handling.md'), 'no always-on rule emitted for model-decision');
@@ -297,9 +316,9 @@ test('opencode drops a bare model hint; keeps provider/model form; claude passes
   const ctx = { hooks: [], mcpServers: {} };
   const oc = adapters.opencode([bare, scoped], ctx);
   assert.ok(!oc.files.find((f) => f.rel === '.opencode/commands/quick-fix.md').content.includes('model:'), 'bare alias dropped for opencode');
-  assert.ok(oc.files.find((f) => f.rel === '.opencode/commands/deep.md').content.includes('model: anthropic/claude-opus-4-8'), 'provider/model form kept');
+  assert.equal(parseFrontmatter(oc.files.find((f) => f.rel === '.opencode/commands/deep.md').content).fm.model, 'anthropic/claude-opus-4-8', 'provider/model form kept');
   const cl = adapters.claude([bare], ctx);
-  assert.ok(cl.files.find((f) => f.rel === '.claude/commands/quick-fix.md').content.includes('model: haiku'), 'claude keeps the alias');
+  assert.equal(parseFrontmatter(cl.files.find((f) => f.rel === '.claude/commands/quick-fix.md').content).fm.model, 'haiku', 'claude keeps the alias');
 });
 
 test('opencode emits native project MCP config and preserves user servers', () => {
@@ -341,12 +360,12 @@ test('sync generates per-vendor native files (golden)', () => {
   // claude: skill with stripped superset frontmatter (no triggers/tier), command from workflow
   const cSkill = read(proj, '.claude/skills/implement-feature/SKILL.md');
   assert.ok(cSkill.startsWith('---\n'), 'frontmatter must stay at byte 0');
-  assert.ok(cSkill.includes('name: implement-feature'));
+  assert.equal(parseFrontmatter(cSkill).fm.name, "implement-feature");
   assert.ok(!cSkill.includes('triggers:'), 'superset keys stripped for claude');
   assert.ok(!cSkill.includes('tier:'));
   assert.ok(exists(proj, '.claude/skills/implement-feature/references/notes.md'));
   const cCmd = read(proj, '.claude/commands/plan.md');
-  assert.ok(cCmd.includes('description: Plan a feature end to end.'));
+  assert.equal(parseFrontmatter(cCmd).fm.description, "Plan a feature end to end.");
 
   // claude rules: canonical rule → .claude/rules/<name>.md (trigger: always → no paths frontmatter)
   const cRule = read(proj, '.claude/rules/git-protocol.md');
@@ -358,13 +377,13 @@ test('sync generates per-vendor native files (golden)', () => {
   assert.ok(!exists(proj, '.codex/skills'));
   // codex has no commands surface → workflows ride in as wf-prefixed skills
   const codexWf = read(proj, '.agents/skills/wf-plan/SKILL.md');
-  assert.ok(codexWf.includes('name: wf-plan'), 'codex workflow skill carries wf- name');
-  assert.ok(codexWf.includes('description: Plan a feature end to end.'));
+  assert.equal(parseFrontmatter(codexWf).fm.name, "wf-plan", 'codex workflow skill carries wf- name');
+  assert.equal(parseFrontmatter(codexWf).fm.description, "Plan a feature end to end.");
   assert.ok(codexWf.includes('# Plan Workflow'), 'codex workflow skill carries the workflow body');
   assert.ok(exists(proj, '.agents/skills/wf-internal/SKILL.md'), 'gemini:false does not gate codex');
   const codexToml = read(proj, '.codex/config.toml');
   assert.ok(codexToml.includes('AGENTKIT MANAGED'));
-  assert.ok(codexToml.includes('[mcp_servers.codebase-memory]'));
+  assert.ok(codexToml.includes('[mcp_servers."codebase-memory"]'));
 
   // gemini: workflow → command toml; gemini:false workflow excluded
   const toml = read(proj, '.gemini/commands/plan.toml');
@@ -377,7 +396,7 @@ test('sync generates per-vendor native files (golden)', () => {
   assert.ok(exists(proj, '.opencode/package.json'));
   const ocCmd = read(proj, '.opencode/commands/plan.md');
   assert.ok(ocCmd.startsWith('---\n'), 'opencode command frontmatter at byte 0');
-  assert.ok(ocCmd.includes('description: Plan a feature end to end.'));
+  assert.equal(parseFrontmatter(ocCmd).fm.description, "Plan a feature end to end.");
   assert.ok(ocCmd.includes('# Plan Workflow'), 'opencode command carries the workflow body');
   assert.ok(exists(proj, '.opencode/commands/internal.md'), 'gemini:false does not gate opencode');
   assert.ok(!exists(proj, '.opencode/skills/wf-plan'), 'opencode uses commands, not wf-skills');
@@ -401,6 +420,163 @@ test('sync generates per-vendor native files (golden)', () => {
   assert.ok(Object.keys(lock.files).length > 10);
 });
 
+// F1 packaging: use current authored content so a canonical link regression cannot hide behind
+// a corrected toy skill. mkKit/mkProject keep writes and manifests in this run's unique TMP.
+const PACKAGING_SKILL_SURFACES = ['.agent', '.claude', '.agents', '.opencode'];
+
+function packagingFixture(axes = {}) {
+  const kit = mkKit();
+  for (const e of scanKitAgent(KIT_ROOT)) {
+    if (['skill', 'rule', 'workflow'].includes(e.type)) write(kit, e.srcRel, e.raw);
+  }
+  for (const p of ['agentkit.mjs', 'adapters.mjs', 'governance/docs-standard.md', 'integrations/codebase-mcp.md', 'integrations/fallow.md']) write(kit, p, read(KIT_ROOT, p));
+  const entries = scanKitAgent(kit);
+  const tiers = [...new Set(entries.map(e => e.tier))];
+  const proj = mkProject({
+    kinds: tiers.filter(t => t.startsWith('kind:')).map(t => t.slice(5)),
+    stack: tiers.filter(t => t.startsWith('tech:')).map(t => t.slice(5)),
+    tools: [], permissions: { enabled: false }, ...axes,
+  });
+  const selected = selectEntries(entries, loadConfig(proj));
+  const result = syncProject(proj, { kitRoot: kit });
+  assert.ok(result.ok, JSON.stringify(result));
+  assert.deepEqual(result.refusals, []);
+  return { kit, proj, entries, selected };
+}
+
+// File-target oracle for the inline local Markdown links in the skill corpus. An unselected
+// asset is returned as a gap, never counted as resolved. Existing directories do not pass.
+function packagingLinkGaps({ proj, entries, selected }) {
+  const unselected = new Set(entries.filter(e => !selected.includes(e)).map(e => e.srcRel));
+  const gaps = [];
+  for (const e of selected.filter(e => e.type === 'skill' && e.name !== '_templates' && e.subPath.endsWith('.md'))) {
+    for (const surface of PACKAGING_SKILL_SURFACES) {
+      const from = `${surface}/${e.subPath}`;
+      for (const [, target] of read(proj, from).matchAll(/\[[^\]\n]+\]\(([^\s)]+)\)/g)) {
+        if (/^(?:[a-z]+:|#)/i.test(target)) continue;
+        const absolute = path.resolve(path.dirname(path.join(proj, from)), decodeURIComponent(target.split('#')[0]));
+        if (fs.existsSync(absolute)) {
+          assert.ok(fs.statSync(absolute).isFile(), `${from}: Markdown target is not a file: ${target}`);
+          continue;
+        }
+        const relative = path.relative(proj, absolute).replaceAll('\\', '/');
+        const canonical = relative.replace(/^\.(?:claude|agents|opencode)\/skills\//, '.agent/skills/');
+        assert.ok(unselected.has(canonical), `Missing selected Markdown target: ${from} -> ${relative}`);
+        gaps.push({ from, target: canonical });
+      }
+    }
+  }
+  return gaps;
+}
+
+test('packaging: all five vendors preserve skill bodies, local references and shared-rule targets', () => {
+  const fixture = packagingFixture();
+  const { proj, selected } = fixture;
+  assert.deepEqual(loadConfig(proj).vendors, ['claude', 'codex', 'gemini', 'opencode', 'antigravity']);
+  assert.deepEqual(packagingLinkGaps(fixture), []);
+  for (const e of selected.filter(e => e.type === 'skill' && e.name !== '_templates' && e.subPath.endsWith('.md'))) {
+    for (const surface of PACKAGING_SKILL_SURFACES) {
+      const copy = parseFrontmatter(stripHeader(read(proj, `${surface}/${e.subPath}`)));
+      assert.equal(copy.body, e.body, `${surface}/${e.subPath}: body/reference preservation`);
+      if (e.subPath.endsWith('/SKILL.md')) assert.equal(copy.fm?.name, e.fm?.name);
+    }
+  }
+  for (const e of selected.filter(e => e.type === 'rule')) {
+    const relocated = e.fm?.trigger === 'model-decision';
+    const claudePath = relocated ? `.claude/skills/rule-${e.name}/SKILL.md` : `.claude/rules/${e.name}.md`;
+    assert.ok(exists(proj, claudePath), claudePath);
+    if (relocated) assert.ok(!exists(proj, `.claude/rules/${e.name}.md`));
+  }
+  assert.ok(!exists(proj, '.agents/rules') && !exists(proj, '.opencode/rules'));
+  for (const e of selected.filter(e => e.type === 'workflow')) {
+    for (const p of [`.claude/commands/${e.name}.md`, `.opencode/commands/${e.name}.md`, `.agents/skills/wf-${e.name}/SKILL.md`]) assert.ok(exists(proj, p), p);
+    if (e.fm?.gemini !== false) assert.ok(read(proj, `.gemini/commands/${e.name}.toml`).includes(e.srcRel));
+  }
+  assert.ok(!exists(proj, '.gemini/skills'), 'Gemini has commands and canonical skills, not a generated skill surface');
+  assert.ok(!exists(proj, '.antigravity'), 'Antigravity consumes the tested canonical copies');
+});
+
+test('packaging: missing selected target fails the same file-target oracle', () => {
+  const fixture = packagingFixture();
+  assert.deepEqual(packagingLinkGaps(fixture), []);
+  const target = '.agent/rules/foundation-testing.md';
+  assert.ok(fixture.selected.some(e => e.srcRel === target));
+  fs.unlinkSync(path.join(fixture.proj, target)); // Only this test's generated consumer file.
+  assert.ok(exists(fixture.proj, '.agent/rules'), 'an existing parent must not hide the missing file');
+  assert.throws(() => packagingLinkGaps(fixture), {
+    code: 'ERR_ASSERTION', message: /Missing selected Markdown target: .*foundation-testing\.md/,
+  });
+});
+
+test('packaging: React without app reports unselected rule gaps and preserves selected references', () => {
+  const fixture = packagingFixture({ kinds: ['tooling'], stack: ['react'] });
+  const gaps = packagingLinkGaps(fixture);
+  const expected = ['foundation-design-tokens', 'pattern-feature-scaffolding'];
+  const byTarget = (a, b) => a.from.localeCompare(b.from) || a.target.localeCompare(b.target);
+  assert.deepEqual(gaps.sort(byTarget), PACKAGING_SKILL_SURFACES.flatMap(surface => expected.map(name => ({
+    from: `${surface}/skills/implement-component-scaffold/SKILL.md`, target: `.agent/rules/${name}.md`,
+  }))).sort(byTarget), 'selection gaps remain explicit');
+  for (const surface of PACKAGING_SKILL_SURFACES) {
+    const text = read(fixture.proj, `${surface}/skills/implement-component-scaffold/SKILL.md`);
+    assert.match(text, /carry any required missing guidance as\s+unresolved/);
+    for (const e of fixture.entries.filter(e => e.type === 'skill' && e.subPath.includes('/references/'))) {
+      assert.equal(exists(fixture.proj, `${surface}/${e.subPath}`), fixture.selected.includes(e), `${surface}/${e.subPath}: selection`);
+    }
+  }
+});
+
+test('packaging: kit-only plain references resolve through the actual configured checkout', () => {
+  const { kit, proj, selected } = packagingFixture();
+  const hook = JSON.parse(read(proj, '.claude/settings.json')).hooks.SessionStart[0].hooks[0].command;
+  const cli = hook.match(/^node "([^"]+agentkit\.mjs)"/)[1];
+  assert.equal(path.resolve(cli), path.join(kit, 'agentkit.mjs'));
+  assert.equal(fs.readFileSync(cli, 'utf8'), read(KIT_ROOT, 'agentkit.mjs'));
+  const targets = new Set();
+  for (const e of selected.filter(e => e.type === 'skill' && e.raw.includes('Kit references below'))) {
+    for (const surface of PACKAGING_SKILL_SURFACES) {
+      const text = read(proj, `${surface}/${e.subPath}`);
+      assert.match(text, /configured kit checkout/);
+      for (const [, target] of text.matchAll(/`((?:governance|integrations)\/[^`]+\.md)`/g)) {
+        assert.equal(read(path.dirname(cli), target), read(KIT_ROOT, target), target);
+        assert.ok(!exists(proj, target), 'kit-only resources are not duplicated into consumers');
+        targets.add(target);
+      }
+    }
+  }
+  assert.deepEqual([...targets].sort(), ['governance/docs-standard.md', 'integrations/codebase-mcp.md', 'integrations/fallow.md']);
+  assert.throws(() => read(path.dirname(cli), 'integrations/absent-reference.md'), { code: 'ENOENT' });
+  assert.throws(() => read(path.join(proj, 'absent-checkout'), 'integrations/codebase-mcp.md'), { code: 'ENOENT' });
+});
+
+test('packaging: rule references survive relocation into generated skills', () => {
+  const { kit, proj, selected } = packagingFixture();
+  const outputs = selected.filter(e => e.type === 'rule').map(e => ({ rel: e.srcRel }));
+  for (const vendor of Object.keys(adapters)) {
+    outputs.push(...adapters[vendor](selected, {
+      kitPath: kit, projectRoot: proj, config: loadConfig(proj), hooks: [], mcpServers: {},
+    }).files.filter(f => f.rel.endsWith('.md')));
+  }
+  const checkLinks = () => {
+    for (const { rel } of outputs) {
+      const prose = read(proj, rel).replace(/^```[^\n]*\n[\s\S]*?^```\s*$/gm, '');
+      for (const [, target] of prose.matchAll(/\[[^\]\n]+\]\(([^\s)]+)\)/g)) {
+        if (/^(?:[a-z]+:|#)/i.test(target)) continue;
+        const absolute = path.resolve(path.dirname(path.join(proj, rel)), decodeURIComponent(target.split('#')[0]));
+        assert.ok(fs.existsSync(absolute) && fs.statSync(absolute).isFile(), `Missing generated prose target: ${rel} -> ${target}`);
+      }
+    }
+  };
+  checkLinks();
+  const routed = '.claude/skills/rule-pattern-motion/SKILL.md';
+  const target = '.agent/skills/gsap-css-layout/SKILL.md';
+  const original = read(proj, routed);
+  assert.ok(original.includes(`\`${target}\``));
+  assert.match(original, /project-root path/);
+  assert.ok(exists(proj, target), 'the actual project-root skill target is shipped');
+  write(proj, routed, original.replace(`\`${target}\``, '[gsap-css-layout skill](../skills/gsap-css-layout/SKILL.md)'));
+  assert.throws(checkLinks, { code: 'ERR_ASSERTION', message: /Missing generated prose target: .*rule-pattern-motion/ });
+});
+
 test('workflow routing: opencode→command, codex→wf-skill, claude→command-only', () => {
   const wf = { srcRel: '.agent/workflows/plan.md', subPath: 'workflows/plan.md', type: 'workflow', name: 'plan', owner: 'core', fm: { description: 'Plan a feature.' }, body: '# Plan Workflow\n\nStep 1.\n', raw: '' };
   const ctx = { hooks: [], mcpServers: {} };
@@ -409,7 +585,7 @@ test('workflow routing: opencode→command, codex→wf-skill, claude→command-o
   const oc = adapters.opencode([wf], ctx);
   const ocCmd = oc.files.find((f) => f.rel === '.opencode/commands/plan.md');
   assert.ok(ocCmd, 'opencode emits .opencode/commands/plan.md');
-  assert.ok(ocCmd.content.includes('description: Plan a feature.'));
+  assert.equal(parseFrontmatter(ocCmd.content).fm.description, "Plan a feature.");
   assert.ok(ocCmd.content.includes('# Plan Workflow'));
   assert.ok(!oc.files.some((f) => f.rel.startsWith('.opencode/skills/')), 'opencode workflow is not a skill');
 
@@ -417,7 +593,7 @@ test('workflow routing: opencode→command, codex→wf-skill, claude→command-o
   const cx = adapters.codex([wf], ctx);
   const cxSkill = cx.files.find((f) => f.rel === '.agents/skills/wf-plan/SKILL.md');
   assert.ok(cxSkill, 'codex emits .agents/skills/wf-plan/SKILL.md');
-  assert.ok(cxSkill.content.includes('name: wf-plan'));
+  assert.equal(parseFrontmatter(cxSkill.content).fm.name, "wf-plan");
 
   // claude: command only, never also a passthrough skill (adapters.mjs:160 rule)
   const cl = adapters.claude([wf], ctx);
@@ -855,7 +1031,7 @@ test('settings key-merge preserves unknown keys (claude settings + mcp.json + co
   // decision 16 revised (2026-07-10): sync now owns permissions.allow as a union — the user's
   // Bash(git*) entry is preserved AND the kit baseline is added; other keys stay untouched.
   assert.ok(s.permissions.allow.includes('Bash(git*)'), 'user permission entry preserved');
-  assert.ok(s.permissions.allow.includes('Bash(npm run gate*)'), 'kit baseline added');
+  assert.ok(s.permissions.allow.includes('Bash(npm run gate *)'), 'kit baseline added');
   assert.equal(s.custom, true);
   const cmds = s.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command));
   assert.ok(cmds.includes('my-own-hook'), 'user hook preserved');
@@ -867,7 +1043,7 @@ test('settings key-merge preserves unknown keys (claude settings + mcp.json + co
 
   const t = read(proj, '.codex/config.toml');
   assert.ok(t.includes('approval_policy = "on-request"'), 'project toml preserved');
-  assert.ok(t.includes('[mcp_servers.codebase-memory]'));
+  assert.ok(t.includes('[mcp_servers."codebase-memory"]'));
 
   // re-sync: no duplicate managed entries
   syncProject(proj, { kitRoot: kit });
@@ -882,7 +1058,7 @@ test('mergeSettings removes managed keys when data empties', () => {
   const { content } = mergeSettings(
     { merge: 'mcp-json', data: {} },
     JSON.stringify({ mcpServers: { keep: { command: 'k' }, gone: { command: 'g' } } }),
-    ['gone'],
+    [{ kind: 'mcp-json', key: 'gone', value: { command: 'g' }, ownership: 'introduced' }],
   );
   const j = JSON.parse(content);
   assert.ok(j.mcpServers.keep);
@@ -954,9 +1130,9 @@ test('asset leaving the selection prunes only lockfile-owned files; edited files
   write(proj, '.opencode/skills/react-performance/SKILL.md', 'edited\n');
 
   const r = syncProject(proj, { kitRoot: kit });
-  assert.ok(r.pruned.includes('.claude/skills/react-performance/SKILL.md'));
-  assert.ok(r.pruned.includes('.agent/skills/react-performance/SKILL.md'));
-  assert.ok(!exists(proj, '.claude/skills/react-performance'), 'empty dirs removed');
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.pruned, [], 'known edited-prune conflict stops the coherent command');
+  assert.ok(exists(proj, '.claude/skills/react-performance/SKILL.md'), 'peer bytes remain unchanged');
   assert.ok(exists(proj, '.opencode/skills/react-performance/SKILL.md'), 'edited file kept');
   assert.ok(r.refusals.some((x) => x.rel === '.opencode/skills/react-performance/SKILL.md'));
 
@@ -965,7 +1141,7 @@ test('asset leaving the selection prunes only lockfile-owned files; edited files
   const lockAfterRefusal = JSON.parse(read(proj, '.agentkit.lock'));
   const refusedEntry = lockAfterRefusal.files['.opencode/skills/react-performance/SKILL.md'];
   assert.ok(refusedEntry, 'refused-prune entry must survive in the lock');
-  assert.equal(refusedEntry.refusedPrune, true);
+  assert.equal(refusedEntry.refusedPrune, undefined, 'completed lock stays unchanged on refusal');
 
   // checkProject now sees it as ORPHAN (lock still says kit-shipped, plan no longer selects it, file
   // still on disk) — never silently dropped, and an ORPHAN result makes check non-clean.
@@ -983,9 +1159,9 @@ test('asset leaving the selection prunes only lockfile-owned files; edited files
   // the refusal persists across an ordinary (non-force) sync, and never leaks back out as
   // project-overlay/generated content on any vendor surface.
   assert.ok(r2.refusals.some((x) => x.rel === '.opencode/skills/react-performance/SKILL.md'), 'refusal persists on next ordinary sync');
-  assert.ok(!exists(proj, '.claude/skills/react-performance/SKILL.md'), 'refused-prune content must never resurrect as project-overlay output');
+  assert.ok(exists(proj, '.claude/skills/react-performance/SKILL.md'), 'peer remains at its prior completed state');
   const lockAfterSecond = JSON.parse(read(proj, '.agentkit.lock'));
-  assert.ok(lockAfterSecond.files['.opencode/skills/react-performance/SKILL.md']?.refusedPrune, 'lock retention survives a second ordinary sync');
+  assert.deepEqual(lockAfterSecond, lockAfterRefusal, 'completed ownership remains byte-equivalent across repeated refusals');
 
   // sync --force finally prunes the refused entry and the lock entry disappears
   const forced = syncProject(proj, { kitRoot: kit, force: true });
@@ -1267,6 +1443,228 @@ test('verify: a check-level exclude skips matching files (e.g. test mocks)', () 
   assert.equal(v.findings[0].file, 'app/Widget.tsx');
 });
 
+function verifyFixture(checks, cfg = {}) {
+  const proj = mkProject({ sourceRoots: ['app'], ...cfg });
+  write(proj, 'app/a.ts', 'BAD\nBAD\n');
+  const entry = { type: 'rule', tier: 'core', subPath: 'rules/foundation-fixture.md',
+    srcRel: '.agent/rules/foundation-fixture.md', raw: '```agentkit-checks\n' + JSON.stringify(checks) + '\n```\n' };
+  return { proj, opts: { kitEntries: [entry] }, entry };
+}
+
+test('verify coverage: rejects invalid schema, regex, flags and duplicate check identities at harvest', () => {
+  const invalid = [null, { id: 3, pattern: 'BAD' }, { id: 'x', pattern: '[' },
+    { id: 'x', pattern: 'BAD', flags: 'qq' }, { id: 'x', pattern: 'BAD', globs: '*.ts' },
+    { id: 'x', pattern: 'BAD', exclude: [7] }, { id: 'x', pattern: 'BAD', severity: 'severe' },
+    { id: 'x', pattern: 'BAD', message: 3 }, { id: 'x', notApplicable: '' }];
+  for (const check of invalid) {
+    const { proj, opts } = verifyFixture([check]);
+    const h = harvestChecks(proj, opts);
+    assert.equal(h.checks.length, 0, JSON.stringify(check));
+    assert.ok(h.errors.length > 0, JSON.stringify(check));
+    const v = runVerify(proj, opts);
+    assert.equal(v.clean, false);
+    assert.equal(v.coverage.status, 'failed');
+  }
+  const { proj, opts } = verifyFixture([{ id: 'same', pattern: 'BAD' }, { id: 'same', pattern: 'OTHER' }]);
+  assert.ok(harvestChecks(proj, opts).errors.some(e => /duplicate/.test(e.why)));
+});
+
+test('verify coverage: valid checks still execute alongside malformed or unterminated fences', () => {
+  const { proj, opts, entry } = verifyFixture([{ id: 'valid', pattern: 'BAD', severity: 'high', flags: 'gy' }]);
+  entry.raw += '```agentkit-checks\nnot json\n```\n```agentkit-checks\n[';
+  const v = runVerify(proj, opts);
+  assert.equal(v.findings.length, 2, 'stateful flags must not skip alternate lines');
+  assert.equal(v.coverage.status, 'partial');
+  assert.equal(v.harvestErrors.length, 2);
+  assert.equal(v.clean, false);
+});
+
+test('verify coverage: severity types and malformed fence headers are not silently accepted', () => {
+  const invalid = verifyFixture([{ id: 'bad', pattern: 'BAD', severity: ['high'] }]);
+  assert.equal(harvestChecks(invalid.proj, invalid.opts).checks.length, 0);
+  const header = verifyFixture([{ id: 'valid', pattern: 'GOOD' }]);
+  header.entry.raw += '```agentkit-checks broken-header\n[]\n```\n';
+  const v = runVerify(header.proj, header.opts);
+  assert.equal(v.coverage.status, 'partial');
+  assert.ok(v.harvestErrors.some(e => /header/.test(e.why)));
+});
+
+test('verify coverage: unreadable files retain other findings and overlapping roots do not duplicate them', t => {
+  const { proj, opts } = verifyFixture([{ id: 'x', pattern: 'BAD' }], { sourceRoots: ['app', 'app/sub'] });
+  write(proj, 'app/sub/b.ts', 'BAD\n');
+  const original = fs.readFileSync;
+  t.mock.method(fs, 'readFileSync', function (p, ...args) {
+    if (p === path.join(proj, 'app/a.ts')) throw Object.assign(new Error('fixture denied'), { code: 'EACCES' });
+    return original.call(fs, p, ...args);
+  });
+  const v = runVerify(proj, opts);
+  assert.equal(v.findings.length, 1);
+  assert.equal(v.coverage.status, 'partial');
+  assert.equal(v.executionErrors.length, 1);
+  assert.equal(v.executionErrors[0].source, 'app/a.ts');
+});
+
+test('verify coverage: unavailable rule sources, invalid roots and invalid exclusions return diagnostics', () => {
+  const { proj, opts } = verifyFixture([{ id: 'x', pattern: 'BAD' }]);
+  const missing = runVerify(proj, { kitRoot: path.join(proj, 'missing-kit') });
+  assert.equal(missing.coverage.status, 'failed');
+  assert.ok(missing.harvestErrors.some(e => /discovery failed/.test(e.why)));
+  for (const cfg of [{ sourceRoots: 'app' }, { sourceRoots: [] }, { sourceRoots: ['app'], verify: { exclude: '*' } }]) {
+    const v = runVerify(proj, { ...opts, cfg });
+    assert.equal(v.clean, false);
+    assert.ok(v.harvestErrors.length);
+  }
+});
+
+function ruleDiscoveryFixture() {
+  const kit = mkKit();
+  const proj = mkProject({ sourceRoots: ['app'] });
+  const rule = id => '---\ntrigger: always\n---\n```agentkit-checks\n' +
+    JSON.stringify([{ id, pattern: '^BAD$', severity: 'critical' }]) + '\n```\n';
+  for (const [root, prefix] of [[kit, 'foundation'], [proj, 'project']]) {
+    write(root, `.agent/rules/${prefix}-a.md`, rule(`${prefix}-a`));
+    write(root, `.agent/rules/${prefix}-z.md`, rule(`${prefix}-z`));
+  }
+  write(proj, 'app/a.ts', 'BAD\n');
+  return { kit, proj, expectedIds: ['foundation-a', 'foundation-z', 'project-a', 'project-z'] };
+}
+
+for (const origin of ['kit', 'overlay']) {
+  test(`verify rule discovery: ${origin} read failure retains readable critical findings and exact source diagnostics`, t => {
+    const { kit, proj, expectedIds } = ruleDiscoveryFixture();
+    const root = origin === 'kit' ? kit : proj;
+    const denied = write(root, '.agent/rules/foundation-m-unreadable.md', '# Unrelated prose rule\n');
+    const before = runVerify(proj, { kitRoot: kit });
+    assert.deepEqual(before.findings.map(f => f.id).sort(), expectedIds);
+    assert.equal(before.coverage.status, 'complete');
+    const readFile = fs.readFileSync;
+    t.mock.method(fs, 'readFileSync', function (p, ...args) {
+      if (p === denied) throw Object.assign(new Error('fixture rule read denial'), { code: 'EACCES' });
+      return readFile.call(fs, p, ...args);
+    });
+    const result = runVerify(proj, { kitRoot: kit });
+    assert.deepEqual(result.findings, before.findings, 'only the unavailable rule may lose coverage');
+    assert.equal(result.counts.critical, 4);
+    assert.equal(result.coverage.status, 'partial');
+    assert.equal(result.clean, false);
+    assert.equal(result.harvestErrors.length, 1);
+    assert.equal(result.harvestErrors[0].source, denied);
+    assert.match(result.harvestErrors[0].why, /read.*EACCES/);
+    // Ordinary sync/check scanners must keep throwing; partial results are verifier-only.
+    assert.throws(() => origin === 'kit' ? scanKitAgent(kit) : scanProjectOverlay(proj, [], {}), { code: 'EACCES' });
+  });
+}
+
+for (const origin of ['kit', 'overlay']) {
+  for (const wholeTree of [false, true]) {
+    test(`verify rule discovery: ${origin} ${wholeTree ? 'root' : 'subtree'} enumeration failure preserves available rules`, t => {
+      const { kit, proj, expectedIds } = ruleDiscoveryFixture();
+      const root = origin === 'kit' ? kit : proj;
+      const denied = path.join(root, '.agent', ...(wholeTree ? [] : ['rules', 'm-unreadable']));
+      fs.mkdirSync(denied, { recursive: true });
+      const readDir = fs.readdirSync;
+      t.mock.method(fs, 'readdirSync', function (p, ...args) {
+        if (p === denied) throw Object.assign(new Error('fixture enumeration denial'), { code: 'EACCES' });
+        return readDir.call(fs, p, ...args);
+      });
+      const result = runVerify(proj, { kitRoot: kit });
+      const expected = wholeTree ? expectedIds.filter(id => id.startsWith(origin === 'kit' ? 'project-' : 'foundation-')) : expectedIds;
+      assert.deepEqual(result.findings.map(f => f.id).sort(), expected);
+      assert.equal(result.coverage.status, 'partial');
+      assert.equal(result.clean, false);
+      assert.equal(result.harvestErrors.length, 1);
+      assert.equal(result.harvestErrors[0].source, denied);
+      assert.match(result.harvestErrors[0].why, /discovery.*EACCES/);
+      assert.throws(() => origin === 'kit' ? scanKitAgent(kit) : scanProjectOverlay(proj, [], {}), { code: 'EACCES' });
+    });
+  }
+}
+
+test('CLI verify rule discovery: unreadable overlay keeps critical findings with exit 2 including warn-only', t => {
+  const proj = mkProject({ sourceRoots: ['app'] });
+  write(proj, '.agent/rules/project-a.md', '```agentkit-checks\n[{"id":"retained","pattern":"^BAD$","severity":"critical"}]\n```\n');
+  const denied = write(proj, '.agent/rules/project-z.md', '# Unavailable prose rule\n');
+  write(proj, 'app/a.yaml', 'BAD\n');
+  const readFile = fs.readFileSync;
+  const orig = console.log; let output = '';
+  console.log = s => { output += `${s}\n`; };
+  try {
+    assert.equal(main(['verify', proj, '--json']), 1);
+    const before = JSON.parse(output).findings;
+    assert.equal(before.length, 1);
+    t.mock.method(fs, 'readFileSync', function (p, ...args) {
+      if (p === denied) throw Object.assign(new Error('fixture rule read denial'), { code: 'EACCES' });
+      return readFile.call(fs, p, ...args);
+    });
+    for (const flags of [[], ['--warn-only']]) {
+      output = '';
+      assert.equal(main(['verify', proj, '--json', ...flags]), 2);
+      const result = JSON.parse(output);
+      assert.deepEqual(result.findings, before);
+      assert.equal(result.coverage.status, 'partial');
+      assert.equal(result.harvestErrors[0].source, denied);
+    }
+  } finally { console.log = orig; }
+});
+
+test('verify coverage: empty declarations and missing required roots cannot pass; explicit N/A is distinct', () => {
+  const empty = verifyFixture([]);
+  assert.equal(runVerify(empty.proj, empty.opts).clean, false);
+  assert.equal(runVerify(empty.proj, empty.opts).coverage.status, 'failed');
+  const missing = verifyFixture([{ id: 'x', pattern: 'BAD' }], { sourceRoots: ['missing'] });
+  const m = runVerify(missing.proj, missing.opts);
+  assert.equal(m.coverage.status, 'failed');
+  assert.ok(m.executionErrors.some(e => e.source === 'missing'));
+  const na = verifyFixture([{ id: 'x', notApplicable: 'This project has no visual layer.' }]);
+  const v = runVerify(na.proj, na.opts);
+  assert.equal(v.coverage.status, 'not-applicable');
+  assert.equal(v.clean, false, 'N/A is not a checked-clean result');
+  assert.equal(v.coverage.checks[0].reason, 'This project has no visual layer.');
+});
+
+test('verify coverage: check exclusions remain local and global exclusions cannot hide an empty scan', () => {
+  const { proj, opts } = verifyFixture([
+    { id: 'excluded', pattern: 'BAD', exclude: ['*.ts'] },
+    { id: 'covered', pattern: 'BAD', severity: 'low' },
+  ]);
+  const v = runVerify(proj, opts);
+  assert.equal(v.findings.length, 2);
+  assert.ok(v.findings.every(f => f.id === 'covered'));
+  assert.equal(v.coverage.status, 'partial');
+  assert.equal(v.coverage.checks.find(c => c.id === 'excluded').status, 'unassessed');
+  const global = verifyFixture([{ id: 'x', pattern: 'BAD' }], { verify: { exclude: ['*.ts'] } });
+  assert.equal(runVerify(global.proj, global.opts).coverage.status, 'failed');
+});
+
+test('verify coverage: explicit glob non-applicability and uncovered prose rules are visible', () => {
+  const { proj, opts } = verifyFixture([{ id: 'css', pattern: 'BAD', globs: ['*.css'] }, { id: 'ts', pattern: 'GOOD' }]);
+  opts.kitEntries.push({ type: 'rule', tier: 'core', subPath: 'rules/manual.md', srcRel: '.agent/rules/manual.md', raw: '# Manual review\n' });
+  const v = runVerify(proj, opts);
+  assert.equal(v.clean, true, 'clean applies only to declared automated scope');
+  assert.equal(v.coverage.status, 'complete');
+  assert.equal(v.coverage.checks.find(c => c.id === 'css').status, 'not-applicable');
+  assert.deepEqual(v.coverage.unautomatedRules, ['.agent/rules/manual.md']);
+});
+
+test('CLI verify coverage: malformed checks exit 2 even with warn-only and JSON retains findings', () => {
+  const proj = mkProject({ sourceRoots: ['app'] });
+  write(proj, 'app/config.yaml', 'BAD\n');
+  write(proj, '.agent/rules/project-bad-check.md', '```agentkit-checks\n[{"id":"bad","pattern":"["},{"id":"good","pattern":"BAD","severity":"critical"}]\n```\n');
+  const orig = console.log; let out = '';
+  console.log = s => { out += `${s}\n`; };
+  try {
+    assert.equal(main(['verify', proj, '--json', '--warn-only']), 2);
+    const v = JSON.parse(out);
+    assert.equal(v.coverage.status, 'partial');
+    assert.equal(v.counts.critical, 1);
+    assert.equal(v.clean, false);
+    out = '';
+    assert.equal(main(['verify', proj]), 2);
+    assert.match(out, /coverage: partial/);
+    assert.doesNotMatch(out, /no invariant violations/);
+  } finally { console.log = orig; }
+});
+
 test('§5 explicit tier:core wins over an overlay glob (project-onboard not shadowed by project-*)', () => {
   const kit = mkKit();
   write(kit, '.agent/skills/project-onboard/SKILL.md', '---\nname: project-onboard\ndescription: d\ntier: core\n---\n# Onboard\n');
@@ -1434,7 +1832,7 @@ test('init CLI: --kinds parses as a comma-separated list like --stack, and reach
   assert.deepEqual(cfg.tools, [], 'non-app kinds list must still default tools to empty via the CLI path');
 });
 
-test('init clone-rebind resets lock and lists overlay triage', () => {
+test('init clone-rebind preserves lock and lists overlay triage', () => {
   const kit = mkKit();
   const proj = mkProject();
   syncProject(proj, { kitRoot: kit });
@@ -1442,7 +1840,7 @@ test('init clone-rebind resets lock and lists overlay triage', () => {
   const r = initProject(proj, { kitRoot: kit, cloneRebind: true });
   assert.ok(r.ok && r.mode === 'clone-rebind');
   assert.ok(r.triage.some((t) => t.includes('domain-old')));
-  assert.ok(!exists(proj, '.agentkit.lock'), 'stale inherited lock removed');
+  assert.ok(exists(proj, '.agentkit.lock'), 'inherited shipped-state record retained');
 });
 
 // ---------- manifest (decision 28) ----------
@@ -1489,8 +1887,8 @@ test('sync refuses HARD when a vendor dir is a junction into .agent (even with -
   for (const force of [false, true]) {
     const r = syncProject(proj, { kitRoot: kit, force });
     assert.ok(!r.ok, `sync must refuse (force=${force})`);
-    assert.ok(r.reason.includes('reparse'), r.reason);
-    assert.ok(r.reparse.some((x) => x.dir === '.claude/skills'));
+    assert.match(r.reason, /unsafe|reparse|linked/);
+    assert.ok(r.reason.includes('.claude/skills') || r.reparse?.some((x) => x.dir === '.claude/skills'), 'exact unsafe path is reported');
     assert.equal(r.written.length, 0);
   }
   assert.equal(read(proj, '.agent/skills/implement-feature/SKILL.md'), before, 'source must be untouched');
@@ -1879,7 +2277,7 @@ test('CLI general help and subcommand help print usage and exit 0', () => {
     for (const verb of ['--help', '-h', 'help']) {
       out = '';
       assert.equal(main([verb]), 0, `general help ${verb} exits 0`);
-      assert.ok(out.includes('usage: agentkit <init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version>'), `general help ${verb} contains usage`);
+      assert.ok(out.includes('usage: agentkit <setup|recover|init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version>'), `general help ${verb} contains usage`);
     }
 
     // 2. Subcommand help
@@ -1923,23 +2321,29 @@ test('antigravity lints name/folder mismatch', () => {
   write(kit, '.agent/skills/misnamed/SKILL.md', '---\nname: wrong-name\ndescription: x\n---\n# x\n');
   const proj = mkProject({ vendors: ['antigravity'] });
   const plan = planSync(proj, { kitRoot: kit });
-  assert.ok(plan.validations.some((v) => v.level === 'error' && v.msg.includes("'wrong-name' != folder 'misnamed'")));
+  assert.ok(plan.validations.some((v) => v.level === 'error' && v.msg.includes('name must match its folder') && v.msg.includes('misnamed')));
 });
 
-test('R13 changelog-roll: assembles changelog.d fragments into one dated section, removes them', () => {
+test('R13 changelog-roll: assembles titled fragments and retains source proof', () => {
   const proj = mkProject();
   write(proj, 'CHANGELOG.md', '# Changelog\n\n## [2026-07-01] — v0.1.0\n\nold entry\n');
   write(proj, 'changelog.d/ticket-a.md', '- lane A shipped X');
   write(proj, 'changelog.d/ticket-b.md', '- lane B shipped Y');
-  const r = changelogRoll(proj, { version: 'v0.6.0', date: '2026-07-05' });
+  const r = changelogRoll(proj, { version: 'v0.6.0', date: '2026-07-05', title: 'Deliver the two scoped changes' });
   assert.equal(r.rolled, 2);
   const cl = read(proj, 'CHANGELOG.md');
   assert.ok(cl.includes('## [2026-07-05] — v0.6.0'), 'dated section added');
   assert.ok(cl.includes('lane A shipped X') && cl.includes('lane B shipped Y'), 'both fragments assembled');
   assert.ok(cl.indexOf('2026-07-05') < cl.indexOf('2026-07-01'), 'newest section on top');
-  assert.ok(!exists(proj, 'changelog.d/ticket-a.md') && !exists(proj, 'changelog.d/ticket-b.md'), 'fragments removed');
-  // idempotent: nothing left to roll
-  assert.equal(changelogRoll(proj, {}).rolled, 0);
+  assert.ok(exists(proj, 'changelog.d/ticket-a.md') && exists(proj, 'changelog.d/ticket-b.md'), 'source fragments retained until coordinator verification');
+  // Untitled repeated assembly is a refusal, not a successful idempotent roll; fragments remain.
+  const untitled = changelogRoll(proj, {});
+  assert.equal(untitled.ok, false);
+  assert.equal(untitled.rolled, 0);
+  assert.match(untitled.reason, /title/);
+  assert.equal(read(proj, 'CHANGELOG.md'), cl);
+  assert.equal(read(proj, 'changelog.d/ticket-a.md'), '- lane A shipped X');
+  assert.equal(read(proj, 'changelog.d/ticket-b.md'), '- lane B shipped Y');
 });
 
 // ---------- taxonomy lint (K7) ----------
@@ -1971,7 +2375,7 @@ test('taxonomyLint: acronym tails, READMEs, and docs/research evidence are NOT f
   assert.ok(!r.findings.some((f) => f.kind === 'missing-prefix'), 'no missing-prefix on exempt/acronym/research');
   assert.ok(!r.findings.some((f) => f.kind === 'title-case-tail'), 'acronym tail not flagged as Title-Case');
   assert.ok(!r.findings.some((f) => f.kind === 'suffix-dialect'), 'suffix-shaped corpus name under research/ not flagged');
-  assert.ok(r.findings.some((f) => f.kind === 'space-in-name'), 'space still flagged even under research/');
+  assert.ok(!r.findings.some((f) => f.kind === 'space-in-name'), 'evidence capture permits original filenames');
 });
 
 // Regression: the evidence store was exempted by two hand-copied `docs/research/` regexes, so
@@ -1989,7 +2393,7 @@ test('taxonomyLint: the evidence store is exempt under raw-research/ as well as 
     for (const kind of ['missing-prefix', 'suffix-dialect', 'dead-index-entry']) {
       assert.ok(!r.findings.some((f) => f.kind === kind), `${kind} must not fire under docs/${store}/`);
     }
-    assert.ok(r.findings.some((f) => f.kind === 'space-in-name'), `space still flagged under docs/${store}/`);
+    assert.ok(!r.findings.some((f) => f.kind === 'space-in-name'), `evidence filenames are exempt under docs/${store}/`);
   }
 });
 
@@ -2294,7 +2698,7 @@ test('hygiene: merged-but-open flags an open ticket citing a SHA in main branch'
   // Ticket with open status citing the SHA in main
   write(proj, 'docs/backlog/TICKET-test-staff.md', `# TICKET-test\n\n**Status**: ready\n\nMerged via \`${sha}\`.\n`);
   const r = checkHygiene(proj);
-  assert.ok(r.findings.some((f) => f.kind === 'merged-but-open'), JSON.stringify(r));
+  assert.ok(r.findings.some((f) => f.kind === 'integrated-commit-open-acceptance'), JSON.stringify(r));
 });
 
 test('hygiene: merged-but-open passes when ticket is already done', () => {
@@ -2307,7 +2711,7 @@ test('hygiene: merged-but-open passes when ticket is already done', () => {
   // Ticket is done — should NOT flag
   write(proj, 'docs/backlog/TICKET-test-staff.md', `# TICKET-test\n\n**Status**: merged\n\nMerged via \`${sha}\`.\n`);
   const r = checkHygiene(proj);
-  assert.ok(!r.findings.some((f) => f.kind === 'merged-but-open'), JSON.stringify(r));
+  assert.ok(!r.findings.some((f) => f.kind === 'integrated-commit-open-acceptance'), JSON.stringify(r));
 });
 
 test('hygiene: the **Status:** dialect (colon inside the bold) parses like **Status**:', () => {
@@ -2322,7 +2726,7 @@ test('hygiene: the **Status:** dialect (colon inside the bold) parses like **Sta
   write(proj, 'docs/backlog/TICKET-dialect-staff.md', `# TICKET-dialect\n\n**Status:** ready\n\nMerged via \`${sha}\`.\n`);
   write(proj, 'docs/working/TICKET-dialect-gate-senior.md', '# gate\n\n**Status:** needs-human-verify — awaiting review\n');
   const r = checkHygiene(proj);
-  assert.ok(r.findings.some((f) => f.kind === 'merged-but-open' && f.file === 'docs/backlog/TICKET-dialect-staff.md'),
+  assert.ok(r.findings.some((f) => f.kind === 'integrated-commit-open-acceptance' && f.file === 'docs/backlog/TICKET-dialect-staff.md'),
     `an open ticket in the **Status:** dialect must still be checked: ${JSON.stringify(r.findings)}`);
   assert.ok(r.humanGates.some((g) => g.file === 'docs/working/TICKET-dialect-gate-senior.md'),
     'a human gate in the **Status:** dialect must still reach the generated view');
@@ -2347,7 +2751,7 @@ test('TICKET-30/C3: frontmatter status is read, and landed SHAs cannot sit in do
   assert.equal(inBacklog[0].file, 'docs/backlog/TICKET-shipped-staff.md');
   assert.ok(!r.findings.some((f) => f.kind === 'landed-not-ancestor'), 'a real ancestor SHA is accepted');
   // frontmatter status was read: `merged` is not open, so merged-but-open must not fire
-  assert.ok(!r.findings.some((f) => f.kind === 'merged-but-open'), 'frontmatter status:merged suppresses merged-but-open');
+  assert.ok(!r.findings.some((f) => f.kind === 'integrated-commit-open-acceptance'), 'frontmatter status:merged suppresses merged-but-open');
 });
 
 test('TICKET-30/C3: a landed: SHA that is not an ancestor — or not in this repo — is flagged', () => {
@@ -2372,7 +2776,7 @@ test('D6: a cross-repo SHA cited in ticket PROSE is silent — not ours, so not 
   write(proj, 'docs/backlog/TICKET-flowback-staff.md', '# flowback\n\n**Status**: ready\n\n**Provenance**: source ticket at proj-resume `41b10d96`.\n');
   const r = checkHygiene(proj);
   assert.ok(!r.errors.some((e) => e.kind === 'could-not-determine'), `foreign SHA must not raise an error: ${JSON.stringify(r.errors)}`);
-  assert.ok(!r.findings.some((f) => f.kind === 'merged-but-open'), 'and it is not an ancestor either');
+  assert.ok(!r.findings.some((f) => f.kind === 'integrated-commit-open-acceptance'), 'and it is not an ancestor either');
 });
 
 test('TICKET-30/C6: the human-gate view is generated from the filesystem, never from an index', () => {
@@ -2454,7 +2858,7 @@ test('hygiene: could-not-determine when ref is unresolvable (fail-closed)', () =
   write(proj, 'docs/backlog/TICKET-open-staff.md', `# TICKET-open\n\n**Status**: ready\n\nSee commit \`${sha}\`.\n`);
   const r = checkHygiene(proj);
   assert.ok(r.errors.some((e) => e.kind === 'could-not-determine'), JSON.stringify(r));
-  assert.ok(!r.findings.some((f) => f.kind === 'merged-but-open'), 'no false positive when could-not-determine');
+  assert.ok(!r.findings.some((f) => f.kind === 'integrated-commit-open-acceptance'), 'no false positive when could-not-determine');
 });
 
 // ---------- TICKET-18: dirty-aware sync guard + kit-moved-ahead nudge ----------
@@ -2651,6 +3055,195 @@ test('check CLI: printed nudge appends the defer-while-dirty caution', () => {
 
 // ---------- Wave 2: orchestrator lock (A4) ----------
 
+test('lock ownership: missing, foreign and stale acquisition IDs cannot release a lock', () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-owner-'));
+  orchestratorLock(proj, 'acquire', { id: 'first' });
+  const original = read(proj, '.orchestrator.lock');
+  for (const opts of [{}, { id: 'foreign' }, { id: '' }]) {
+    assert.equal(orchestratorLock(proj, 'release', opts).ok, false);
+    assert.equal(read(proj, '.orchestrator.lock'), original);
+  }
+  assert.equal(orchestratorLock(proj, 'release', { id: 'first' }).released, true);
+  orchestratorLock(proj, 'acquire', { id: 'second' });
+  assert.equal(orchestratorLock(proj, 'release', { id: 'first' }).ok, false);
+  assert.equal(orchestratorLock(proj, 'status').id, 'second');
+});
+
+test('lock ownership: generated ID survives separate CLI calls and refusal output is truthful', () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-cli-owner-'));
+  const acquired = JSON.parse(execFileSync(process.execPath, [path.join(HERE, 'agentkit.mjs'), 'lock', 'acquire', proj, '--json'], { encoding: 'utf8' }));
+  assert.ok(typeof acquired.id === 'string' && acquired.id.length > 0);
+  const orig = console.log; let out = '';
+  console.log = s => { out += `${s}\n`; };
+  try {
+    assert.equal(main(['lock', 'release', proj, '--id', 'foreign']), 1);
+    assert.match(out, /REFUSED/);
+    assert.doesNotMatch(out, /no lock to release/);
+  } finally { console.log = orig; }
+  const released = JSON.parse(execFileSync(process.execPath, [path.join(HERE, 'agentkit.mjs'), 'lock', 'release', proj, '--id', acquired.id, '--json'], { encoding: 'utf8' }));
+  assert.equal(released.released, true);
+  assert.equal(orchestratorLock(proj, 'release').ok, true);
+});
+
+test('lock ownership: legacy, malformed, ambiguous and non-file records fail closed', () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-legacy-'));
+  for (const raw of ['legacy/123 @ 2000-01-01\n', '', '{', '{"version":1,"id":"a","id":"b"}\n']) {
+    write(proj, '.orchestrator.lock', raw);
+    assert.equal(orchestratorLock(proj, 'release', { id: 'b' }).ok, false, raw);
+    assert.equal(read(proj, '.orchestrator.lock'), raw);
+    assert.equal(orchestratorLock(proj, 'acquire', { id: 'new' }).ok, false);
+  }
+  const dirProj = fs.mkdtempSync(path.join(TMP, 'lock-directory-'));
+  fs.mkdirSync(path.join(dirProj, '.orchestrator.lock'));
+  assert.equal(orchestratorLock(dirProj, 'release', { id: 'b' }).ok, false);
+  assert.ok(fs.statSync(path.join(dirProj, '.orchestrator.lock')).isDirectory());
+});
+
+test('lock ownership: mutation guard fences concurrent releases and acquisition without deleting replacements', t => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-race-'));
+  orchestratorLock(proj, 'acquire', { id: 'first' });
+  const unlink = fs.unlinkSync;
+  let intercepted = false;
+  t.mock.method(fs, 'unlinkSync', function (p, ...args) {
+    if (p === path.join(proj, '.orchestrator.lock') && !intercepted) {
+      intercepted = true;
+      assert.equal(orchestratorLock(proj, 'release', { id: 'first' }).reason, 'busy');
+      assert.equal(orchestratorLock(proj, 'acquire', { id: 'replacement' }).reason, 'busy');
+    }
+    return unlink.call(fs, p, ...args);
+  });
+  assert.equal(orchestratorLock(proj, 'release', { id: 'first' }).ok, true);
+  assert.equal(intercepted, true, 'exercise the final unlink interleaving');
+  assert.equal(orchestratorLock(proj, 'acquire', { id: 'replacement' }).ok, true);
+  assert.equal(orchestratorLock(proj, 'release', { id: 'first' }).ok, false);
+});
+
+test('lock ownership: existing operation guard is preserved even when the lock is absent', () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-guard-'));
+  write(proj, '.orchestrator.lock.guard', 'unknown interrupted operation\n');
+  for (const action of ['acquire', 'release']) {
+    const r = orchestratorLock(proj, action, { id: 'next' });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'busy');
+  }
+  assert.equal(read(proj, '.orchestrator.lock.guard'), 'unknown interrupted operation\n');
+});
+
+test('lock ownership: a record replaced during inspection is preserved', t => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-replaced-'));
+  const other = fs.mkdtempSync(path.join(TMP, 'lock-replacement-'));
+  orchestratorLock(proj, 'acquire', { id: 'first' });
+  orchestratorLock(other, 'acquire', { id: 'second' });
+  const replacement = read(other, '.orchestrator.lock');
+  const original = fs.readFileSync;
+  let replaced = false;
+  t.mock.method(fs, 'readFileSync', function (p, ...args) {
+    const raw = original.call(fs, p, ...args);
+    if (p === path.join(proj, '.orchestrator.lock') && !replaced) {
+      replaced = true;
+      write(proj, '.orchestrator.lock', replacement);
+    }
+    return raw;
+  });
+  assert.equal(orchestratorLock(proj, 'release', { id: 'first' }).reason, 'lock-changed');
+  assert.equal(read(proj, '.orchestrator.lock'), replacement);
+});
+
+test('lock ownership: a partial acquisition write closes its descriptor and preserves ambiguous state', t => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-write-failure-'));
+  const original = fs.writeFileSync;
+  let lockFd;
+  t.mock.method(fs, 'writeFileSync', function (fd, text, ...args) {
+    if (typeof fd === 'number' && text.startsWith('{"version":')) {
+      lockFd = fd;
+      fs.writeSync(fd, '{');
+      throw Object.assign(new Error('fixture full disk'), { code: 'ENOSPC' });
+    }
+    return original.call(fs, fd, text, ...args);
+  });
+  const r = orchestratorLock(proj, 'acquire', { id: 'partial' });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'io-error');
+  assert.throws(() => fs.fstatSync(lockFd), { code: 'EBADF' });
+  assert.equal(read(proj, '.orchestrator.lock'), '{');
+  assert.equal(orchestratorLock(proj, 'release', { id: 'partial' }).ok, false);
+  assert.equal(exists(proj, '.orchestrator.lock.guard'), false);
+});
+
+test('lock ownership: guard cleanup failure returns the completed operation and recoverable ID', t => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-guard-failure-'));
+  const original = fs.unlinkSync;
+  t.mock.method(fs, 'unlinkSync', function (p, ...args) {
+    if (p === path.join(proj, '.orchestrator.lock.guard')) throw Object.assign(new Error('fixture denied'), { code: 'EACCES' });
+    return original.call(fs, p, ...args);
+  });
+  const r = orchestratorLock(proj, 'acquire');
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'guard-cleanup-failed');
+  assert.equal(r.operationResult.ok, true);
+  assert.equal(orchestratorLock(proj, 'status').id, r.operationResult.id);
+  assert.equal(exists(proj, '.orchestrator.lock.guard'), true);
+});
+
+function lockCli(proj, action, id) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [path.join(HERE, 'agentkit.mjs'), 'lock', action, proj, '--id', id, '--json'], { windowsHide: true });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', data => { stdout += data; });
+    child.stderr.on('data', data => { stderr += data; });
+    child.on('error', reject);
+    child.on('close', code => {
+      try { resolve({ code, ...JSON.parse(stdout) }); } catch { reject(new Error(stdout + stderr)); }
+    });
+  });
+}
+
+test('lock ownership: concurrent CLI callers admit one acquisition and stale releases preserve its successor', async () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-concurrent-'));
+  const acquired = await Promise.all(Array.from({ length: 8 }, (_, i) => lockCli(proj, 'acquire', `run-${i}`)));
+  const winners = acquired.filter(r => r.ok);
+  assert.equal(winners.length, 1);
+  assert.ok(winners[0].id);
+  const first = winners[0].id;
+  const released = await Promise.all(Array.from({ length: 8 }, () => lockCli(proj, 'release', first)));
+  assert.equal(released.filter(r => r.released).length, 1);
+  assert.equal(orchestratorLock(proj, 'acquire', { id: 'successor' }).ok, true);
+  const stale = await Promise.all(Array.from({ length: 8 }, () => lockCli(proj, 'release', first)));
+  assert.ok(stale.every(r => !r.ok));
+  assert.equal(orchestratorLock(proj, 'status').id, 'successor');
+});
+
+test('lock ownership: mixed concurrent acquire and release calls cannot unlink a newly admitted owner', async () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-mixed-'));
+  orchestratorLock(proj, 'acquire', { id: 'old' });
+  const results = await Promise.all(Array.from({ length: 16 }, (_, i) =>
+    i % 2 ? lockCli(proj, 'acquire', `new-${i}`) : lockCli(proj, 'release', 'old')));
+  const admitted = results.filter(r => r.action === 'acquire' && r.ok);
+  assert.ok(admitted.length <= 1);
+  if (admitted.length) {
+    assert.equal(orchestratorLock(proj, 'status').id, admitted[0].id);
+    assert.equal(orchestratorLock(proj, 'release', { id: 'old' }).ok, false);
+  } else {
+    assert.equal(orchestratorLock(proj, 'release', { id: 'old' }).ok, true);
+    assert.equal(orchestratorLock(proj, 'acquire', { id: 'new-after-contention' }).ok, true);
+  }
+});
+
+test('lock ownership: hardlinked records and duplicate-key records cannot be released', () => {
+  const proj = fs.mkdtempSync(path.join(TMP, 'lock-ambiguous-'));
+  orchestratorLock(proj, 'acquire', { id: 'owner' });
+  const raw = read(proj, '.orchestrator.lock');
+  const duplicate = raw.replace('"id":"owner"', '"id":"foreign","id":"owner"');
+  write(proj, '.orchestrator.lock', duplicate);
+  assert.equal(orchestratorLock(proj, 'release', { id: 'owner' }).ok, false);
+  assert.equal(read(proj, '.orchestrator.lock'), duplicate);
+  write(proj, '.orchestrator.lock', raw);
+  fs.linkSync(path.join(proj, '.orchestrator.lock'), path.join(proj, 'retained-record'));
+  assert.equal(orchestratorLock(proj, 'release', { id: 'owner' }).ok, false);
+  assert.equal(read(proj, 'retained-record'), raw);
+  assert.equal(read(proj, '.orchestrator.lock'), raw);
+});
+
 test('lock: acquire writes, second acquire refuses (fail-closed), release removes, release is idempotent', () => {
   const proj = fs.mkdtempSync(path.join(TMP, 'lock-'));
   const a = orchestratorLock(proj, 'acquire', { id: 'orch-1' });
@@ -2667,7 +3260,7 @@ test('lock: acquire writes, second acquire refuses (fail-closed), release remove
   const s = orchestratorLock(proj, 'status');
   assert.equal(s.held, true);
 
-  const rel1 = orchestratorLock(proj, 'release');
+  const rel1 = orchestratorLock(proj, 'release', { id: 'orch-1' });
   assert.equal(rel1.released, true);
   assert.ok(!exists(proj, '.orchestrator.lock'), 'lock file removed on release');
 
@@ -2684,9 +3277,9 @@ test('lock CLI: acquire returns 0, held acquire returns 1', () => {
   const proj = fs.mkdtempSync(path.join(TMP, 'lockcli-'));
   const orig = console.log; console.log = () => {};
   try {
-    assert.equal(main(['lock', 'acquire', proj]), 0, 'first acquire exits 0');
+    assert.equal(main(['lock', 'acquire', proj, '--id', 'cli-acquisition']), 0, 'first acquire exits 0');
     assert.equal(main(['lock', 'acquire', proj]), 1, 'held acquire exits 1');
-    assert.equal(main(['lock', 'release', proj]), 0);
+    assert.equal(main(['lock', 'release', proj, '--id', 'cli-acquisition']), 0);
   } finally { console.log = orig; }
 });
 
@@ -2762,21 +3355,21 @@ test('scaffoldGateScripts: no package.json → no-op, no crash', () => {
 test('claude-permissions merge: unions baseline, preserves user entries, prunes stale kit entries', () => {
   // existing: one user entry + one prior-kit entry that is NO LONGER in the baseline (stale)
   const existing = JSON.stringify({ permissions: { allow: ['Bash(git*)', 'Bash(npx oldtool *)'] }, custom: 1 });
-  const baseline = ['Bash(npm run gate*)', 'Bash(node * lock *)'];
-  const lockKeys = ['SessionStart', 'Bash(npx oldtool *)']; // hooks event + our prior perm entry
+  const baseline = ['Bash(npm run gate *)', 'Bash(node * lock *)'];
+  const lockKeys = [{ kind: 'claude-permissions', key: 'Bash(npx oldtool *)', value: 'Bash(npx oldtool *)', ownership: 'introduced' }]; // proven prior introduction
   const { content, managedKeys } = mergeSettings({ merge: 'claude-permissions', data: baseline }, existing, lockKeys);
   const j = JSON.parse(content);
   assert.ok(j.permissions.allow.includes('Bash(git*)'), 'user entry preserved');
   assert.ok(!j.permissions.allow.includes('Bash(npx oldtool *)'), 'stale kit entry pruned');
-  assert.ok(j.permissions.allow.includes('Bash(npm run gate*)') && j.permissions.allow.includes('Bash(node * lock *)'), 'baseline added');
+  assert.ok(j.permissions.allow.includes('Bash(npm run gate *)') && j.permissions.allow.includes('Bash(node * lock *)'), 'baseline added');
   assert.equal(j.custom, 1, 'unrelated keys untouched');
-  assert.deepEqual(managedKeys, baseline, 'managedKeys are the baseline entries');
+  assert.deepEqual(managedKeys, baseline.map(value => ({ kind: 'claude-permissions', key: value, value, ownership: 'introduced' })), 'exact typed acquisition records');
 });
 
 test('claude-permissions merge: idempotent (second merge is a no-op on content)', () => {
-  const baseline = ['Bash(npm run gate*)', 'Bash(comm *)'];
+  const baseline = ['Bash(npm run gate *)', 'Bash(comm *)'];
   const once = mergeSettings({ merge: 'claude-permissions', data: baseline }, JSON.stringify({ permissions: { allow: ['Bash(git*)'] } }), []);
-  const twice = mergeSettings({ merge: 'claude-permissions', data: baseline }, once.content, baseline);
+  const twice = mergeSettings({ merge: 'claude-permissions', data: baseline }, once.content, once.managedKeys);
   assert.equal(twice.content, once.content, 'stable across re-merge');
 });
 
@@ -2788,24 +3381,24 @@ test('claude-hooks and claude-permissions coexist on settings.json without clobb
   const s = JSON.parse(read(proj, '.claude/settings.json'));
   assert.ok(s.hooks.SessionStart, 'hooks written');
   assert.ok(s.permissions.allow.includes('Bash(git*)'), 'user perm preserved');
-  assert.ok(s.permissions.allow.includes('Bash(npm run gate*)'), 'baseline perm added');
+  assert.ok(s.permissions.allow.includes('Bash(npm run gate *)'), 'baseline perm added');
   // idempotent: re-sync produces no duplicates
   syncProject(proj, { kitRoot: kit });
   const s2 = JSON.parse(read(proj, '.claude/settings.json'));
-  assert.equal(s2.permissions.allow.filter((e) => e === 'Bash(npm run gate*)').length, 1, 'no duplicate baseline entry');
+  assert.equal(s2.permissions.allow.filter((e) => e === 'Bash(npm run gate *)').length, 1, 'no duplicate baseline entry');
   assert.equal(s2.hooks.SessionStart.flatMap((g) => g.hooks).filter((h) => h.command.includes('agentkit')).length, 1, 'no duplicate hook');
 });
 
 test('claudePermissionsBaseline: opt-out, worktree wildcards, extras, exclusions', () => {
   // default: base entries present, NO worktree wildcards (no worktreeRoot), excludes push/broad-rm
   const def = claudePermissionsBaseline({ projectRoot: '/x/proj-resume', config: {} });
-  assert.ok(def.includes('Bash(npm run gate*)'));
+  assert.ok(def.includes('Bash(npm run gate *)'));
   assert.ok(!def.some((e) => e.includes('-wt/')), 'no worktree wildcards without worktreeRoot');
   assert.ok(!def.some((e) => /git push|Bash\(rm \*\)|Stop-Process|powershell -NoProfile/.test(e)), 'excludes outward/arbitrary grants');
   assert.ok(!def.includes('Bash(node *)'), 'no blanket node grant');
   // worktreeRoot → repo-scoped wildcard derived from projectRoot basename
   const wt = claudePermissionsBaseline({ projectRoot: '/x/proj-resume', config: { permissions: { worktreeRoot: 'C:/tmp' } } });
-  assert.ok(wt.includes('Bash(npm --prefix C:/tmp/proj-resume-wt/*)'), JSON.stringify(wt));
+  assert.ok(!wt.some(e => e.includes('npm --prefix')), 'worktreeRoot alone does not grant a broad runner');
   // extra merged; enabled:false → empty
   const ex = claudePermissionsBaseline({ projectRoot: '/x/p', config: { permissions: { extra: ['Bash(mytool *)'] } } });
   assert.ok(ex.includes('Bash(mytool *)'));
@@ -2839,7 +3432,7 @@ test('scanSettingsHygiene: flags fossil, over-broad grant, defaultMode cascade, 
   write(home, '.claude/settings.json', JSON.stringify({ permissions: { allow: [
     'Bash(cd x && npm run build > /tmp/log 2>&1; echo $?)', // compound fossil
     'Bash(*)',                                              // over-broad
-    'Bash(npm run gate*)',                                  // clean → not flagged
+    'Bash(npm run gate *)',                                  // clean → not flagged
   ] } }));
   // project declares bypass; local shadows it with auto (the BDW cascade trap) + a stale trustedDir
   write(proj, '.claude/settings.json', JSON.stringify({ defaultMode: 'bypassPermissions', trustedDirectories: ['/other/proj-portfolio'] }));
@@ -2852,14 +3445,14 @@ test('scanSettingsHygiene: flags fossil, over-broad grant, defaultMode cascade, 
   assert.ok(kinds.includes('defaultmode-cascade'), 'cascade flagged');
   assert.ok(kinds.includes('stale-trusteddir'), 'stale trustedDirectories flagged');
   // the clean baseline entry must NOT be flagged
-  assert.ok(!r.findings.some((f) => f.detail.includes('Bash(npm run gate*)')), 'clean entry not flagged');
+  assert.ok(!r.findings.some((f) => f.detail.includes('Bash(npm run gate *)')), 'clean entry not flagged');
 });
 
 test('scanSettingsHygiene: kit-style clean settings yield zero findings', () => {
   const proj = fs.mkdtempSync(path.join(TMP, 'hyg-clean-'));
   const home = fs.mkdtempSync(path.join(TMP, 'home-clean-'));
   write(proj, '.claude/settings.json', JSON.stringify({ permissions: { allow: [
-    'Bash(npm run gate*)', 'Bash(node * lock *)', 'Bash(comm *)', 'Bash(rm -f .orchestrator.lock)',
+    'Bash(npm run gate *)', 'Bash(node * lock *)', 'Bash(comm *)', 'Bash(rm -f .orchestrator.lock)',
   ] } }));
   const r = scanSettingsHygiene(proj, { homeDir: home });
   assert.deepEqual(r.findings, [], JSON.stringify(r.findings));
@@ -2875,12 +3468,12 @@ test('scanSettingsHygiene: kit-style clean settings yield zero findings', () => 
 // of the 9 app repos carry no `kinds` key at all.
 test('claudePermissionsBaseline: npm/npx block is gated on the app axis — absent kinds still yields the pre-gate baseline', () => {
   const npmish = (list) => list.filter((e) => /npm |npx /.test(e));
-  const neutral = ['Bash(node * lock *)', 'Bash(comm *)', 'Bash(git fetch *)', 'Bash(rm -f .orchestrator.lock)'];
+  const neutral = ['Bash(comm *)', 'Bash(git fetch *)'];
 
   // 1. absent `kinds` — the shape every pre-kinds app repo's config has. MUST be unchanged.
   const implicit = claudePermissionsBaseline({ projectRoot: '/x/proj-resume', config: {} });
   assert.equal(npmish(implicit).length, 10, 'absent kinds defaults to app → all 10 npm/npx entries: ' + JSON.stringify(npmish(implicit)));
-  assert.ok(implicit.includes('Bash(npm run gate*)') && implicit.includes('Bash(npx vitest run *)'));
+  assert.ok(implicit.includes('Bash(npm run gate *)') && implicit.includes('Bash(npx vitest run *)'));
 
   // 2. explicit app — identical selection to the implicit default.
   const app = claudePermissionsBaseline({ projectRoot: '/x/p', config: { kinds: ['app'] } });
@@ -2894,11 +3487,11 @@ test('claudePermissionsBaseline: npm/npx block is gated on the app axis — abse
   // 4. a non-app repo that DOES declare a JS pack still gets the block — gated on the same axes
   //    selectEntries resolves `tech:*` with (cfg.stack.includes(pack)), not on kind alone.
   const infraJs = claudePermissionsBaseline({ projectRoot: '/x/p', config: { kinds: ['agent-infra'], stack: ['react'] } });
-  assert.ok(infraJs.includes('Bash(npm run gate*)'), 'a declared JS pack re-enables the npm block regardless of kind');
+  assert.ok(infraJs.includes('Bash(npm run gate *)'), 'a declared JS pack re-enables the npm block regardless of kind');
 });
 
 test('claudePermissionsBaseline: python/container block is axis-gated too — never sprayed at repos that did not declare it', () => {
-  const py = ['Bash(uv run *)', 'Bash(ruff *)', 'Bash(pytest *)'];
+  const py = ['Bash(uv run pytest *)', 'Bash(ruff check *)', 'Bash(pytest *)'];
 
   // tech:python — mirrors selectEntries' `cfg.stack.includes(e.tier.slice(5))`
   const python = claudePermissionsBaseline({ projectRoot: '/x/p', config: { kinds: ['agent-infra'], stack: ['python'] } });
@@ -2907,7 +3500,8 @@ test('claudePermissionsBaseline: python/container block is axis-gated too — ne
 
   // kind:service — the container half
   const svc = claudePermissionsBaseline({ projectRoot: '/x/p', config: { kinds: ['service'] } });
-  assert.ok(svc.includes('Bash(docker compose *)'), 'kind:service grants docker compose: ' + JSON.stringify(svc));
+  assert.ok(svc.includes('Bash(docker compose ps *)'), 'kind:service grants compose status: ' + JSON.stringify(svc));
+  assert.ok(!svc.includes('Bash(docker compose *)'), 'broad compose remains opt-in');
 
   // symmetry guard: an app repo that never declared python/docker must NOT receive them — the
   // inverse of the original defect, and the reason the block is opt-in rather than "non-app implies python".
@@ -2918,8 +3512,8 @@ test('claudePermissionsBaseline: python/container block is axis-gated too — ne
 test('claudePermissionsBaseline: the npm-flavoured worktree wildcards follow the same JS gate', () => {
   const wt = { permissions: { worktreeRoot: 'C:/tmp' } };
   const app = claudePermissionsBaseline({ projectRoot: '/x/proj-resume', config: wt });
-  assert.ok(app.some((e) => e.includes('npm --prefix')), 'app repo keeps the worktree npm wildcard');
-  assert.ok(app.includes('Bash(*node_modules/.bin/vitest run *)'));
+  assert.ok(!app.some((e) => e.includes('npm --prefix')), 'worktree location grants no runner permission');
+  assert.ok(!app.includes('Bash(*node_modules/.bin/vitest run *)'));
 
   const infra = claudePermissionsBaseline({ projectRoot: '/x/p', config: { ...wt, kinds: ['agent-infra'] } });
   assert.ok(!infra.some((e) => e.includes('npm --prefix') || e.includes('node_modules/.bin')), 'node_modules/npm worktree grants are JS-only: ' + JSON.stringify(infra));
@@ -2985,4 +3579,351 @@ test('init never overwrites an authored AGENTS.md or CLAUDE.md', () => {
   assert.ok(r.ok && !r.rootContract.agents, 'existing AGENTS.md must not be re-scaffolded: ' + JSON.stringify(r.rootContract));
   assert.equal(read(proj, 'AGENTS.md'), '# authored constitution\nno markers here\n', 'authored AGENTS.md byte-identical');
   assert.equal(read(proj, 'CLAUDE.md'), '# hand-written\n', 'authored CLAUDE.md byte-identical');
+});
+
+// Ticket 17 additions use native files and public APIs; retained fixtures are scoped to TMP.
+test('platform core: legacy settings remain unresolved until exact native removal proves a new acquisition', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: ['claude'], permissions: { extra: ['Bash(fixture-check *)'] } });
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const lock = JSON.parse(read(proj, '.agentkit.lock'));
+  delete lock.schema;
+  lock.settings = Object.fromEntries(Object.entries(lock.settings).map(([file, records]) => [file, [...new Set(records.map(r => r.key))]]));
+  write(proj, '.agentkit.lock', JSON.stringify(lock));
+  const migrated = syncProject(proj, { kitRoot: kit });
+  assert.equal(migrated.ok, true, JSON.stringify(migrated));
+  assert.ok(migrated.unresolvedSettings.some(r => r.file === '.claude/settings.json' && r.value === 'Bash(fixture-check *)'));
+  assert.ok(checkProject(proj, { kitRoot: kit }).results.some(r => r.verdict === 'OWNERSHIP-UNRESOLVED'));
+  const native = JSON.parse(read(proj, '.claude/settings.json'));
+  native.permissions.allow = native.permissions.allow.filter(x => x !== 'Bash(fixture-check *)');
+  write(proj, '.claude/settings.json', JSON.stringify(native));
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  let records = loadLock(proj).settings['.claude/settings.json'];
+  assert.equal(records.find(r => r.value === 'Bash(fixture-check *)').ownership, 'introduced');
+  const cfg = loadConfig(proj); cfg.permissions.enabled = false; cfg.vendors = []; cfg.tools = [];
+  write(proj, '.agentkit.json', JSON.stringify(cfg));
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  assert.ok(!JSON.parse(read(proj, '.claude/settings.json')).permissions.allow.includes('Bash(fixture-check *)'));
+  // Remove only the explicitly reported remaining native contributions, keeping unrelated policy.
+  write(proj, '.claude/settings.json', JSON.stringify({ custom: 'keep', permissions: { deny: ['Bash(never *)'] } }));
+  write(proj, '.mcp.json', JSON.stringify({ mcpServers: { mine: { command: 'mine' } } }));
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  records = loadLock(proj).settings;
+  assert.equal(records['.claude/settings.json'], undefined);
+  assert.equal(records['.mcp.json'], undefined);
+  assert.equal(JSON.parse(read(proj, '.claude/settings.json')).custom, 'keep');
+});
+
+test('platform core: malformed blocks, unknown lock schemas and leaf links refuse without writes', () => {
+  for (const malformed of ['# >>> AGENTKIT MANAGED >>> (do not edit inside this block; run \'agentkit sync\')\nuser = true\n',
+    '# <<< AGENTKIT MANAGED <<<\n']) {
+    const kit = mkKit(), proj = mkProject();
+    write(proj, '.codex/config.toml', malformed);
+    const result = syncProject(proj, { kitRoot: kit, force: true });
+    assert.equal(result.ok, false);
+    assert.equal(read(proj, '.codex/config.toml'), malformed);
+    assert.ok(!exists(proj, '.agentkit.lock'));
+    assert.ok(!exists(proj, '.agent'));
+  }
+  const kit = mkKit(), proj = mkProject();
+  write(proj, '.agentkit.lock', JSON.stringify({ schema: 999, files: {}, settings: {}, edits: {} }));
+  assert.equal(syncProject(proj, { kitRoot: kit, force: true }).ok, false);
+  assert.ok(!exists(proj, '.agent'));
+  const leafProject = mkProject();
+  const outside = write(kit, 'outside.txt', 'outside sentinel');
+  fs.mkdirSync(path.join(leafProject, '.mcp.json').replace(/\.mcp\.json$/, ''), { recursive: true });
+  // Hardlinks work without Windows symlink privilege and are equally unsafe leaf aliases.
+  fs.linkSync(outside, path.join(leafProject, '.mcp.json'));
+  assert.equal(syncProject(leafProject, { kitRoot: kit, force: true }).ok, false);
+  assert.equal(read(kit, 'outside.txt'), 'outside sentinel');
+});
+
+test('platform core: exclusions retain bundles and reject excluded workflow implementations', () => {
+  const kit = mkKit(), proj = mkProject({ exclude: ['.agent/skills/implement-feature'] });
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  assert.ok(!exists(proj, '.agent/skills/implement-feature/SKILL.md'));
+  assert.ok(!exists(proj, '.agent/skills/implement-feature/references/notes.md'));
+  write(kit, '.agent/workflows/plan.md', WORKFLOW_MD.replace('description:', 'skill: implement-feature\ndescription:'));
+  const failed = syncProject(proj, { kitRoot: kit });
+  assert.equal(failed.ok, false);
+  assert.ok(failed.errors.some(e => e.msg.includes('requires excluded capability')));
+  const cfg = loadConfig(proj); cfg.exclude = ['.agent/skills/does-not-exist'];
+  write(proj, '.agentkit.json', JSON.stringify(cfg));
+  assert.match(syncProject(proj, { kitRoot: kit, force: true }).reason, /unknown exclusion/);
+});
+
+test('platform core: removing Codex migrates to Gemini only after old and new paths are conflict-free', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: ['codex', 'gemini'] });
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const alias = '.agents/skills/implement-feature/SKILL.md';
+  const aliasBytes = read(proj, alias), completed = read(proj, '.agentkit.lock');
+  const cfg = loadConfig(proj); cfg.vendors = ['gemini'];
+  write(proj, '.agentkit.json', JSON.stringify(cfg));
+  write(proj, alias, aliasBytes + '\nLocal alias work\n');
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, false);
+  assert.equal(read(proj, '.agentkit.lock'), completed);
+  assert.ok(!exists(proj, '.gemini/skills/implement-feature/SKILL.md'));
+  write(proj, alias, aliasBytes);
+  write(proj, '.gemini/skills/implement-feature/SKILL.md', 'user-owned new path\n');
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, false);
+  assert.equal(read(proj, alias), aliasBytes);
+  fs.unlinkSync(path.join(proj, '.gemini/skills/implement-feature/SKILL.md'));
+  const migrated = syncProject(proj, { kitRoot: kit });
+  assert.equal(migrated.ok, true, JSON.stringify(migrated));
+  assert.ok(!exists(proj, alias));
+  assert.ok(exists(proj, '.gemini/skills/implement-feature/SKILL.md'));
+  assert.equal(checkProject(proj, { kitRoot: kit }).clean, true);
+  assert.deepEqual(syncProject(proj, { kitRoot: kit }).written, []);
+});
+
+test('platform core: portable shared hooks and ownership survive two relocated kit/project copies', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: ['claude'] });
+  write(kit, '.agent/hooks.json', JSON.stringify([{ event: 'SessionStart', command: 'agentkit check . --quick --json', vendors: ['claude'] }]));
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const dest = fs.mkdtempSync(path.join(TMP, 'relocated-'));
+  const movedKit = path.join(dest, 'kit with spaces & more'), movedProj = path.join(dest, 'project with spaces & more');
+  fs.cpSync(kit, movedKit, { recursive: true });
+  fs.cpSync(proj, movedProj, { recursive: true });
+  const shared = read(movedProj, '.claude/settings.json'), lock = read(movedProj, '.agentkit.lock');
+  assert.equal(initProject(movedProj, { kitRoot: movedKit, cloneRebind: true }).ok, true);
+  assert.equal(syncProject(movedProj, { kitRoot: movedKit }).ok, true);
+  assert.equal(read(movedProj, '.claude/settings.json'), shared);
+  assert.equal(read(movedProj, '.agentkit.lock'), lock);
+  assert.ok(!shared.includes(kit) && !shared.includes(proj));
+});
+
+test('platform core: raw MCP ingestion preserves supported nesting and rejects unknown nested fields before sync', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: ['claude', 'codex', 'opencode'] });
+  const head = '---\nmcp-name: fixture.example\nmcp:\n  command: "fixture"\n  args: ["a,b", "plain"]\n  env:\n    SAFE: "value"\n  enabled: true\n---\n';
+  write(kit, 'integrations/codebase-mcp.md', head);
+  const result = syncProject(proj, { kitRoot: kit });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const config = JSON.parse(read(proj, '.mcp.json')).mcpServers['fixture.example'];
+  assert.deepEqual(config, { command: 'fixture', args: ['a,b', 'plain'], env: { SAFE: 'value' } });
+  const completed = read(proj, '.agentkit.lock');
+  write(kit, 'integrations/codebase-mcp.md', head.replace('    SAFE: "value"', '    SAFE:\n      secret: bad'));
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, false);
+  assert.equal(read(proj, '.agentkit.lock'), completed);
+});
+
+test('platform core: historical base must hash-match the per-file shipped source', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: ['claude'] });
+  gitInit(kit); gitCommit(kit, 'base kit');
+  execFileSync('git', ['tag', 'v0.1.0'], { cwd: kit });
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const target = '.agent/rules/git-protocol.md';
+  write(proj, target, read(proj, target) + '\nLocal edit\n');
+  write(kit, target, RULE_MD + '\nOther source\n');
+  write(kit, 'package.json', JSON.stringify({ version: '0.2.0' }));
+  gitCommit(kit, 'new source'); execFileSync('git', ['tag', 'v0.2.0'], { cwd: kit });
+  let refused = syncProject(proj, { kitRoot: kit });
+  assert.equal(refused.refusals.find(r => r.rel === target).base, 'verified historical source available');
+  const lock = loadLock(proj); lock.kitVersion = '0.2.0'; delete lock.files[target].kitVersion;
+  write(proj, '.agentkit.lock', JSON.stringify(lock));
+  refused = syncProject(proj, { kitRoot: kit });
+  assert.match(refused.refusals.find(r => r.rel === target).base, /unavailable/);
+  assert.ok(read(proj, target).includes('Local edit'));
+});
+
+test('platform core: partial integrated work is advisory and never proves ticket completion', () => {
+  const proj = mkProject({ orchestration: { mainBranch: 'main' } });
+  gitInit(proj); write(proj, 'README.md', '# fixture\n'); gitCommit(proj, 'initial');
+  execFileSync('git', ['branch', '-M', 'main'], { cwd: proj });
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: proj, encoding: 'utf8' }).trim();
+  write(proj, 'docs/working/TICKET-partial-staff.md', '---\nstatus: in-progress\nlanded: []\n---\nPartial fix commit ' + commit + '; remaining acceptance needs work.\n');
+  const result = checkHygiene(proj, { homeDir: proj });
+  assert.equal(result.clean, true, JSON.stringify(result));
+  assert.equal(result.findings.find(f => f.kind === 'integrated-commit-open-acceptance').severity, 'flag');
+});
+
+test('platform core: mapped KB rejects null and nested indexes own their subtree without suppressing missing entries', () => {
+  const proj = mkProject({ docs: { kbRoot: null } });
+  assert.throws(() => loadConfig(proj), /docs.kbRoot/);
+  write(proj, '.agentkit.json', JSON.stringify({ docs: { kbRoot: 'docs/knowledge-base' } }));
+  write(proj, 'docs/knowledge-base/README.md', '# Knowledge base\n[Runbooks](runbooks/README.md)\n');
+  write(proj, 'docs/knowledge-base/runbooks/README.md', '# Runbooks\n[Fixture](RUNBOOK-fixture.md)\n');
+  write(proj, 'docs/knowledge-base/runbooks/RUNBOOK-fixture.md', '---\napplies-to: [src/**]\n---\n# Fixture\n');
+  assert.equal(taxonomyLint(proj).clean, true, JSON.stringify(taxonomyLint(proj)));
+  assert.ok(kbMatch(proj, ['src/example.js']).some(m => m.doc.endsWith('RUNBOOK-fixture.md')));
+  write(proj, 'docs/knowledge-base/runbooks/RUNBOOK-unindexed.md', '# Not indexed\n');
+  const findings = taxonomyLint(proj).findings;
+  assert.ok(!findings.some(f => f.file.endsWith('RUNBOOK-fixture.md')));
+  assert.ok(findings.some(f => f.file.endsWith('RUNBOOK-unindexed.md') && f.kind === 'unindexed-doc' && f.detail.includes('runbooks/README.md')));
+});
+
+test('platform core: nine mapped kit standards are prefix-only exceptions, never a governance subtree waiver', () => {
+  const proj = mkProject({ docs: { kbRoot: 'governance' } });
+  write(proj, 'package.json', JSON.stringify({ name: 'agentkit', version: '1.0.0' }));
+  const standards = ['audit-rubric.md', 'best-practices.md', 'canonical-manifest.md', 'docs-standard.md', 'migration-checklist.md',
+    'mirror-contract.md', 'overlay-contract.md', 'vendor-capability-matrix.md', 'verification-profiles.md'];
+  for (const name of standards) write(proj, 'governance/' + name, '# Standard\n');
+  write(proj, 'governance/README.md', '# Standards\n' + standards.map(name => '[' + name + '](' + name + ')').join('\n'));
+  assert.equal(taxonomyLint(proj).clean, true, JSON.stringify(taxonomyLint(proj)));
+  write(proj, 'governance/README.md', '# Standards\n');
+  assert.ok(taxonomyLint(proj).findings.some(f => f.kind === 'unindexed-doc' && f.file === 'governance/mirror-contract.md'));
+  write(proj, 'governance/new-standard.md', '# New\n');
+  write(proj, 'governance/nested/mirror-contract.md', '# Not the published root standard\n');
+  let findings = taxonomyLint(proj).findings;
+  assert.ok(findings.some(f => f.kind === 'missing-prefix' && f.file === 'governance/new-standard.md'));
+  assert.ok(findings.some(f => f.kind === 'missing-prefix' && f.file === 'governance/nested/mirror-contract.md'));
+  write(proj, 'governance/mirror-contract.md', '# Broken\n[Missing](SPEC-absent.md)\n');
+  assert.ok(checkContentIntegrity(proj).findings.some(f => f.file === 'governance/mirror-contract.md'));
+  write(proj, 'package.json', JSON.stringify({ name: 'another-project' }));
+  findings = taxonomyLint(proj).findings;
+  assert.ok(findings.some(f => f.kind === 'missing-prefix' && f.file === 'governance/mirror-contract.md'));
+});
+
+test('platform core: optional generated and evidence directories never exempt concrete missing files', () => {
+  const proj = mkProject();
+  const dirs = ['reports/', '.agentkit/verification/', 'docs/raw-research/', 'docs/raw-research/inbox/', 'docs/research/'];
+  write(proj, '.agent/rules/project-directory-contract.md', '# Stores\n' + dirs.map(d => '`' + d + '`').join('\n'));
+  assert.deepEqual(checkContentIntegrity(proj).findings, []);
+  const files = dirs.map(d => d + 'SPEC-absent-fixture-7ad921.md');
+  write(proj, '.agent/rules/project-directory-contract.md', '# Concrete files\n' + files.map(d => '`' + d + '`').join('\n'));
+  const findings = checkContentIntegrity(proj).findings;
+  for (const file of files) assert.ok(JSON.stringify(findings).includes(file), 'missing concrete citation still detected: ' + file);
+  assert.equal(findings.length, files.length);
+});
+
+test('platform core: recovery reconstructs a partially written journal-owned stage before publication', () => {
+  const kit = mkKit(), proj = mkProject();
+  const result = syncProject(proj, { kitRoot: kit, afterEffect() { throw new Error('synthetic interruption'); } });
+  assert.equal(result.ok, false);
+  const journal = JSON.parse(read(proj, '.agentkit.pending.json'));
+  const remaining = journal.effects.find(e => {
+    const current = exists(proj, e.rel) ? fs.readFileSync(path.join(proj, e.rel)).toString('base64') : null;
+    return e.after !== null && current !== e.after;
+  });
+  assert.ok(remaining);
+  const stage = remaining.rel + '.agentkit-stage-' + journal.id;
+  write(proj, stage, 'synthetic partial staging bytes');
+  assert.equal(recoverOperation(proj).ok, true);
+  assert.equal(fs.readFileSync(path.join(proj, remaining.rel)).toString('base64'), remaining.after);
+  assert.ok(!exists(proj, stage));
+  assert.equal(checkProject(proj, { kitRoot: kit }).clean, true);
+});
+
+function repairSnapshot(root) {
+  const files = {};
+  const visit = (dir, prefix = '') => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === '.git') continue;
+      const name = prefix + e.name, p = path.join(dir, e.name);
+      if (e.isDirectory()) visit(p, name + '/'); else files[name] = fs.readFileSync(p).toString('base64');
+    }
+  };
+  visit(root); return files;
+}
+function repairToml(text) {
+  const result = spawnSync(process.env.AGENTKIT_TEST_PYTHON || 'python', ['-c', 'import sys,json,tomllib; print(json.dumps(tomllib.loads(sys.stdin.read()), default=str))'], { input: text, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  return JSON.parse(result.stdout);
+}
+
+test('acceptance repair: TOML semantic aliases, literal dotted server names, and unsupported syntax preserve all effects', () => {
+  for (const text of [
+    '["mcp_servers"."\\U00000063odebase-memory"]\ncommand = "user"\n',
+    '"mcp_servers"."codebase-memory".env = { SAFE = "user" }\n',
+    '[mcp_servers]\n"codebase-memory".command = "user"\n',
+    '[mcp_servers.codebase-memory.env]\nSAFE = "user"\n',
+  ]) {
+    assert.ok(repairToml(text).mcp_servers['codebase-memory']);
+    const kit = mkKit(), proj = mkProject({ vendors: ['codex'] });
+    write(proj, '.codex/config.toml', text);
+    const before = repairSnapshot(proj);
+    const result = syncProject(proj, { kitRoot: kit });
+    assert.equal(result.ok, false);
+    assert.deepEqual(repairSnapshot(proj), before);
+  }
+  const kit = mkKit(), proj = mkProject({ vendors: ['codex'] });
+  write(kit, 'integrations/codebase-mcp.md', '---\nmcp-name: fixture.alias\nmcp:\n  command: safe-never-run\n---\n');
+  const user = 'approval_policy = "on-request"\n[profiles.local]\nmodel = "example"\nextra = { dotted.key = [1, true, "text"], other = { x = "y" } }\n[mcp_servers."fixture.mine"]\ncommand = "user"\n';
+  write(proj, '.codex/config.toml', user);
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const merged = read(proj, '.codex/config.toml'), parsed = repairToml(merged);
+  assert.ok(merged.startsWith(user));
+  assert.equal(parsed.mcp_servers['fixture.alias'].command, 'safe-never-run');
+  assert.equal(parsed.mcp_servers['fixture.mine'].command, 'user');
+  assert.deepEqual(parsed.profiles.local.extra.dotted.key, [1, true, 'text']);
+  assert.deepEqual(syncProject(proj, { kitRoot: kit }).written, []);
+  const conflicting = mkProject({ vendors: ['codex'] });
+  write(conflicting, '.codex/config.toml', '[mcp_servers."fixture.alias"]\ncommand = "user"\n');
+  const conflictingBefore = repairSnapshot(conflicting);
+  assert.equal(syncProject(conflicting, { kitRoot: kit }).ok, false);
+  assert.deepEqual(repairSnapshot(conflicting), conflictingBefore);
+  for (const unsupported of ['created = 1979-05-27T07:32:00Z\n', 'description = """multiline text"""\n', '[[profiles]]\nname = "local"\n']) {
+    const other = mkProject({ vendors: ['codex'] });
+    repairToml(unsupported); // valid TOML outside this deliberately bounded merge subset
+    write(other, '.codex/config.toml', unsupported);
+    const before = repairSnapshot(other), result = syncProject(other, { kitRoot: kit });
+    assert.equal(result.ok, false); assert.match(result.reason, /TOML preflight.*unsupported/);
+    assert.deepEqual(repairSnapshot(other), before);
+  }
+});
+
+test('acceptance repair: adoption validates excluded canonical entries and manifest errors are never ignored', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: [], stack: [] });
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  write(kit, '.agent/skills/react-performance/SKILL.md', TECH_SKILL_MD.replace('description: React render performance tuning.', 'description: [invalid]'));
+  write(proj, '.agent/rules/git-protocol.md', read(proj, '.agent/rules/git-protocol.md') + '\nValid local body change.\n');
+  const before = repairSnapshot(kit);
+  const result = adoptFile(proj, '.agent/rules/git-protocol.md', { kitRoot: kit });
+  assert.equal(result.ok, false); assert.match(result.reason, /description/);
+  assert.deepEqual(repairSnapshot(kit), before);
+  assert.throws(() => compileManifest(kit), /description/);
+  assert.deepEqual(repairSnapshot(kit), before);
+});
+
+test('acceptance repair: required skill arrays resolve through eligible merged overlays for every vendor and canonical-only', () => {
+  for (const vendors of [[], ['claude'], ['codex'], ['gemini'], ['opencode'], ['antigravity']]) {
+    const kit = mkKit(), proj = mkProject({ vendors, tools: [] });
+    write(kit, '.agent/workflows/build.md', '---\ndescription: Use implementations.\nskill: [implement-feature, project-helper]\n---\nUse both.\n');
+    const before = repairSnapshot(proj);
+    const refused = syncProject(proj, { kitRoot: kit });
+    assert.equal(refused.ok, false); assert.deepEqual(repairSnapshot(proj), before);
+    write(proj, '.agent/skills/project-helper/SKILL.md', '---\nname: project-helper\ndescription: Local helper.\ntier: overlay\n---\n# Helper\n');
+    assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  }
+});
+
+test('acceptance repair: raw scalar subsets reject numeric forms while preserving quoted values and digit-leading commands', () => {
+  for (const value of ['1e3', '+12', '-.Inf', '.nan', '0o12', '0b101', '1_000']) {
+    const kit = mkKit(), proj = mkProject({ vendors: [] });
+    write(kit, 'integrations/codebase-mcp.md', '---\nmcp-name: fixture\nmcp:\n  command: ' + value + '\n---\n');
+    const before = repairSnapshot(proj), result = syncProject(proj, { kitRoot: kit });
+    assert.equal(result.ok, false); assert.match(result.reason, /quote/);
+    assert.deepEqual(repairSnapshot(proj), before);
+  }
+  const kit = mkKit(), proj = mkProject({ vendors: ['codex'] });
+  write(kit, 'integrations/codebase-mcp.md', "---\nmcp-name: fixture\nmcp:\n  command: 7zip\n  args:\n    - 'false'\n    - \"42\"\n    - ./relative-command\n  env:\n    SAFE: 'null'\n---\n");
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const native = repairToml(read(proj, '.codex/config.toml')).mcp_servers.fixture;
+  assert.equal(native.command, '7zip');
+  assert.deepEqual(native.args, ['false', '42', './relative-command']);
+  assert.equal(native.env.SAFE, 'null');
+});
+
+test('acceptance repair: CLI JSON, human sync and check expose redacted scoped conflict context with zero effects', () => {
+  const kit = mkKit(), proj = mkProject({ vendors: ['codex'] });
+  fs.copyFileSync(path.join(HERE, 'agentkit.mjs'), path.join(kit, 'agentkit.mjs'));
+  fs.copyFileSync(path.join(HERE, 'adapters.mjs'), path.join(kit, 'adapters.mjs'));
+  assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
+  const lock = loadLock(proj); delete lock.schema; lock.settings['.codex/config.toml'] = ['block'];
+  write(proj, '.agentkit.lock', JSON.stringify(lock));
+  write(kit, 'integrations/codebase-mcp.md', '---\nmcp-name: codebase-memory\nmcp:\n  command: private-command-marker\n  env:\n    TOKEN: private-secret-marker\n---\n');
+  const before = repairSnapshot(proj);
+  for (const [verb, flags] of [['sync', ['--json']], ['sync', []], ['check', ['--json']], ['check', []]]) {
+    const result = spawnSync(process.execPath, [path.join(kit, 'agentkit.mjs'), verb, proj, ...flags], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.ok(result.stdout.includes('.codex/config.toml') && result.stdout.includes('unresolved'));
+    assert.ok(!result.stdout.includes('private-command-marker') && !result.stdout.includes('private-secret-marker'));
+    assert.match(result.stdout, /[a-f0-9]{64}/);
+    if (flags.length) {
+      const report = JSON.parse(result.stdout);
+      const conflict = verb === 'sync' ? report.settingsConflicts[0] : report.results.find(r => r.verdict === 'SETTINGS-CONFLICT').settingsConflict;
+      assert.equal(conflict.file, '.codex/config.toml'); assert.equal(conflict.kind, 'toml-block');
+      assert.equal(conflict.key, 'block'); assert.equal(conflict.ownership, 'unresolved');
+      assert.match(conflict.action, /Do not edit the machine lock/);
+    }
+    assert.deepEqual(repairSnapshot(proj), before);
+  }
 });

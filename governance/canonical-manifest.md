@@ -10,15 +10,16 @@ last-verified: 2026-07-31
 the manifest is now **compiled, never authored** (decision 28) — the old spec's hand-maintained
 manifest was itself a drift source (two declarations of one routing fact).*
 
-`manifest.json` at the kit root is the compiled index of the kit. `agentkit sync` and
-`agentkit inventory` regenerate it; a hand edit is drift and `check` treats it as such.
+`manifest.json` at the kit root is the compiled index of the kit. Kit-owned self-generation,
+inventory and adoption publish it; consumer sync must not write into its kit source. A hand edit
+is drift. Publication belongs to the kit's tooling owner.
 
 ## One source per field
 
 | Field | Derived from |
 |---|---|
 | `path`, `type`, `name` | `.agent/` file layout (`skills/<name>/`, `rules/<stem>.md`, …) |
-| `tier` (`core` \| `tech:<x>` \| `overlay`) | SKILL/rule frontmatter `tier:`; fallback: `domain-*`/`project-*` prefix ⇒ overlay, else core |
+| `tier` (`core` \| `tech:<x>` \| `kind:<x>` \| `overlay`) | SKILL/rule frontmatter `tier:`; fallback: `domain-*`/`project-*` prefix ⇒ overlay, else core; unknown tiers are invalid |
 | `sha256` | file content, EOL-normalized |
 | `triggers`, `appliesTo`, `requiredTools` | frontmatter (`triggers:`, `applies-to:`, `required-tools:`) |
 | `conflictsWith` | the B1 routing table (authored as frontmatter `conflicts-with:` on the losing asset) |
@@ -82,11 +83,14 @@ proposed set could not express without misfiling a rule:
 
 ## What consumes it
 - `check` — hash comparison and the overlay↔core collision lint.
-- `doctor` — semantic orthogonality (trigger/outcome/tool overlap), missing `requiredTools`,
-  stale `generatedTargets`.
+- `doctor` — fleet diagnostics and declared tool probes. It does not prove semantic orthogonality,
+  infer tool selection from every skill dependency or certify native generated-output behavior.
 - Phase gates — the routing-disambiguation test reads `triggers` to build ambiguous-prompt probes.
 
 ## Project-side files (for contrast)
-- `.agentkit.json` — **pure intent**: vendors, stack, tools, overlay globs, pins. Hand-authored.
-- `.agentkit.lock` — **shipped state**: per-file hashes, kit version, managed settings keys,
-  first-detected edit dates. Machine-written, committed, never hand-edited.
+- `.agentkit.json` — **project intent**: vendors, stack/kinds, tools, overlays, capability exclusions
+  and optional `docs.kbRoot`. Hand-authored; legacy nonempty/malformed pins are rejected.
+- `.agentkit.lock` — **completed shipped state**: hashes, source/transform identity, kit version and
+  typed settings ownership. Machine-written, committed by consumers, never hand-edited.
+- `.agentkit.pending.json` — private incomplete-operation recovery, excluded from Git. It is not
+  portable completed ownership or a version cache; retain it until recovery/finalization is verified.

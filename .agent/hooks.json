@@ -1,7 +1,7 @@
 [
   {
     "event": "SessionStart",
-    "command": "node \"{KIT}\" check --quick --json \"{PROJECT}\"",
+    "command": "agentkit check . --quick --json",
     "vendors": ["claude"]
   }
 ]

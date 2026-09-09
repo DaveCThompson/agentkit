@@ -1,82 +1,85 @@
 ---
 name: implement-refactor
-description: Code restructuring without behavior change. Use when improving code organization while preserving functionality.
+description: Restructure code or move responsibility boundaries while preserving behavior. Use for planned organization changes; use refine-code for small in-place clarity edits.
 tier: core
 required-tools: [codebase-mcp, fallow]
 ---
 
 # Implement Refactor
 
-Restructure code without changing user-facing behavior.
+Kit references below are relative to the configured kit checkout, located from the existing
+agentkit CLI/setup or a configured vendor hook. Read only references needed for the current
+phase. If the checkout or a reference is unavailable, use the stated fallback and report any
+required guidance as unresolved.
 
 ## When to Use
-- Code cleanup
-- Reducing tech debt
-- Improving maintainability
-- Extracting shared patterns
+
+Use for a specific maintainability problem, shared-pattern extraction, or boundary change with
+no intended behavior change. Use [refine-code](../refine-code/SKILL.md) for local polish.
+A visible-contract change belongs to a feature or repair route.
 
 ## Approach
 
 ### Phase 1: Scope Definition
 
-#### Comprehension: Code Graph First
-Build understanding from the code graph before proposing or making changes (see
-`integrations/codebase-mcp.md`):
-1. **Confirm availability + freshness** — `list_projects`; if this repo is absent, `index_repository`
-   on its root; check `index_status` when freshness matters, and re-index if relevant files are
-   dirty/untracked.
-2. **Locate + disambiguate** — `search_graph` (symbols / feature language) or `search_code` (imports,
-   exact call syntax); pick the exact `qualified_name`; `trace_path` on that full name for
-   callers / callees / data flow.
-3. **Read exact source** — `get_code_snippet` on the chosen `qualified_name`; `get_architecture` for
-   module boundaries.
-4. **Reconcile Before Acting** — the current file + `git diff` outrank a stale graph. If a snippet
-   range is stale or a trace contradicts an exact `search_code`, re-index once, then trust the
-   working tree.
-5. **Fallback** — if the MCP server is unreachable, use Grep/Read for targeted discovery and note in
-   the handoff that graph comprehension was degraded. Never block on the graph.
-1. **Refactoring Goal**: Specific code smell or tech debt
-2. **Behavior Invariants**: List behaviors that MUST NOT change
-3. **Scope Boundaries**: In-scope vs out-of-scope files
+Name the concrete problem, intended clarity/ownership improvement, and in-scope paths. Preserve
+documented compatibility and fragile exceptions. Follow applicable project contracts and
+[pattern-refactoring](../../../.agent/rules/pattern-refactoring.md).
+
+Locate consumers and ownership boundaries with `integrations/codebase-mcp.md`
+when useful. Reconcile against current source, bound refresh effort, and use targeted search/read
+if unavailable or stale. Record consequential limits.
+
+Identify semantic invariants relevant to the transformation: return values and public shapes,
+evaluation order, object identity, mutation, exception behavior, side effects, timing,
+subscriptions, resource lifetime, and accessible interaction. Do not assume a green suite covers
+all of these.
 
 ### Phase 2: Safety Net
-- List existing tests
-- Define manual verification for each invariant
+
+Map existing coverage to the identified invariants. Add focused characterization only where a
+material preservation risk lacks evidence; choose the actual seam, including integration/runtime
+checks for timing or rendering. Preserve baseline evidence before restructuring.
 
 ### Phase 3: Refactoring Plan
 
-#### Reuse Before You Add (Duplicate / Dead-Code Check)
-Before introducing a new utility, hook, component, or dependency, prove it does not already exist
-(see `integrations/fallow.md`):
-1. **Duplication scan** — `npx --no-install fallow dupes --skip-local` (cross-directory clones);
-   raise signal with `--min-tokens <n>` or `--mode semantic` when noisy.
-2. **Don't delete on a hunch** — before removing an "unused" export/dep, confirm reachability with
-   `fallow dead-code --trace <file>:<export>` or `--trace-dependency <name>`.
-3. **Orient before editing** — `fallow inspect --file <path>` (or `--symbol <FILE:EXPORT>`) bundles
-   the evidence for a target.
-4. **Fallback** — if fallow is unavailable, search for existing implementations via the code graph
-   (`search_graph` / `search_code`) or Grep, and state in the plan that the duplicate check was manual.
-List atomic transformation steps.
+Choose coherent transformations with understood recovery paths. Prefer extraction at a real
+responsibility boundary over splitting by length or moving complexity behind a new name.
+Keep shared dependencies pointing toward the common boundary, not back into its consumers.
 
-**Reflexion Loop**: Act as **Hostile Reviewer**:
-> "I review for long-term maintainability, not just correctness."
-Identify 3 ways the proposed refactoring could break existing behavior or introduce subtle regressions. Revise the plan to address these risks.
+Search existing APIs and implementations before adding an abstraction.
+`integrations/fallow.md` can supply applicable duplication or reachability evidence;
+source search is the fallback. Record scope, dynamic consumers, entry-point/configuration limits,
+and required compatibility before deletion. Intentionally dormant or externally consumed code
+is not dead merely because a scan omits it.
+
+Review the strongest regression risks and adjust the plan. Similar text alone does not establish
+shared semantics or justify convergence.
 
 ### Phase 4: Execution
-For each step:
-1. Make one change
-2. Verify behavior unchanged
-3. Run `lint` + `typecheck` (the always tier of `foundation-testing.md` §1)
-4. Repeat
+
+Make coherent transformations within the authorized scope. Check relevant invariants after each
+meaningful transformation, not every trivial edit. Preserve evaluation order and ownership during
+extraction; inspect callers and exports after boundary changes. Keep recovery scoped to owned
+edits, including uncommitted work; Git is not a universal backup.
+
+A discovered bug is separate from behavior preservation. Record it and keep the refactor scoped
+unless the user has also authorized that repair. Shared-tree authors leave Git, generation, and
+shared metadata to the coordinator.
 
 ### Phase 5: Verification
-Run the Graduated Verification Gate (`foundation-testing.md` §1–2) at the behavior-change tier —
-behavior preservation is PROVEN by the touched domain's focused tests plus `build`, not asserted.
-- [ ] All behavior invariants verified
-- [ ] Touched domain's tests + build pass — actually ran on this branch, no unrun-green claims
-- [ ] No regressions
 
-## Constraints
-- **NO behavior changes**
-- If bug discovered, note but do NOT fix (separate concern)
-- Each transformation independently reversible
+Use [foundation-testing](../../../.agent/rules/foundation-testing.md), Lifecycle-Aware Verification Gate,
+Evidence identity and cite-or-run, and Refactor Verification. Reuse valid evidence or run the
+missing applicable checks after the coherent transformation.
+
+Report which invariants the evidence covers, semantic review findings, and missing runtime or
+consumer coverage. A passing build is bounded evidence, not proof of every behavior.
+Do not alter an expectation to hide a changed contract.
+
+## Definition of Done
+
+The intended organization benefit is concrete, the authorized scope is preserved, and relevant
+behavioral invariants have evidence or explicit remaining proof. The report names actual state
+and results, required pending checks/owners, and the final-tree owner when handing off.
+No cleanup, publication, or unrelated bug repair is implied by refactoring.

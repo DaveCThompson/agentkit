@@ -1,33 +1,17 @@
 ---
-description: Land the session on origin/main — wrap-up + changelog, backlog/working archived clean, READMEs + status current with next steps, worktrees and merged branches closed, ff-merge pushed.
+description: Land the scoped session on its authorized integration target with proof and safe cleanup.
 skill: implement-session-land
 ---
 
 # Land Workflow
 
-The terminal step of the session lifecycle: `onboard` → `plan` → `build` → `ship` (one ticket) →
-**`land`** (the whole session onto `origin/main`, clean and clear).
+Use `implement-session-land`. Resolve the session-owned work, selected integration branch and
+remote, publication grant, pending acceptance, receipts and resource ownership. An explicit land
+request carries its normal scoped publication intent; an unrelated local wrap request does not.
 
-## Goal
-`origin/main` carries the session's work; `docs/working/` and `docs/backlog/` hold only active
-docs; changelog and status-of-record are correct; next steps are visible in the READMEs; no stale
-worktrees or unexplained merged feature branches remain.
+Preserve the selected target through delegated calls. The skill owns synchronization, integration,
+final-state proof, publication reconciliation and eligible cleanup. Do not repeat its steps here,
+replace a requested base with a moving default, or treat every open worktree/ticket as session-owned.
 
-## Inputs required (ask if missing)
-- None (global finalization). Optional: whether to delete the remote session branch after merge.
-
-## Skill routing (explicit)
-- `implement-session-land` — drives the whole protocol.
-- `implement-session-wrap-up` — invoked by it for the gate/changelog/codify tier.
-
-## Procedure
-1. **Load skill**: Read `implement-session-land`'s `SKILL.md` and follow its phases in order:
-   preconditions → wrap (gate + changelog + version) → docs deep-clean (premise sweep, archive,
-   status-of-record, README next-steps) → worktree and merged-branch closure → ff-land on main →
-   push → authorized remote cleanup → report.
-2. **Fail-closed points**: uncommitted session work, a red gate, or true main-divergence each STOP
-   the landing — they are never worked around inline.
-
-## Notes
-- `ship` ends with a ticket done on a branch; `land` is how branches become `origin/main`.
-- Foreign dirt in a shared tree is named and left alone — landing commits are pathspec-only.
+Return confirmed local, integrated and published states separately, with any unresolved acceptance
+or retained resources. A missing prerequisite or ambiguous external result is not successful landing.

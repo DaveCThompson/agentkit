@@ -6,158 +6,141 @@ domain: testing
 
 # Python Verification Gate
 
-Python-stack repos build on uv + Ruff + pytest — this rule holds the Python-specific verification
-mechanics that `foundation-testing.md` keeps neutral. Wherever that rule says "adapt to the
-project's lint/typecheck/test/build equivalents", this is what that adaptation looks like for
-Python; it is the sibling `foundation-testing.md` §1 points at for repos that are not `kind:app`.
-`tier: tech:python` resolves against `.agentkit.json` `stack`, so this ships only where
-`stack: ["python"]` is declared — no existing install changes.
+Use the Python project's actual tooling, dependency and deployment contract. This rule supplies
+conditional Python mechanics; `foundation-testing.md` owns evidence and lifecycle gates.
+Selecting the Python stack does not mandate uv, Ruff, a particular type checker or an MCP service.
 
 ## 1. The One-Command Gate — Python/uv Specifics
-The Node convention's *shape* transfers; its mechanics do not. One prefix-matchable command per
-tier, never a bespoke compound pipeline (`foundation-testing.md` §1, `pattern-command-shape.md` §1).
 
-| Tier | Command |
-| :--- | :--- |
-| lint | `uv run ruff check .` |
-| format | `uv run ruff format --check .` |
-| types (optional) | `uv run pyright` |
-| test | `uv run pytest -q` |
-| aggregate | one `gate` entry point chaining the above, exiting non-zero on the first failure |
+Prefer existing project commands that preserve true exits. If uv/Ruff/pytest are already configured,
+typical checks are `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`.
+Run the selected type checker only when applicable. These are examples to inspect, not commands
+to invent or an instruction to install missing tools.
 
-- **There is no `gate:*` equivalent to inherit — uv ships no task runner**, and `[project.scripts]`
-  console entry points are created at *install* time, so they do not exist in a project that is not
-  itself installed (`[tool.uv] package = false`). The portable aggregate with zero added dependency
-  is a committed script invoked as `uv run gate.py`: one allowlistable head (`uv run …`), one
-  process owning the true exit code, identical on Windows and Linux. `poethepoet` or a `Makefile`
-  target is fine if the project already carries one; do not take a dependency solely to alias four
-  commands.
-- **Declare dependencies in `pyproject.toml`, or a PEP 723 `# /// script` header for a single-file
-  tool — never a `requirements.txt`.** Commit the lockfile: `uv.lock` for a project, or the adjacent
-  `<file>.lock` that `uv lock --script <file>` writes for a PEP 723 script. Install in CI with
-  `uv sync --locked`, which raises an error instead of updating a stale lockfile — drift detection
-  for free, no extra step. `--frozen` is the wrong flag here: it uses the lockfile *without*
-  checking it is current. *Checkable:* the CI log shows `uv sync --locked`; the tree contains a
-  committed lockfile and no `requirements.txt`.
-- **`ruff check` and `ruff format --check` are two separate commands; neither implies the other.**
-  The formatter does not sort imports — import order is a *lint* rule (`I`), so a repo running only
-  `ruff format --check` has no import-order gate at all. `--check` writes nothing and exits 1 on any
-  file that would be reformatted, which is what makes it gate-grade rather than a fixer. Do not add
-  black, flake8, isort, or pyupgrade alongside Ruff; Ruff replaces all of them, and two formatters
-  that disagree produce a gate that flaps on untouched files. *Checkable:* the aggregate names both
-  commands; the dev dependency group contains none of the four.
-- **A type tier is optional, and `pyright` is the option.** The PyPI `pyright` package pins a
-  specific pyright release by default (stable enough to gate on) but resolves `node` from `PATH` or
-  downloads one at runtime — a real cost in a Python-only image, which is why this tier is optional
-  rather than default. See §8 for why `ty` is not the answer.
+- uv run may lock/sync, download dependencies/interpreters or write caches. `--locked` rejects
+  stale lock metadata but can still sync the environment; `--frozen` skips freshness validation;
+  `--no-sync` skips environment synchronization and therefore does not prove freshness.
+  Use a prepared environment and permitted flags when writes/installations are outside scope.
+  See [uv locking/syncing](https://docs.astral.sh/uv/concepts/projects/sync/).
+- Use the existing dependency/lock format and owner. Pyproject, requirements files and script
+  metadata serve different supported workflows; do not convert them merely to satisfy this rule.
+  For an authorized uv project/script, preserve its generated lock and exact CI contract.
+- An existing task runner, Make target or plain aggregate script is valid. A new `gate.py` is
+  optional, not required infrastructure. Installed console entry points depend on package setup.
+- Ruff lint and format-check are separate; formatter success does not prove lint/import sorting.
+  Inspect enabled lint rules and formatter compatibility. Existing Black/isort/other tooling
+  remains valid when the project intentionally uses it; avoid competing formatters for one file.
+  See [Ruff formatter](https://docs.astral.sh/ruff/formatter/).
+- Choose mypy, Pyright, ty or another checker from the supported project policy/version, diagnostic
+  needs and environment cost. Inspect its runtime/download behavior; a tool name is not proof of
+  stability and a historical beta label is not a permanent prohibition.
 
-## 2. Run the Suite on Linux in CI — a Correctness Requirement, Not Hygiene
-Any test asserting path containment, symlink rejection, case sensitivity, or file permissions is
-meaningful only on the runtime OS. Run on the deployment OS in CI. On a Windows authoring machine
-such a suite can pass **vacuously** — green, while the escape it was written to catch still works in
-the Linux container. Three distinct mechanisms, each sufficient on its own:
-- **The escape may never be constructed.** Creating a symlink on Windows requires
-  `SeCreateSymbolicLinkPrivilege`, and `os.symlink` raises `OSError` for an unprivileged user. A
-  fixture that builds a symlink out of the sandbox root and is `skipif`-guarded — or that swallows
-  the error — leaves the assertion unexecuted. The test reports green having tested nothing.
-- **Case sensitivity inverts the verdict.** Windows path comparison folds case and Linux does not,
-  so a containment assertion over differently-cased paths answers differently on each platform.
-- **Canonicalization itself diverges.** The stdlib says so directly: making a path canonical
-  "differs slightly between Windows and UNIX with respect to how links and subsequent path
-  components interact." Drive-relative (`C:name`) and UNC (`\\server\share`) inputs carry no Linux
-  meaning, and a POSIX-absolute traversal input resolves under the current drive on Windows — the
-  string the test exercised is not the string the attacker sends.
+<a id="2-run-the-suite-on-linux-in-ci--a-correctness-requirement-not-hygiene"></a>
 
-Local runs are a convenience, never the evidence. *Checkable:* the workflow's `runs-on` is the
-deployment OS, and the suite runs with `-rs` so a silently-skipped guard prints its reason in the
-CI log instead of vanishing into the summary count.
+## 2. Verify the actual deployment platforms
 
-## 3. Test Security Logic as Pure Functions
-Every allow/deny decision belongs in a pure function taking plain arguments and returning a
-decision — importable and callable from a test with no server, transport, or event loop. Leave only
-protocol wiring to the integration layer. A guard reachable only through a server call cannot be
-enumerated exhaustively: each hostile input costs a round trip, so the case table stays small and
-the interesting inputs go untested. (Python refinement of `foundation-testing.md` §6.) *Checkable:*
-the hostile-input cases are a parametrized table over an imported function, not a sequence of client
-calls.
+For Linux deployments, relevant filesystem/permission proof needs Linux runtime coverage. For
+other supported platforms, choose the actual target matrix. Local tests remain useful bounded
+evidence; they do not prove another operating system's semantics.
+
+Path/security fixtures can pass vacuously if the hostile case was never constructed. Verify
+symlink/junction creation and collection, inspect skipped tests and reasons, and exercise meaningful
+allowed/denied inputs. Windows privilege/developer-mode and filesystem settings can affect link
+creation; do not assume it always fails. Case behavior depends on filesystem and configuration,
+not OS name alone. Include drive-relative, UNC, case and canonicalization cases where supported.
+A CI `runs-on` string alone does not establish the container, mount or process identity used.
+
+<a id="3-test-security-logic-as-pure-functions"></a>
+
+## 3. Test pure decisions and integration boundaries
+
+Keep deterministic parsing/decision logic directly testable when that represents its contract.
+Use parametrized hostile-input and legitimate-use cases with meaningful expectations.
+Filesystem permissions, races, transport identity and dispatch enforcement also require integration
+proof; not every authorization decision is pure. Do not extract production architecture for a
+test-only assignment or mistake a pure predicate pass for service enforcement.
 
 ## 4. Canonicalize Before Comparing
-`Path.resolve()` **then** `is_relative_to(root)` — in that order, both steps, every time, with the
-root resolved once and compared resolved-against-resolved. The order is load-bearing and the docs
-are explicit about why: `resolve()` makes the path absolute "resolving any symlinks" and is the only
-method that eliminates `..`; `is_relative_to()` is "string-based; it neither accesses the filesystem
-nor treats `..` segments specially" — so calling it alone happily approves `root/../../etc`.
-- Never string prefix matching: `str(p).startswith(str(root))` accepts `/root-evil` under `/root`.
-- Never `os.path.abspath()`: it is `normpath(join(getcwd(), path))`, and normpath is "string
-  manipulation [that] may change the meaning of a path that contains symbolic links."
-- Never hand-rolled `..` stripping, for the same reason — lexical, symlink-blind, and it silently
-  *creates* a legitimate-looking path out of an escape.
 
-*Checkable:* grep the package for `startswith`, `abspath`, and `..` replacement applied to path
-values — every hit is a defect; §2's symlink case is what red-proves the resolved form on Linux.
+For containment checks on existing paths, resolve both root and candidate before a component-aware
+comparison such as `is_relative_to`. That method alone is lexical and does not interpret `..`.
+A string prefix can accept a sibling such as `root-evil`; normalization alone does not resolve
+symlink meaning. See [pathlib](https://docs.python.org/3/library/pathlib.html).
+
+This example checks an existing path under a stable filesystem; it does not open it:
+
+```python
+from pathlib import Path
+
+def contained_existing(root: Path, candidate: Path) -> bool:
+    try:
+        resolved_root = root.resolve(strict=True)
+        resolved_candidate = candidate.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return resolved_candidate.is_relative_to(resolved_root)
+```
+
+Resolve relative user input against its intended root before this call, rather than an accidental
+cwd. Decide whether absolute input and the root itself are allowed. Nonexistent targets need a
+separate creation policy. A resolve-then-open sequence has a time-of-check/time-of-use race when
+an attacker can replace path components; use platform-appropriate handle/descriptor-relative
+enforcement and permissions for that threat, not this predicate as a sandbox.
+Searches for `startswith` or `abspath` locate candidates, not universally defective code.
 
 ## 5. Prove a Read-Only Surface at Three Layers
-Assert all three, and **trip each at least once** — a refuse-write test never observed failing is
-not evidence (`foundation-testing.md` §1C, applied to a capability rather than a suite):
-1. **Tool surface** — the advertised tool list is disjoint from the mutator set.
-2. **Code surface** — no write syscall appears anywhere in the server package.
-3. **Container surface** — the runtime declaration is read-only and unprivileged, asserted as a
-   test over the compose/manifest file rather than trusted by inspection. The hardening substance
-   belongs to the container rule; what this gate owns is that the declaration is *asserted* and that
-   the assertion has been seen to fail.
 
-*Checkable:* three named tests, and a red-proof for each pasted into the ticket — failing output
-first, passing output second.
+For a service that promises read-only access, examine the exposed tool/endpoint surface, dispatch
+and backing-resource enforcement. Tool-list absence or a “read-only” annotation alone does not
+deny a reachable mutator. Code may legitimately write logs/caches outside protected content;
+a package-wide ban on all write syscalls is not the scoped property.
+
+Compare intended read-only mounts/roles with the effective runtime. A declaration test proves
+configuration, not deployed enforcement. Use `kind-service-containers.md` for relevant hardening.
+For denial tests, use explicitly disposable isolated fixtures and inspect state afterward, including
+after timeout or unexpected success. Never remove protections or test writes against real user
+data to generate red proof. Preserve allowed-use cases and evidence limits per
+`foundation-testing.md`; no fixed number of tests or failing runs establishes every layer.
 
 ## 6. On stdio Transport, stdout Is JSON-RPC Only
-The transport spec is a hard MUST NOT: a server "MUST NOT write anything to its `stdout` that is not
-a valid MCP message," while it "MAY write UTF-8 strings to its standard error (`stderr`) for logging
-purposes." One stray `print()` — a leftover debug line, a library banner, a warning — corrupts the
-protocol stream and the failure surfaces as an unrelated client-side parse error. Send every
-diagnostic and audit record to **stderr** as structured JSON, one line per tool invocation carrying
-tool name, resolved path, allow/deny decision, and reason. *Checkable:* a test that runs a session
-and asserts every stdout line parses as JSON-RPC; plus a grep for bare `print(` in the server
-package (a `print(..., file=sys.stderr)` is fine, a bare one is a defect).
 
-## 7. Pin Every External Artifact by Immutable Identity
-A mutable reference means the build that passed and the build that ships are not the same build.
-Pin by identity and record why in the commit that moves the pin:
-- Container images by `tag@sha256:` — the tag for humans, the digest for the resolver.
-- GitHub Actions by full commit SHA, not a tag or branch; tags are movable refs.
-- MCP libraries with an upper major bound (e.g. `fastmcp>=3.4,<4`, and `mcp>=1.27,<2` if depended on
-  directly) — both ecosystems ship breaking changes across majors, and pre-releases of the next
-  major are already published, so an unbounded specifier is a scheduled outage.
+For MCP stdio, preserve the implemented protocol revision's message framing; stdout is reserved
+for protocol messages and diagnostics belong on stderr. See the
+[MCP stdio transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+Other CLI/transport modes can have different output contracts.
 
-Bumps land in a dedicated commit that also re-runs the gate — never bundled into a feature change,
-where a green run cannot distinguish "the feature works" from "the new version works." *Checkable:*
-grep the workflows and compose files for any `uses:` without a 40-char SHA and any `image:` without
-`@sha256:`; grep the dependency table for an unbounded MCP specifier.
+Test an actual initialized protocol session, not just whether each line is syntactically JSON.
+Search for stdout contamination, including imported-library output; a grep for `print` is only
+a candidate scan. Choose redacted logs under the project's policy. Do not require resolved private
+paths or a structured audit record on every invocation if that leaks data or adds unrelated scope.
+
+<a id="7-pin-every-external-artifact-by-immutable-identity"></a>
+
+## 7. Reproducible artifacts and compatible updates
+
+Use reproducible artifact identities where deployment/supply-chain requirements need them:
+container digests, action commit SHAs and exact resolved application dependencies are distinct
+mechanisms. A major upper bound is a compatibility constraint, not an immutable dependency pin.
+Libraries may intentionally declare supported ranges and test them; applications often deploy
+from a lock. Do not impose stale example versions or universal package bounds.
+
+Plan compatible, reviewed updates under the project's change/verification policy. An isolated bump
+can improve attribution; coupled source/dependency changes may belong together. Dedicated commits
+or manual merging are not universal proof requirements or authority to manipulate Git.
+Follow `kind-service-containers.md` and `git-protocol.md` where applicable.
 
 ## 8. Explicitly Not Asserted
-- **No `ty` gate.** Astral's own package metadata says "ty does not yet have a stable API; breaking
-  changes, including changes to diagnostics, may occur between any two versions" and "ty is
-  currently in beta" — and it is still on `0.0.x`. Gating on a tool whose *diagnostics* may change
-  between patch releases means an unrelated bump turns the build red with no code change. `ty` is a
-  good fast local convenience; `pyright` (§1) is the gate-grade option if a type tier is wanted.
-- **No `src/` layout requirement for a single-file tool.** A layout convention that exists to <!-- taxonomy-ignore-line -->
-  prevent accidental imports of an uninstalled package solves a problem a single-file operator tool
-  does not have. Point the test runner at the root explicitly instead and say so in a comment.
-- **No coverage threshold** — it measures lines executed, not properties proven, and §3 plus §5's
-  parametrized hostile-input tables are the real signal.
-- **No OS/Python matrix** — §2 requires the deployment OS, and a matrix multiplies CI time to test
-  platforms nothing runs on.
-- **No tox/nox** — §1's aggregate is one script; an environment-matrix orchestrator on top of uv is
-  a second dependency resolver disagreeing with the lockfile.
+
+- No required dependency manager, type checker, environment runner or permanent ban based on
+  an old release status. Verify the installed/selected tool's actual supported behavior.
+- No mandatory source layout for a single-file tool; preserve actual import and test collection.
+- No kit-wide coverage percentage. Existing coverage requirements remain binding, alongside
+  meaningful property tests and explicit excluded/skipped outcomes.
+- No universal ban on an OS/Python matrix or tox/nox. Test the supported runtime contract with
+  the existing orchestration, without adding an unnecessary second environment owner.
 
 ## Sources
-Load-bearing external claims, fetched 2026-07-25:
-- `https://docs.astral.sh/uv/concepts/projects/sync/`, `https://docs.astral.sh/uv/reference/cli/`,
-  `https://docs.astral.sh/uv/guides/scripts/` — `--locked` vs `--frozen`, `uv lock --script`.
-- `https://docs.astral.sh/ruff/formatter/`, `https://docs.astral.sh/ruff/` — `--check` semantics and
-  exit codes, formatter/linter split, the replaced-tools list.
-- `https://docs.python.org/3/library/pathlib.html`, `https://docs.python.org/3/library/os.path.html`
-  — `resolve()`, `is_relative_to()`, `abspath`/`normpath`/`realpath`.
-- `https://modelcontextprotocol.io/specification/2025-06-18/basic/transports` — the stdio MUST NOT.
-- `https://pypi.org/project/ty/` (0.0.63), `https://pypi.org/project/pyright/` (1.1.411),
-  `https://pypi.org/project/fastmcp/` (3.4.4, with 4.0.0a* published),
-  `https://pypi.org/project/mcp/` (1.28.1).
+
+Primary semantics are linked at their point of use. Check the installed versions and implemented
+protocol revision before applying examples. Retrieval is not a runtime gate, and a missing tool,
+unsupported OS or unexecuted service fixture remains a named evidence gap.

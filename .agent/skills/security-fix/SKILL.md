@@ -1,135 +1,114 @@
 ---
 name: security-fix
-description: Identify AND fix security vulnerabilities (scan + fix + ticket). Use when remediation is wanted, not just a report; audit-security is the scan-only twin.
+description: Remediate supplied security findings or investigate and repair vulnerabilities when security changes are requested. Use audit-security for scan-only assessment.
 tier: core
 conflicts-with: [audit-security]
 ---
 
-# Sentinel Security Audit Skill 🛡️
+# Security Fix
 
-Sentinel is a security-focused agent that protects the codebase from vulnerabilities and security risks.
+## When to Use
 
-> **Scan-only counterpart:** for detection without fixes (a read-only report), use the `audit-security` skill instead. This `security-fix` skill scans **and** implements the highest-priority fix and writes backlog tickets.
+Use for authorized security repair. [audit-security](../audit-security/SKILL.md) owns read-only
+assessment. Preserve the requested finding/subset and existing action/target grants under
+[foundation-security](../../../.agent/rules/foundation-security.md) and
+[pattern-external-mutation](../../../.agent/rules/pattern-external-mutation.md).
 
-## Persona: Sentinel 🛡️
+## Approach
 
-Your mission is to identify **MULTIPLE** security issues or security enhancements, prioritize them by severity, and implement **ONE** high-priority fix that fits the implementation criteria.
+### Phase 1: Intake and Threat Model
 
-### SENTINEL'S PHILOSOPHY:
-- Security is everyone's responsibility.
-- Defense in depth - multiple layers of protection.
-- Fail securely - errors should not expose sensitive data.
-- Trust nothing, verify everything.
-- **Prioritize Ruthlessly**: Critical issues must be addressed or ticketed first.
+Consume a supplied finding's ID, evidence/state, protected outcome, unknowns, and authorized
+surface. Recheck reachability and current premises before editing. Do not replace the requested
+repair with a smaller unrelated finding. For open discovery, bound scanning to the requested system.
 
-## Security Coding Standards
+For each material candidate, identify:
 
-**Good Security Code:**
-```typescript
-// ✅ GOOD: No hardcoded secrets
-const apiKey = import.meta.env.VITE_API_KEY;
+- Attacker-controlled input or identity and its entry point.
+- Protected data/operation and the enforcement boundary.
+- Reachability, preconditions, privileges, and affected users.
+- The concrete failure scenario, existing controls, evidence, and confidence.
 
-// ✅ GOOD: Input validation
-function createUser(email: string) {
-  if (!isValidEmail(email)) {
-    throw new Error('Invalid email format');
-  }
-  // ...
-}
+Distinguish confirmed vulnerabilities, plausible candidates, and defensive enhancements.
+Prioritize by exposure and consequence; labels such as injection or missing validation do not
+determine severity alone. No confirmed finding is an acceptable outcome.
 
-// ✅ GOOD: Secure error messages
-catch (error) {
-  logger.error('Operation failed', error);
-  return { error: 'An error occurred' }; // Don't leak details
-}
-```
+### Phase 2: Select the Repair
 
-**Bad Security Code:**
-```typescript
-// ❌ BAD: Hardcoded secret
-const apiKey = 'sk_live_abc123...';
+Trace the control that must hold at the actual trust boundary. Inspect authentication,
+authorization, tenant/resource ownership, and error paths where relevant. A UI restriction is not
+evidence that the server enforces access.
 
-// ❌ BAD: No input validation
-function createUser(email: string) {
-  database.query(`INSERT INTO users (email) VALUES ('${email}')`);
-}
+Choose an in-scope repair addressing the cause and legitimate use. Do not choose by line count.
+Keep important unresolved findings with an owner and next action rather than declaring costly
+work resolved. If the premise is stale, record what current evidence contradicts it.
 
-// ❌ BAD: Leaking stack traces
-catch (error) {
-  return { error: error.stack }; // Exposes internals!
-}
-```
+### Phase 3: Secure the Boundary
 
-## Scan & Audit Process
+Use the mechanism appropriate to the threat:
 
-### 1. 🔍 SCAN - Hunt for security vulnerabilities:
+- Enforce authorization at the protected operation, including failure paths; an exception must
+  not grant access.
+- Keep SQL values in parameterized operations. Validate or allowlist structural choices such
+  as identifiers that cannot be value parameters. Generic input sanitization is not a substitute.
+  See [OWASP SQL injection prevention](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html).
+- Prefer non-shell APIs for command execution. When a process is necessary, use the platform's
+  argument API and validate supported operations rather than concatenate untrusted command text.
+- Resolve path inputs against the intended allowed root. Check containment, symlink/reparse-point
+  escape, and check/use races relevant to the operation before relying on a path check.
+- Apply output-context encoding or an appropriate HTML sanitizer at the relevant sink.
+  Input validation alone does not establish XSS protection.
+- Evaluate CSRF against actual credential transport and state-changing endpoints; preserve the
+  application's required session and origin checks.
+- Review a vulnerable dependency's affected version, reachable API, and compatible repair using
+  primary advisories and project policy.
 
-**CRITICAL VULNERABILITIES (Fix immediately):**
-- Hardcoded secrets, API keys, passwords in code.
-- SQL injection vulnerabilities (unsanitized user input in queries).
-- Command injection risks (unsanitized input to shell commands).
-- Path traversal vulnerabilities (user input in file paths).
-- Exposed sensitive data in logs or error messages.
+#### Secrets and Diagnostic Evidence
 
-**HIGH PRIORITY:**
-- Cross-Site Scripting (XSS) vulnerabilities.
-- Cross-Site Request Forgery (CSRF) missing protection.
-- Missing input validation on user data.
+Retrieve private credentials only in the server-side boundary through the project's existing
+secret mechanism. Confirm the caller can invoke only the intended operation, and inspect
+responses, client imports/build configuration, and logging paths for disclosure. A browser-visible
+configuration value must be intentionally public.
 
-**MEDIUM PRIORITY:**
-- Missing error handling exposing stack traces.
-- Insufficient logging of security events.
-- Outdated dependencies with known vulnerabilities.
+For example, moving a private API key to a Vite-prefixed environment variable does not protect
+it: VITE-prefixed values are included in client code.
+See [Vite: environment variables](https://vite.dev/guide/env-and-mode#env-variables).
+This is a boundary correction, not a prescription for another universal environment API.
 
-### 2. ⚡ SELECT & PRIORITIZE - Multiple Security Findings:
-Rank ALL identified issues using the priority order:
-1. **Critical Vulnerabilities**: Hardcoded secrets, SQLi, Auth bypass (Fix or ticket immediately).
-2. **High Priority**: XSS, CSRF, missing input validation on sensitive fields.
-3. **Medium Priority**: Error leakage, insufficient logging, outdated vulnerable dependencies.
-4. **Security Enhancements**: Defense in depth, security headers, rate limiting.
+Log an allowlisted event/code and safe correlation information through the project's redaction
+path. Do not copy raw exceptions, request bodies, tokens, credentials, or sensitive identifiers
+into reports or logs. Preserve useful failure diagnostics without exposing secrets.
+See [OWASP logging: data to exclude](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude).
 
-### 3. 🔧 SECURE - Implement the fix:
-- Select the **highest priority** finding that can be fixed in < 50 lines.
-- Write secure, defensive code.
-- Add comments explaining the security concern.
-- Validate and sanitize all inputs.
-- Fail securely (don't expose info on error).
+An exposed credential may need rotation/revocation, deployment, and incident investigation.
+A code repair does not prove those actions complete. Carry remaining operational actions and
+owners; execute them only where existing authority covers the exact action and target.
 
-### 4. ✅ VERIFY - Test the security fix:
-- **Lint code**: `npm run lint`.
-- **Run tests**: `npm run test`.
-- **Build**: `npm run build`.
-- Ensure no new vulnerabilities introduced.
+### Phase 4: Verify
 
-### 5. 🎁 PRESENT - Report all findings:
+Exercise the repaired threat boundary with a bounded abuse/denial case and a legitimate-use case.
+Include error or missing-context behavior when it caused the defect. Use disposable fixtures;
+do not test an exploit against real users or mutate live security settings without applicable
+authority.
 
-**Option A: Implement Fix & Create PR**
-For the highest priority issue: Title "🛡️ Sentinel: [PRIORITY] Fix [vulnerability type]".
+Apply [foundation-testing](../../../.agent/rules/foundation-testing.md), Evidence identity and cite-or-run,
+for behavioral failure/pass pairing, alternative-proof conditions, and evidence limits.
+Use its Lifecycle-Aware Verification Gate for generic correctness checks. Generic green checks
+do not establish denial, data isolation, or incident containment.
 
-**Option B: Generate Backlog Tickets**
-For ALL other identified issues: Create tickets in `docs/backlog/` following the format: `SEC-{RANDOM}-{###}.md`.
-Rank findings sequentially by priority in the filenames if possible.
+If safe threat reproduction is unavailable, record the specific reason, alternative evidence,
+confidence, missing proof, and owner. Do not call an untested threat path verified.
 
-## Ticket Template (`docs/backlog/SEC-{RANDOM}-{###}.md`)
+### Phase 5: Report
 
-```markdown
----
-id: SEC-{RANDOM}-{###}
-category: security
-priority: [high|med|low]
-status: open
-created: [YYYY-MM-DD]
-source: sentinel
----
+Keep the supplied work item/finding identity. For task-authorized follow-ups, use
+[pattern-docs-artifacts](../../../.agent/rules/pattern-docs-artifacts.md), Work Items and Status-of-Record
+Contract, with stable TICKET identities and priority fields. A delegated author returns metadata
+changes to its assigned owner. Reporting does not implicitly publish a PR or disclose a private finding.
 
-# SEC-{RANDOM}-{###}: [Concise Title]
+## Definition of Done
 
-## Context
-[Why this security ticket was generated]
-
-## Recommended Action
-[Specific steps to resolve securely]
-
-## Files Affected
-- [Paths]
-```
+Report the threat and evidence, boundary repaired, denial and legitimate-use results on the
+relevant state, and unresolved code or operational remediation. Preserve required pending checks
+with owners and gated transitions. Claim only the exposure and containment actually established.
+End durable reports with "What we deliberately did NOT do."

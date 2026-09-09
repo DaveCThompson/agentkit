@@ -7,58 +7,84 @@ domain: performance
 
 # Asset Pipeline & Content-Media Conventions
 
-Rules for managing high-fidelity assets and rich content-media structures (case studies, longform
-pages, galleries — whatever the project's content registry calls them).
+Preserve media fidelity, privacy and stable rendering through the project's actual asset pipeline.
+Use existing scripts, storage and registries after inspecting them; a placeholder path or familiar
+provider is not evidence that a tool, schema or access boundary exists.
 
 ## Image Processing Workflow
 
-1. **Source**: Accept high-res PNG/JPG in `apps/<app>/public/`.
-2. **Convert**: Use the project's webp-conversion script (`convert:webp` by convention, or `node scripts/webp.mjs`) with 80% quality.
-3. **Verify**: Run `sharp` metadata check to get exact `width` and `height`.
-4. **Migrate**: Move to the project's public content-asset path (e.g., `public/<content-area>/[slug]/`; use the project's `_locked/` path for private content).
-5. **Register**: Update the content registry (e.g., `packages/content/src/<content-registry>/[slug].ts`) with exact metadata.
+1. Accept source media in the authorized source store. Inspect sensitivity and metadata before
+   placing anything in a publicly served directory. Preserve originals where required.
+2. Choose format, dimensions and quality for content, transparency, browser support and measured
+   transfer/decode cost. WebP at quality 80 is a trial setting, not a universal conversion rule.
+   Use the actual installed conversion tool/script; do not invent `convert:webp` or install one.
+3. Inspect output metadata with an available tool, such as Sharp when installed. Confirm dimensions,
+   orientation and color handling; inspect fine text, diagrams and compression artifacts.
+4. Move/register only within authorized ownership, preserving callers and originals as required.
+   A directory named `_locked` inside public assets is not access control. Private media needs
+   enforced delivery permissions and an appropriate cache policy.
+5. Update the real registry/schema with exact output metadata and references. Paths such as
+   `public/<content-area>/<slug>/` are illustrative, not required architecture.
 
 ## Content Layout Conventions
 
 ### Aspect Ratios
-- **Technical Splits**: Prefer 1:1 (square) or 4:3 for technical deep-dives to minimize vertical scroll drift.
-- **Cinematic Full-Bleed**: Use 21:9 or 16:9 for high-impact mood boards.
-- **Mobile Progressions**: Use `gallery` with `layout: 'strip'` and `width: 'full-bleed'`.
+
+Choose ratios from content and placement. Square/4:3 technical panels and 16:9/21:9 cinematic
+panels are useful options; do not crop important detail to meet them. Strips/full-bleed galleries
+need an actual supported registry/layout API and narrow-screen checks.
 
 ### Object-Fit Support
-- Use `objectFit: 'contain'` for assets that must not be clipped (e.g., UI dashboards, technical diagrams).
-- Use `objectFit: 'cover'` (default) for cinematic textures and mood boards.
-- **CONSTRAINT**: Always set `fill={true}` in the rendering component if `objectFit` is used to ensure the Next.js `Image` component respects the container's aspect-ratio.
+
+Use `contain` when the full image must remain visible and `cover` when cropping is intentional.
+Size the box and inspect its crop/focal point. Next.js `Image` can use CSS object-fit with intrinsic
+dimensions; `fill` is not universally required. If using `fill`, provide a correctly positioned,
+sized parent and appropriate `sizes`. Follow the installed version's
+[Image contract](https://nextjs.org/docs/app/api-reference/components/image).
 
 ### Cache Busting
-- During iterative design loops, use semantic versioning in filenames (e.g., `-v2.webp`) to bypass browser and dev server caches. 
-- Finalize by renaming to the clean semantic name once the design is approved.
+
+Prefer the build/CDN's content-hash or versioning contract. During iteration, a versioned filename
+can disambiguate outputs; update all references. Renaming to an old “clean” URL can revive stale
+cached content. Preserve deployed URLs or use an authorized cache/version migration.
 
 ## Metadata Standards
-- **Width/Height**: Always use the ACTUAL pixel dimensions from the WebP file in the `MediaRef` object. This prevents layout shift during hydration.
-- **Alt Text**: Be descriptive. "Lens interpolation math" is better than "Image of a lens".
+
+- Record actual intrinsic dimensions or the equivalent aspect-ratio contract and reserve the
+  rendered space. Correct metadata helps avoid shifts but cannot guarantee all layout stability.
+- Write alternatives for the image's purpose. Decorative images may need empty alt text; diagrams
+  may need an adjacent explanation. Do not force a descriptive phrase onto every asset.
+- Preserve meaningful licensing/provenance and remove sensitive metadata when required.
 
 ## Video Workflow
 
 ### Walkthrough video
-- Treat substantive walkthrough video as a first-class content asset, not as an embedded afterthought.
-- Always generate and register a real poster image alongside the video.
-- Capture and store exact intrinsic dimensions for stable layout.
-- Encode as H.264 MP4 using the ffmpeg command from the project's asset-management runbook (path in `project-invariants.md`) (profile main, CRF 20, 720p or 1080p).
-- Store under `apps/<app>/public/<content-area>/{slug}/` (or `the private/_locked asset path ` for private/locked content).
-- Register in content as `localVideo()` with `provider: 'local'`.
-- Render playback video with native browser controls; custom controls require a separate accessibility review.
+
+- Treat substantive video as content with accurate dimensions, a useful poster and applicable
+  captions/transcript/audio-description alternatives.
+- Use the existing encoder/runbook after checking its actual flags and output. H.264 MP4 is a
+  common delivery option; profile, CRF and resolution depend on text legibility, bandwidth and
+  target decoders. Compare the encoded output, not only the exit code.
+- Store/register through the actual schema. `localVideo()` and `provider: 'local'` are possible
+  project APIs, not universal ones. Enforce private delivery outside public paths.
+- Prefer native controls when suitable. Custom controls need equivalent keyboard, naming, focus,
+  captions and playback access.
 
 ### Ambient loops
-- Keep loops silent, short (3-5 seconds), and visually supportive rather than explanatory.
-- Always verify a static poster or image fallback for reduced-motion mode.
-- Avoid introducing loop assets that become LCP candidates on primary reading surfaces.
-- Encode as H.264 MP4 at 720x720 (or smaller) using the ffmpeg command from the project's asset-management runbook (path in `project-invariants.md`) (profile baseline, CRF 23, target under 500 KB).
-- Store under `apps/<app>/public/<content-area>/{slug}/` (or `the private/_locked asset path ` for private/locked content).
-- Register in content as `localVideo()` with `provider: 'local'`.
-- Test that the poster image is good on its own (will be shown when `prefers-reduced-motion` or `Save-Data` is on).
+
+- Keep decorative loops unobtrusive and sized for their role. Duration/resolution/file budgets
+  come from the project and measurement, not fixed 3–5s/500KB limits.
+- Supply a useful still fallback and select it explicitly for reduced motion or data-saving
+  behavior when applicable; those preferences do not automatically switch a video to its poster.
+- Check autoplay rejection, loading failure, pause/stop/hide requirements and whether the asset
+  delays primary content or becomes an expensive LCP candidate.
+- Verify the chosen codec/output at actual sizes and in supported browsers, including a static
+  poster-only path that remains useful.
 
 ### Future migration: Cloudinary
-- The `provider: 'cloudinary'` branch exists in `SiteVideo` and `SiteImage` as infrastructure for a future migration.
-- Cloudinary is not currently in active use. Revisit when traffic exceeds ~1,000 visitors/month or walkthroughs consistently exceed 5 minutes.
-- If/when migrating: use Cloudinary MCP for agent-assisted upload; register publicIds shaped as `<content-area>/{slug}/walkthrough/{name}` and `<content-area>/{slug}/loop/{name}`.
+
+Evaluate a provider migration only when the current project's delivery, transformation, cost or
+operational needs warrant it. Do not assume `SiteVideo`/`SiteImage` already support Cloudinary
+or prescribe visitor/duration thresholds. If a migration is authorized, verify real SDK/API/schema
+support, access control, identifiers, URLs and rollback. Uploading private media or enabling a new
+integration requires the existing action/target grant; tool availability does not provide it.

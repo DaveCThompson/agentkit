@@ -1,5 +1,5 @@
 // adapters.mjs — vendor transforms as CODE, not directories (plan decision: flat repo, adapters in code).
-// Each adapter: (entries, ctx) => { files: [{rel, content}], settings: [{file, merge, data}], validations: [{level, msg}] }
+// Each adapter: (entries, ctx) => { files: [{rel, content, source, transform}], settings: [{file, merge, data}], validations: [{level, msg}] }
 //   entries: merged project tree (core, shipped from kit) + (overlay, project-owned) — decision 34.
 //   ctx: { kitPath, projectRoot, config (.agentkit.json), mcpServers, hooks }
 // Shared text utilities live here so agentkit.mjs and tests import one place (no circular deps).
@@ -110,10 +110,13 @@ export function injectHeader(content, srcRel, ext) {
 
 // Strip an AGENTKIT GENERATED header (used by adopt when flowing content back).
 export function stripHeader(content) {
-  return normalizeEol(content)
-    .split('\n')
-    .filter((l) => !l.includes('AGENTKIT GENERATED from'))
-    .join('\n');
+  const text = normalizeEol(content);
+  const frontmatter = text.startsWith('---\n') ? text.match(/^---\n[\s\S]*?\n---\n/) : null;
+  const start = frontmatter ? frontmatter[0].length : 0;
+  const end = text.indexOf('\n', start);
+  const line = text.slice(start, end === -1 ? text.length : end);
+  if (!/^(?:<!-- |# |\/\/ )AGENTKIT GENERATED from /.test(line)) return text;
+  return text.slice(0, start) + (end === -1 ? '' : text.slice(end + 1));
 }
 
 function extOf(p) {
@@ -129,8 +132,16 @@ function stripFmTo(entry, keepKeys, extra) {
   const kept = {};
   for (const k of keepKeys) if (entry.fm[k] !== undefined && entry.fm[k] !== null) kept[k] = entry.fm[k];
   if (extra) Object.assign(kept, extra);
-  return serializeFrontmatter(kept) + '\n' + entry.body;
+  return nativeFrontmatter(kept) + '\n' + entry.body;
 }
+
+// JSON scalars/arrays are valid YAML flow values. Quote native strings so descriptions containing
+// ': ', '#', booleans or line breaks retain their meaning in real vendor YAML parsers.
+function nativeFrontmatter(fm) {
+  return ['---', ...Object.entries(fm).map(([key, value]) => `${key}: ${JSON.stringify(value)}`), '---'].join('\n');
+}
+
+const isSkillRoot = e => e.type === 'skill' && e.subPath === `skills/${e.name}/SKILL.md`;
 
 // Synthesize a skill-shaped view of a workflow entry for vendors that have a skills surface but NO
 // commands-from-workflows surface (Codex — see vendor-capability-matrix.md). The `wf-` prefix keeps
@@ -149,7 +160,8 @@ function workflowAsSkill(e) {
 
 // TOML multiline basic string escaping for Gemini command prompts.
 export function tomlMultiline(s) {
-  const esc = normalizeEol(s).replace(/\\/g, '\\\\').replace(/"""/g, '""\\"');
+  // JSON basic-string escapes are also TOML escapes. Retain actual line breaks only.
+  const esc = normalizeEol(s).split('\n').map(line => JSON.stringify(line).slice(1, -1)).join('\n');
   return '"""\n' + esc + (esc.endsWith('\n') ? '' : '\n') + '"""';
 }
 
@@ -161,14 +173,117 @@ function tomlValue(v) {
 
 export function renderTomlTable(name, obj) {
   const lines = [`[${name}]`];
+  // A child table changes TOML's current scope. Emit every parent value first.
   for (const [k, v] of Object.entries(obj)) {
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      lines.push(...renderTomlTable(`${name}.${k}`, v));
-    } else {
-      lines.push(`${k} = ${tomlValue(v)}`);
-    }
+    if (v && typeof v === 'object' && !Array.isArray(v)) continue;
+    lines.push(`${JSON.stringify(k)} = ${tomlValue(v)}`);
+  }
+  for (const [k, v] of Object.entries(obj)) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) lines.push(...renderTomlTable(`${name}.${JSON.stringify(k)}`, v));
   }
   return lines;
+}
+
+// Provenance is assigned at construction, never recovered from output text or suffixes.
+function generated(e, rel, content, transform) {
+  return { rel, content, source: e.srcRel, transform };
+}
+
+const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+const strings = value => Array.isArray(value) && value.every(v => typeof v === 'string');
+const safePath = value => typeof value === 'string' && !/[\\\x00-\x1f<>:"|?*]/.test(value)
+  && value.split('/').every(part => part && part !== '.' && part !== '..' && !/[. ]$/.test(part)
+    && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part));
+const routeName = value => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+const tierName = value => typeof value === 'string' && /^(core|overlay|(?:tech|kind):[a-z0-9]+(?:-[a-z0-9]+)*)$/.test(value);
+
+// Deliberately local-stdio only. Ingestion must validate raw metadata before a lossy parser;
+// this second boundary validates actual objects supplied by direct callers and the planner.
+function validateInputs(entries, ctx, vendor) {
+  const validations = [];
+  const error = msg => validations.push({ level: 'error', msg: `${vendor}: ${msg}` });
+  const sources = new Map();
+  for (const e of entries) {
+    if (!safePath(e.srcRel) || !e.srcRel.startsWith('.agent/') || e.srcRel !== `.agent/${e.subPath}`) {
+      error(`invalid canonical source/path ${e.srcRel}`);
+      continue;
+    }
+    const identity = e.srcRel.toLowerCase();
+    if (sources.has(identity)) error(`source collision: ${sources.get(identity)} and ${e.srcRel}`);
+    sources.set(identity, e.srcRel);
+    if (typeof e.raw !== 'string' || typeof e.body !== 'string') error(`text source required: ${e.srcRel}`);
+    if (e.fm != null && !isRecord(e.fm)) error(`frontmatter must be a map: ${e.srcRel}`);
+    const fm = isRecord(e.fm) ? e.fm : {};
+    for (const tier of [e.tier, fm.tier]) if (tier !== undefined && !tierName(tier)) error(`invalid tier in ${e.srcRel}`);
+    const skillRoot = isSkillRoot(e);
+    // _templates is a reserved support directory, not a native skill. Its resources still copy.
+    const template = e.type === 'skill' && e.name === '_templates';
+    if (['skill', 'rule', 'workflow', 'agent'].includes(e.type) && !template && !routeName(e.name)) error(`invalid routing name '${e.name}' in ${e.srcRel}`);
+    if (skillRoot && !template && (fm.name !== e.name || e.name.length > 64)) error(`SKILL.md name must match its folder and fit 64 characters: ${e.srcRel}`);
+    if (skillRoot && !template && (typeof fm.description !== 'string' || !fm.description.trim())) error(`skill description must be a nonempty string: ${e.srcRel}`);
+    for (const key of ['name', 'description', 'model', 'argument-hint', 'agent']) {
+      if (fm[key] !== undefined && typeof fm[key] !== 'string') error(`${key} must be a string in ${e.srcRel}`);
+    }
+    for (const key of ['gemini', 'subtask', 'user-invocable', 'disable-model-invocation']) {
+      if (fm[key] !== undefined && typeof fm[key] !== 'boolean') error(`${key} must be boolean in ${e.srcRel}`);
+    }
+    for (const key of ['required-tools', 'triggers', 'applies-to', 'conflicts-with']) {
+      if (fm[key] !== undefined && !strings(fm[key])) error(`${key} must be a string array in ${e.srcRel}`);
+    }
+    for (const key of ['allowed-tools', 'tools', 'globs', 'skill']) {
+      if (fm[key] !== undefined && typeof fm[key] !== 'string' && !strings(fm[key])) error(`${key} must be a string or string array in ${e.srcRel}`);
+    }
+    if (fm.trigger !== undefined && !['always', 'glob', 'model-decision'].includes(fm.trigger)) error(`invalid trigger in ${e.srcRel}`);
+    if (fm.trigger === 'glob' && (!fm.globs || (Array.isArray(fm.globs) && !fm.globs.length))) error(`glob trigger requires globs in ${e.srcRel}`);
+  }
+  if (!isRecord(ctx.mcpServers)) error('MCP servers must be a map');
+  else for (const [name, cfg] of Object.entries(ctx.mcpServers)) {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name) || ['__proto__', 'constructor', 'prototype'].includes(name)) error(`unsupported MCP server name '${name}'`);
+    if (!isRecord(cfg)) { error(`MCP '${name}' must be a local server map`); continue; }
+    for (const key of Object.keys(cfg)) if (!['command', 'args', 'env', 'enabled'].includes(key)) error(`MCP '${name}': unsupported field '${key}'`);
+    if (typeof cfg.command !== 'string' || !cfg.command.trim() || /[\x00-\x1f]/.test(cfg.command)) error(`MCP '${name}': command must be a nonempty string`);
+    if (cfg.args !== undefined && (!strings(cfg.args) || cfg.args.some(s => s.includes('\0')))) error(`MCP '${name}': args must be strings without NUL`);
+    if (cfg.enabled !== undefined && typeof cfg.enabled !== 'boolean') error(`MCP '${name}': enabled must be boolean`);
+    if (cfg.env !== undefined && (!isRecord(cfg.env) || Object.entries(cfg.env).some(([k, v]) => !k || /[=\x00-\x1f]/.test(k) || typeof v !== 'string' || v.includes('\0')))) error(`MCP '${name}': env must map environment names to strings`);
+  }
+  return validations;
+}
+
+function checkedAdapter(vendor, emit) {
+  return (entries, supplied = {}) => {
+    const ctx = { config: {}, hooks: [], mcpServers: {}, ...supplied };
+    const validations = validateInputs(entries, ctx, vendor);
+    if (validations.length) return { files: [], settings: [], validations };
+    const result = emit(entries.filter(e => e.subPath !== 'skills/_templates/SKILL.md'), ctx);
+    result.validations.unshift(...validations);
+    const paths = new Map();
+    const menuRoutes = new Map();
+    for (const file of result.files) {
+      if (!safePath(file.rel)) result.validations.push({ level: 'error', msg: `${vendor}: invalid output path ${file.rel} (${file.source})` });
+      const identity = file.rel.toLowerCase();
+      if (paths.has(identity)) result.validations.push({ level: 'error', msg: `${vendor}: output collision at ${file.rel}: ${paths.get(identity)} and ${file.source}` });
+      paths.set(identity, file.source);
+      if (/^\.[^/]+\/skills\/[^/]+\/SKILL\.md$/.test(file.rel)) {
+        const name = parseFrontmatter(file.content).fm?.name;
+        if (!routeName(name) || name.length > 64 || file.rel.split('/').at(-2) !== name) result.validations.push({ level: 'error', msg: `${vendor}: invalid native skill name at ${file.rel} (${file.source})` });
+      }
+      // Claude commands and visible skills share slash-menu names even with different paths.
+      // The existing explicit workflow/skill pairing hides the implementation skill from that menu.
+      if (vendor === 'claude') {
+        const command = file.rel.match(/^\.claude\/commands\/([^/]+)\.md$/);
+        const skill = file.rel.match(/^\.claude\/skills\/([^/]+)\/SKILL\.md$/);
+        const visibleSkill = skill && parseFrontmatter(file.content).fm?.['user-invocable'] !== false;
+        const route = command?.[1] || (visibleSkill ? skill[1] : null);
+        if (route) {
+          if (menuRoutes.has(route)) result.validations.push({ level: 'error', msg: `${vendor}: slash route collision '${route}': ${menuRoutes.get(route)} and ${file.source}; pair the workflow's implementation skill explicitly or rename the conflicting route` });
+          menuRoutes.set(route, file.source);
+        }
+      }
+    }
+    if (result.validations.some(v => v.level === 'error')) return { files: [], settings: [], validations: result.validations };
+    return result;
+  };
 }
 
 // ---------- adapters ----------
@@ -188,12 +303,11 @@ const CLAUDE_HIDE_FROM_MENU = { 'user-invocable': false };
 // and the permission engine can match. Deliberately EXCLUDES outward-facing / arbitrary-exec grants
 // (git push, broad rm, Stop-Process, external curl, powershell -Command "<str>", bare `node *`) —
 // those stay human-gated per pattern-external-mutation.md. Opt out with permissions.enabled=false;
-// extend with permissions.extra; worktree wildcards need permissions.worktreeRoot in .agentkit.json.
+// extend with permissions.extra. worktreeRoot alone does not authorize broader runners.
 export function claudePermissionsBaseline(ctx) {
   const cfg = (ctx && ctx.config) || {};
   const p = cfg.permissions || {};
   if (p.enabled === false) return [];
-  const repo = String(ctx?.projectRoot || '.').replace(/[/\\]+$/, '').split(/[/\\]/).pop() || 'project';
   // Axis gating (F-perms-npm-in-non-app, the operate-side kit adoption 2026-07-25). Toolchain grants are
   // selected on the SAME axes as the asset catalog, resolved exactly the way selectEntries resolves a
   // tier: `kind:X` → kinds.includes(X), `tech:X` → stack.includes(X). Before this gate a non-app repo
@@ -215,9 +329,9 @@ export function claudePermissionsBaseline(ctx) {
   // graduated gate + test/build runners — one allowlisted command each (foundation-testing.md §1)
   if (isJs) {
     base.push(
-      'Bash(npm run gate*)',
-      'Bash(npm run lint*)', 'Bash(npm run typecheck*)', 'Bash(npm run test*)',
-      'Bash(npm run build*)', 'Bash(npm run validate*)',
+      'Bash(npm run gate *)',
+      'Bash(npm run lint *)', 'Bash(npm run typecheck *)', 'Bash(npm run test *)',
+      'Bash(npm run build *)', 'Bash(npm run validate *)',
       'Bash(npx vitest run *)', 'Bash(npx eslint *)', 'Bash(npx tsc *)', 'Bash(npx depcruise *)',
     );
   }
@@ -225,34 +339,22 @@ export function claudePermissionsBaseline(ctx) {
   // spraying uv/ruff/pytest at a repo that declared neither would just re-run the original defect in
   // the other direction. A Python repo opts in with `stack: ["python"]` (the same key tech:python
   // assets will select on); a container repo with `kinds: ["service"]` or `stack: ["docker"]`.
-  if (selects('tech:python')) base.push('Bash(uv run *)', 'Bash(ruff *)', 'Bash(pytest *)');
-  if (selects('kind:service') || selects('tech:docker')) base.push('Bash(docker compose *)');
+  if (selects('tech:python')) base.push('Bash(uv run pytest *)', 'Bash(uv run ruff check *)', 'Bash(ruff check *)', 'Bash(pytest *)');
+  if (selects('kind:service') || selects('tech:docker')) base.push('Bash(docker compose ps *)', 'Bash(docker compose logs *)', 'Bash(docker compose config *)');
   base.push(
-    // kit helpers, narrowly scoped (NOT a blanket `node *`; that arbitrary-exec grant is opt-in).
-    // Stack-neutral: `agentkit lock`/`surfaces` are the orchestration primitives every kind uses.
-    'Bash(node * lock *)', 'Bash(node * surfaces *)',
+    // Launcher identity is resolved outside this pure adapter. Without an attested executable,
+    // helper commands prompt under the user's policy. Never wildcard the node script position.
     // safe read-only utilities the audits found unlisted — stack-neutral, never gated
     'Bash(comm *)', 'Bash(od *)', 'Bash(printf *)', 'Bash(git fetch *)',
-    'PowerShell(Get-CimInstance *)', 'PowerShell(Set-Location *)',
-    // the one narrow delete the lock lifecycle needs (moot once `agentkit lock` is used; kept for safety)
-    'Bash(rm -f .orchestrator.lock)',
   );
-  // Worktree wildcards are themselves npm/node_modules-shaped, so they ride the same JS gate — a
-  // Python repo with a worktreeRoot has no `npm --prefix` or `node_modules/.bin` to run.
-  if (p.worktreeRoot && isJs) {
-    const root = String(p.worktreeRoot).replace(/[/\\]+$/, '');
-    base.push(
-      `Bash(npm --prefix ${root}/${repo}-wt/*)`,
-      'Bash(*node_modules/.bin/vitest run *)',
-      'Bash(*node_modules/.bin/eslint *)',
-    );
-  }
+  // worktreeRoot alone is not a runner grant. Broad uv/docker/worktree runners require extra.
   // Codebase-memory MCP read-only tools — the SessionStart code-discovery protocol mandates these
   // for all exploration, so each graph query prompts otherwise. Gated on the server actually being
   // registered for this project (key derived from ctx.mcpServers, robust to an mcp-name change);
   // per-tool enumeration, NOT `mcp__<server>__*`, so the mutating tools (index_repository,
   // delete_project, ingest_traces, manage_adr) stay human-gated.
-  const codegraphKey = Object.keys((ctx && ctx.mcpServers) || {}).find((k) => k.includes('codebase-memory'));
+  const codegraphKey = Object.keys((ctx && ctx.mcpServers) || {}).find((k) => /^[a-zA-Z0-9_-]+$/.test(k)
+    && k.includes('codebase-memory') && ctx.mcpServers[k]?.enabled !== false);
   if (codegraphKey) {
     for (const tool of ['search_graph', 'query_graph', 'trace_path', 'get_code_snippet', 'get_graph_schema', 'get_architecture', 'search_code', 'list_projects', 'index_status', 'detect_changes']) {
       base.push(`mcp__${codegraphKey}__${tool}`);
@@ -273,7 +375,7 @@ function claude(entries, ctx) {
   // pairing — harmless there (the manifest records target rels only, validations are discarded);
   // do NOT "fix" that by trying to pair inside the per-entry loop.
   const skillNames = new Set(
-    entries.filter((e) => e.type === 'skill' && e.subPath.endsWith('SKILL.md')).map((e) => String(e.fm?.name || e.name)),
+    entries.filter(isSkillRoot).map((e) => String(e.fm?.name || e.name)),
   );
   const pairedSkills = new Set();
   for (const e of entries) {
@@ -289,11 +391,11 @@ function claude(entries, ctx) {
     if (e.type === 'skill') {
       const ext = extOf(e.subPath);
       const rel = '.claude/' + e.subPath; // skills/<name>/...
-      const hide = e.subPath.endsWith('SKILL.md') && pairedSkills.has(String(e.fm?.name || e.name));
-      const content = e.subPath.endsWith('SKILL.md')
+      const hide = isSkillRoot(e) && pairedSkills.has(String(e.fm?.name || e.name));
+      const content = isSkillRoot(e)
         ? injectHeader(stripFmTo(e, ['name', 'description', 'allowed-tools'], hide ? CLAUDE_HIDE_FROM_MENU : undefined), e.srcRel, ext)
         : injectHeader(normalizeEol(e.raw), e.srcRel, ext);
-      files.push({ rel, content });
+      files.push(generated(e, rel, content, isSkillRoot(e) ? 'body-md' : 'copy'));
     } else if (e.type === 'rule') {
       if (e.fm?.trigger === 'model-decision') {
         // model-decision → menu-hidden `rule-` skill. Claude's progressive disclosure (name +
@@ -309,21 +411,21 @@ function claude(entries, ctx) {
           validations.push({ level: 'warn', msg: `claude: model-decision rule ${e.srcRel} lacks description: — routing degraded to its name` });
         }
         const fmOut = { name, description: e.fm?.description || `${e.name} rule — consult before work it governs.`, ...CLAUDE_HIDE_FROM_MENU };
-        files.push({ rel: `.claude/skills/${name}/SKILL.md`, content: injectHeader(serializeFrontmatter(fmOut) + '\n' + e.body, e.srcRel, '.md') });
+        files.push(generated(e, `.claude/skills/${name}/SKILL.md`, injectHeader(nativeFrontmatter(fmOut) + '\n' + e.body, e.srcRel, '.md'), 'body-md'));
       } else {
         // Claude Code native rules surface (verified 2026-07-03, code.claude.com/docs/en/memory):
         // .claude/rules/*.md, path-scoped via `paths:` frontmatter. Canonical `trigger: glob` maps 1:1.
         const paths = e.fm?.globs ? (Array.isArray(e.fm.globs) ? e.fm.globs : [e.fm.globs]) : null;
         const kept = paths ? { paths } : {};
-        const content = (paths ? serializeFrontmatter(kept) + '\n' + e.body : e.body);
-        files.push({ rel: `.claude/rules/${e.name}.md`, content: injectHeader(content, e.srcRel, '.md') });
+        const content = (paths ? nativeFrontmatter(kept) + '\n' + e.body : e.body);
+        files.push(generated(e, `.claude/rules/${e.name}.md`, injectHeader(content, e.srcRel, '.md'), 'body-md'));
       }
     } else if (e.type === 'workflow') {
       const rel = `.claude/commands/${e.name}.md`;
-      files.push({ rel, content: injectHeader(stripFmTo(e, ['description', 'argument-hint', 'allowed-tools', 'model']), e.srcRel, '.md') });
+      files.push(generated(e, rel, injectHeader(stripFmTo(e, ['description', 'argument-hint', 'allowed-tools', 'model']), e.srcRel, '.md'), 'body-md'));
     } else if (e.type === 'agent') {
       const rel = `.claude/agents/${e.name}.md`;
-      files.push({ rel, content: injectHeader(stripFmTo(e, ['name', 'description', 'tools', 'model']), e.srcRel, '.md') });
+      files.push(generated(e, rel, injectHeader(stripFmTo(e, ['name', 'description', 'tools', 'model']), e.srcRel, '.md'), 'body-md'));
     }
   }
   if (ctx.hooks.length) {
@@ -337,9 +439,10 @@ function claude(entries, ctx) {
   if (permsBaseline.length) {
     settings.push({ file: '.claude/settings.json', merge: 'claude-permissions', data: permsBaseline });
   }
-  if (Object.keys(ctx.mcpServers).length) {
-    settings.push({ file: '.mcp.json', merge: 'mcp-json', data: ctx.mcpServers });
-  }
+  const servers = Object.fromEntries(Object.entries(ctx.mcpServers).filter(([, cfg]) => cfg.enabled !== false).map(([name, cfg]) => [name, {
+    command: cfg.command, ...(cfg.args !== undefined ? { args: [...cfg.args] } : {}), ...(cfg.env !== undefined ? { env: { ...cfg.env } } : {}),
+  }]));
+  if (Object.keys(servers).length) settings.push({ file: '.mcp.json', merge: 'mcp-json', data: servers });
   return { files, settings, validations };
 }
 
@@ -355,19 +458,21 @@ function codex(entries, ctx) {
     if (e.type === 'skill') {
       const ext = extOf(e.subPath);
       const rel = '.agents/' + e.subPath;
-      const content = e.subPath.endsWith('SKILL.md')
+      const content = isSkillRoot(e)
         ? injectHeader(stripFmTo(e, ['name', 'description']), e.srcRel, ext)
         : injectHeader(normalizeEol(e.raw), e.srcRel, ext);
-      files.push({ rel, content });
+      files.push(generated(e, rel, content, isSkillRoot(e) ? 'body-md' : 'copy'));
     } else if (e.type === 'workflow') {
       const w = workflowAsSkill(e);
-      files.push({ rel: '.agents/' + w.subPath, content: injectHeader(stripFmTo(w, ['name', 'description']), e.srcRel, '.md') });
+      files.push(generated(e, '.agents/' + w.subPath, injectHeader(stripFmTo(w, ['name', 'description']), e.srcRel, '.md'), 'body-md'));
     }
   }
   if (Object.keys(ctx.mcpServers).length) {
     const lines = [];
     for (const [name, cfg] of Object.entries(ctx.mcpServers)) {
-      lines.push(...renderTomlTable(`mcp_servers.${JSON.stringify(name).slice(1, -1)}`, cfg), '');
+      const native = { command: cfg.command, ...(cfg.args !== undefined ? { args: [...cfg.args] } : {}),
+        ...(cfg.enabled !== undefined ? { enabled: cfg.enabled } : {}), ...(cfg.env !== undefined ? { env: { ...cfg.env } } : {}) };
+      lines.push(...renderTomlTable(`mcp_servers.${JSON.stringify(name)}`, native), '');
     }
     settings.push({ file: '.codex/config.toml', merge: 'toml-block', data: lines.join('\n').trimEnd() });
   }
@@ -376,10 +481,16 @@ function codex(entries, ctx) {
 
 // GEMINI CLI — curated subset of workflows → .gemini/commands/*.toml (opt out via `gemini: false`
 // in workflow frontmatter). Curated, not a bulk mirror.
-function gemini(entries) {
+function gemini(entries, ctx) {
   const files = [];
   const validations = [];
   for (const e of entries) {
+    if (e.type === 'skill' && !ctx.config.vendors?.includes('codex')) {
+      const ext = extOf(e.subPath);
+      const main = isSkillRoot(e);
+      const content = injectHeader(main ? stripFmTo(e, ['name', 'description']) : normalizeEol(e.raw), e.srcRel, ext);
+      files.push(generated(e, '.gemini/' + e.subPath, content, main ? 'body-md' : 'copy'));
+    }
     if (e.type !== 'workflow' || e.fm?.gemini === false) continue;
     const desc = e.fm?.description || e.name;
     const prompt = normalizeEol(e.body).trim() + `\n\nCanonical source: ${e.srcRel}\n`;
@@ -388,7 +499,7 @@ function gemini(entries) {
       '\n' +
       `description = ${JSON.stringify(desc)}\n` +
       `prompt = ${tomlMultiline(prompt)}\n`;
-    files.push({ rel: `.gemini/commands/${e.name}.toml`, content });
+    files.push(generated(e, `.gemini/commands/${e.name}.toml`, content, 'unsupported'));
   }
   return { files, settings: [], validations };
 }
@@ -405,16 +516,16 @@ function opencode(entries, ctx) {
   for (const e of entries) {
     if (e.type === 'skill') {
       const ext = extOf(e.subPath);
-      const content = e.subPath.endsWith('SKILL.md')
+      const content = isSkillRoot(e)
         ? injectHeader(stripFmTo(e, ['name', 'description']), e.srcRel, ext)
         : injectHeader(normalizeEol(e.raw), e.srcRel, ext);
-      files.push({ rel: '.opencode/' + e.subPath, content });
+      files.push(generated(e, '.opencode/' + e.subPath, content, isSkillRoot(e) ? 'body-md' : 'copy'));
     } else if (e.type === 'workflow') {
       const rel = `.opencode/commands/${e.name}.md`;
       // opencode expects provider/model form (e.g. anthropic/claude-haiku-4-5); a bare Claude
       // alias like `haiku` is meaningless here — drop it rather than emit a broken hint.
       const safe = e.fm?.model && !String(e.fm.model).includes('/') ? { ...e, fm: { ...e.fm, model: undefined } } : e;
-      files.push({ rel, content: injectHeader(stripFmTo(safe, ['description', 'agent', 'model', 'subtask']), e.srcRel, '.md') });
+      files.push(generated(e, rel, injectHeader(stripFmTo(safe, ['description', 'agent', 'model', 'subtask']), e.srcRel, '.md'), 'body-md'));
     }
   }
   settings.push({
@@ -424,12 +535,8 @@ function opencode(entries, ctx) {
   });
   const mcpServers = {};
   for (const [name, cfg] of Object.entries((ctx && ctx.mcpServers) || {})) {
-    const command = Array.isArray(cfg.command)
-      ? [...cfg.command, ...(Array.isArray(cfg.args) ? cfg.args : [])]
-      : [cfg.command, ...(Array.isArray(cfg.args) ? cfg.args : [])];
-    const server = { ...cfg, type: cfg.type || 'local', command };
-    delete server.args;
-    if (server.enabled === undefined && server.disabled === undefined) server.enabled = true;
+    const server = { type: 'local', command: [cfg.command, ...(cfg.args || [])],
+      ...(cfg.env !== undefined ? { environment: { ...cfg.env } } : {}), enabled: cfg.enabled ?? true };
     mcpServers[name] = server;
   }
   if (Object.keys(mcpServers).length) {
@@ -443,7 +550,7 @@ function opencode(entries, ctx) {
 function antigravity(entries) {
   const validations = [];
   for (const e of entries) {
-    if (e.type === 'skill' && e.subPath.endsWith('SKILL.md')) {
+    if (isSkillRoot(e)) {
       const folder = e.subPath.split('/')[1];
       if (e.fm?.name && e.fm.name !== folder) {
         validations.push({ level: 'error', msg: `antigravity: SKILL.md name '${e.fm.name}' != folder '${folder}' (${e.srcRel})` });
@@ -456,5 +563,6 @@ function antigravity(entries) {
   return { files: [], settings: [], validations };
 }
 
-export const adapters = { claude, codex, gemini, opencode, antigravity };
+export const adapters = Object.fromEntries(Object.entries({ claude, codex, gemini, opencode, antigravity })
+  .map(([vendor, emit]) => [vendor, checkedAdapter(vendor, emit)]));
 export const VENDORS = Object.keys(adapters);

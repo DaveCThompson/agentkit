@@ -7,68 +7,87 @@ domain: layout
 
 # Input Patterns
 
-Rules for interactive controls: Buttons, Sliders, Forms, and Toggles.
+Use the project's real control APIs and design tokens while preserving name, role, value and
+operation across input methods. Specific dimensions, palettes and wrappers are local choices;
+`foundation-accessibility.md` owns the applicable accessibility criteria.
 
 ## 1. Buttons
-*   **Typography:** All button text must be `var(--font-weight-semibold)` (600).
-*   **State Purity:** Ghost/Tertiary buttons **MUST NOT** acquire borders on hover. Only darken background.
-*   **Scale Physics:**
-    *   **Stable Actions:** Primary and destructive buttons MUST NOT use transform- or filter-based hover/press motion.
-    *   **Layered Actions:** Secondary, tertiary, outline, and on-solid buttons may animate the `::before` pseudo-element (background only), not the text.
-    *   **Global active scale:** If scale is used, apply it only to the background layer and cap it at `scale(0.99)`.
-*   **Theme Primaries:** Primary buttons MUST derive from `--control-bg-theme` and related semantic tokens. In dark mode they should start slightly off-white and lighten on hover, not darken.
-*   **Touch Targets:** Small buttons (icon-only) must remain **20px**+ for hit area.
+
+- Follow the established typography/variant contract; semibold 600 is an option, not a universal
+  weight. Primary colors must retain readable contrast through enabled, hover, focus and pressed states.
+- Keep geometry stable across states. A transparent reserved border, inset decoration or background
+  layer can prevent movement; a ghost button need not be forbidden from ever showing a border.
+- Choose press/lift feedback from the motion contract. A separately animated background can keep
+  text stable, but no fixed scale factor establishes correctness or performance.
+- Check actual pointer targets, not just visible icons. WCAG 2.2 AA 2.5.8 uses 24×24 CSS px or its
+  specified exceptions, including spacing; 20px is not a general minimum. The enhanced 44×44 target
+  criterion is AAA; projects may require larger targets. See
+  [target size (minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
 
 ## 2. Sliders
-*   **DOM Layering:** 3-layer architecture required.
-    *   Parent (Layout) -> Child `.sliderThumbVisual` (Visual) -> `::before` (44px Hit Target z:-1) -> `::after` (32px Glow z:-2).
-*   **Extreme Labels:** In dense contexts, show labels for `1` and `Max` only.
-*   **Thumb Radius:** Must use `--radius-full`.
+
+- Prefer native ranges or a proven accessible primitive when they fit. Custom sliders need a name,
+  values, keyboard behavior and appropriate touch interaction; offer an alternative to dragging.
+- Separate track, visual thumb, hit target and decorative glow when useful. Pseudo-elements can
+  enlarge a target, but check clipping, overlap, stacking and actual pointer hit testing; negative
+  z-index is not guaranteed to receive input.
+- Choose endpoint/intermediate labels and thumb shape from domain meaning and local density.
+  Do not impose three layers, a fixed glow size or a particular radius token.
 
 ## 3. Forms & Inputs
-*   **Global Styles**: Modal inputs must use `forms.css` globals, not inline styles.
-*   **Selects**: Prefer native `<select>` for standard settings/forms. For specialized Canvas widgets (e.g., Output Format), use `@radix-ui/react-select` to ensure consistent styling and keyboard accessibility.
-*   **Auto-Growing**: Use `AutoResizingTextarea` for form fields and surveys that should start as a single line and grow with content. It overrides global `forms.css` textarea styles to ensure a compact initial state (`36px` height).
-*   **Grid Alignment**: For complex panels, use the "50% Width Grid Pattern" where the field takes exactly 50%.
-*   **Complex Widgets**: For multi-field widgets (e.g., Advanced Role), use a 2-column grid with `gap: var(--spacing-2)` and micro-labels (10px) to maintain density.
-- [ ] **Checkboxes**: Use `align-items: center` on parent flex container for optical alignment.
-- [ ] **Adornments & Slots**: Standard primitives (`Input`, `AutoResizingTextarea`) support an optional `endAdornment` slot.
-  - **Positioning**: Must be contained within the input's visual chrome.
-  - **Padding**: Primitives MUST increase internal padding-right when the slot is populated (typically `var(--spacing-10)`) to prevent text overlap.
-  - **Context**: Actions in this slot (e.g., Microphone for STT) should be tertiary/ghost style and not interfere with focus ring or base layout logic.
+
+- Reuse established form styles and primitives through their real import/API; do not assume a
+  global `forms.css`, `AutoResizingTextarea` or a fixed initial height exists.
+- Prefer native `select` for straightforward choices. Use a custom selection widget when its
+  behavior warrants it and verify naming, focus, keyboard, touch and selection states.
+- Auto-growing textareas need usable minimum/maximum size, preserved selection, scroll behavior
+  and long-content tests. Choose grids and labels for actual content, zoom and translation;
+  a 50% field width or 10px label is not a portable density rule.
+- Align checkboxes with their label's content and wrapping behavior, not a universal flex alignment.
+- If a primitive supports adornments, reserve logical inline space for them so text does not
+  overlap. Keep actions inside the visual chrome only where intended, give them accessible names,
+  and preserve focus rings, disabled/read-only behavior and form submission semantics.
 
 ## 4. Toggles & Chips
-*   **SegmentedToggle:** Best for high-signal UI (e.g., theme switching). Must use `layoutId` logic and `inset: 0` z-index for Framer Motion sliding background.
-*   **SegmentedControl:** Preferred for forms and ratings. Supports `row`, `column`, and `grid` layouts.
-    *   **Ratings:** For scales > 5 (e.g., 1-10), MUST use `layout="grid"` to ensure mobile responsiveness and prevent horizontal overflow.
-    *   **Likert Annotation Copy:** Scale annotations beneath the control MUST use human-readable rating language from the shared `ratingLabels` map (for example `Very poor`, `Okay`, `Exceptional`), never numeric midpoint markers like `3` or `5`.
-    *   **Selection Feedback:** Selected-value summaries should sit on a visually separate line below the annotations with enough vertical spacing to read as feedback, not part of the scale.
-*   **ToggleChip Width:** Chips must maintain identical width in selected/unselected states (use transparent border to reserve space).
-*   **Integrated Labels:** Use `RadioChipGroup` with integrated labels (`gap: var(--spacing-2)`) over manual wrapping.
+
+- Choose semantics first: mutually exclusive values, independent toggles, tabs and actions need
+  different roles and keyboard models. Use existing segmented/radio/chip primitives where suitable.
+- A sliding background with Motion `layoutId` is optional decoration, not required selection logic.
+  Check reduced motion and ensure state remains visible if animation never runs.
+- Let longer rating scales wrap, scroll or use a grid according to the interaction and target widths.
+  Use domain-appropriate labels with enough meaning to interpret the scale; numeric scales may
+  be intentional. A local `ratingLabels` map is not universal.
+- Keep selected/unselected sizing stable unless change is intentional. Separate explanatory scale
+  labels from selected-value feedback. Group names and labels must remain associated after wrapping.
 
 ## 5. Specifications
 
 ### Button Sizes
-- **Size `m`** — Height: 36px, Radius: 10px, Icon Radius: 12px
-- **Size `s`** — Height: 30px, Radius: 10px, Icon Radius: 10px
+
+Take height, radius, spacing and icon sizing from the actual component variants and target policy.
+Document legitimate local dimensions where owned; do not create a second kit-wide size table.
 
 ### Chip Specs
-- **Bg Selected** — `grey-200` (Light) / `grey-700` (Dark)
-- **Transition** — 0.15s `--ease-smooth`
-- **Dot Size** — 6px
+
+Use the actual selected-state palette, timing and indicator geometry. Verify contrast, non-color
+state cues, content fit and hit targets rather than requiring grey tokens or a 6px dot.
 
 ## 6. Verification
 
 ### Invariants (Automated)
-- [ ] **Button Weight**: `grep "font-weight" src/**/*Button*` (Must be `var(--font-weight-semibold)`).
-- [ ] **Touch Targets**: Small buttons must be 20px+ hit area.
+
+- Use applicable semantic/ARIA lint and existing project token checks. Source search can locate
+  control variants and dimensions, but computed target geometry and contrast need runtime evidence.
+- Test validation, disabled/read-only/submitting transitions, value propagation and default button
+  types using the project's existing tests.
 
 ### Logic (Manual/Reasoning)
-- [ ] **State Purity**: Do ghost buttons avoid acquiring borders on hover?
-- [ ] **Scale Physics**: Is press feedback using `scale(0.98)` not smaller?
 
----
+- Exercise keyboard, touch, drag alternatives, long/localized labels, zoom/reflow and focus visibility.
+- Check hover/press geometry, reduced motion, adorned text overlap and rating selection feedback.
+- Report missing browser/assistive-technology coverage rather than treating dimensions as a pass.
 
 ## See Also
-- `foundation-design-tokens.md` — For button and chip styling tokens.
-- `foundation-accessibility.md` — For interactive control accessibility criteria.
+
+- `foundation-design-tokens.md` — token roles and contextual exceptions.
+- `foundation-accessibility.md` — control accessibility criteria.

@@ -1,33 +1,16 @@
 ---
-description: Generate unit/integration/reproduction tests following the project's existing test patterns.
+description: Create meaningful unit, integration or reproduction tests within the requested test boundary.
 skill: implement-test
 ---
 
 # Test Workflow
 
-Generate tests that match established project conventions.
+Use `implement-test` with the requested behavior, test mode and allowed production-code boundary.
+Follow the project's runner and conventions. Reuse valid coverage and choose an oracle that
+distinguishes the intended behavior from the defect.
 
-## Goal
-Test file(s) with passing tests and good coverage of the target code.
-
-## Inputs required (ask if missing)
-- Target file or component to test.
-- Test type: `unit`, `integration`, or `reproduction` (for bugs).
-
-## Safety + scope
-- Do NOT modify production code — test files only.
-- Only touch test files adjacent to the target or in the project's test directory.
-
-## Skill routing (explicit)
-- `implement-test`.
-
-## Procedure
-1. **Discovery**: Follow `implement-test`'s `SKILL.md`; identify existing test patterns in the
-   target directory.
-2. **Planning**: Enumerate cases — happy path, edge cases, error cases. For reproduction tests,
-   ensure the bug is captured first.
-3. **Execution**: Write the test file per naming conventions with proper assertions.
-4. **Verification**: Run the project's test command against the new file.
-
-## Notes
-- For bug reproduction, create the failing test here, then continue in `/debug`.
+A reproduction-only request can end with a meaningful failing test and an evidenced expected
+failure. It does not authorize the production fix. Coverage work normally expects green tests;
+setup errors, skipped assertions or changed expectations do not establish the desired outcome.
+Return commands, observed results, covered behavior and remaining gaps without silently escalating
+from test generation into remediation.

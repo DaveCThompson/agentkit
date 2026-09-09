@@ -7,75 +7,82 @@ conflicts-with: [performance-fix]
 
 # Audit Performance
 
-Measurement-first performance audit. Every finding starts from a measured number and a named
-method — never from "this looks heavy." Diagnose only; no code changes.
-
-> **Fix counterpart:** this skill is **scan-only** (evidence + report). To implement optimizations
-> and write backlog tickets, use the `performance-fix` skill (Bolt). React-specific render tuning
-> has its own deep-dive: `react-performance`.
+Measure a performance symptom and trace its cause on the requested surface. Diagnose only; use
+`performance-fix` for authorized remediation and `explore-tech` for approach comparisons.
+Static risks may be reported, but they are not measured regressions or demonstrated speedups.
 
 ## When to Use
-- The app feels slow and you need to know *why* before touching code
-- Before/after a change that could move Core Web Vitals
-- Periodic budget check against documented perf targets
 
-## When NOT to Use
-- You already have a diagnosed bottleneck and want it fixed → `performance-fix`
-- The question is "which library/approach is faster" → `explore-tech`
+Use for unexplained slowness, a suspected regression or a scoped budget review.
+For React-specific render investigation, consult `react-performance` only when React is present.
 
 ## Approach
 
 ### Step 0: Load Budgets & Invariants
-Read `foundation-performance.md` and the project's perf budgets / source roots / breakpoint
-conventions from `project-invariants.md`. A violation of a documented budget is automatically
-**Critical** — everything else is ranked by measured impact.
 
-### Step 1: Measure (the gate — no recommendations before this)
-Capture the four Core Web Vitals with a **named method** and record method + values in the report:
-- **LCP, CLS, TBT** — Lighthouse (lab). **A single run is noise**: mobile scores vary run-to-run
-  (±9 points is normal; TBT/SI are worst). Require a multi-run average or a clear before/after
-  delta before calling anything a regression or a win.
-- **INP** — field data (CrUX/RUM) when available; otherwise DevTools Performance panel with real
-  interactions. Lighthouse cannot measure INP.
-- **Identify the actual LCP element** (DevTools Performance panel → LCP marker). Optimizing an
-  image that is not the LCP element is wasted work — this single fact scopes the whole audit.
-- **Identify long tasks** (>50 ms) and what script owns them. These are your INP/TBT suspects.
+Read `foundation-performance.md` and applicable project budgets. Identify target state, workload,
+environment and user-visible outcome. A CLI, database or service needs its own relevant throughput,
+latency, memory or resource measure; do not impose a web checklist.
+Separate budget compliance and blocking policy from measured impact severity.
 
-Runtime measurement is browser-driven: follow `foundation-browser-usage.md` for capability, profile,
-lane ownership, and evidence selection.
+### Step 1: Measure
+
+Record tool/version, environment, workload/data, warm/cold cache conditions, sample count and
+variability. Use comparable conditions and repeated samples sufficient to distinguish the claimed
+effect from noise. A single run is an observation, not automatically a regression verdict.
+
+For web surfaces, [Core Web Vitals](https://web.dev/articles/vitals) are **LCP, INP and CLS**.
+**TBT** is a supporting lab metric, not another Core Web Vital. Label field data, lab results and
+individual interaction samples separately. Lighthouse navigation runs can report LCP/CLS/TBT;
+they do not establish field INP. Use relevant field data or interaction traces for responsiveness,
+and state which was available.
+
+Identify the actual LCP element when investigating LCP. Attribute
+[long tasks](https://web.dev/articles/optimize-long-tasks) (over 50 ms) and interaction phases
+when investigating INP/TBT. Improvements to another resource may matter, but cannot be credited as
+LCP improvement without evidence. For runtime capabilities and missing browser proof, follow
+`foundation-browser-usage.md`.
 
 ### Step 2: Attribute
-Trace each bad metric to a mechanism, with evidence:
-- **LCP** → network waterfall: is the LCP resource discovered late (runtime-injected fonts/CSS,
-  JS-gated visibility), unpreloaded, or competing with below-fold preloads?
-- **CLS** → Layout Shift regions in DevTools: unsized media, late-loading fonts without fallback
-  metrics, injected banners.
-- **TBT/INP** → long-task attribution: hydration cost, oversized bundles, layout-thrashing
-  animations (anything animating layout properties instead of transform/opacity).
+
+Trace a poor result to its mechanism:
+
+- LCP: resource discovery, request timing, transfer, competing work and render delay.
+- CLS: the shifting elements and causes such as missing media dimensions, font changes or
+  injected content. Distinguish observed shifts from a complete field measurement.
+- Responsiveness: input delay, processing and presentation; use task, layout and paint attribution.
+- Non-web targets: query plans, I/O, allocation, contention, repeated work or dependency latency
+  matched to the actual workload.
+
+State alternatives and counterevidence. A layout-property animation or a large bundle suggests
+where to investigate; it does not by itself establish user impact.
 
 ### Step 3: Static Corroboration
-Scan the project's source roots (see `project-invariants.md`) only to corroborate measured
-problems: bundle analyzer output, image payloads and responsive delivery, font loading strategy,
-lazy-loading of below-fold/route-level code, `sideEffects` declarations. A static smell with no
-measured symptom is a **Low** note, not a finding.
 
-## Findings Model
-Report each finding as:
-- **Severity** (Critical / High / Medium / Low) — driven by measured user impact, not code aesthetics
-- **Evidence** — metric value, method, and file:line or resource URL
-- **Failure scenario** — concrete: "hero image is the LCP element and loads at 4.2 s on 4G because…"
-- **Expected impact** — which metric moves, roughly how much
-- **Remediation pointer** — name the fix (for `performance-fix` to execute); do not implement it
+Inspect the responsible source and applicable build artifacts: bundle composition, image payloads,
+font delivery, code loading, database access or resource lifetime. Distinguish scanner heuristics
+from measured defects. Triage advisory animation flags against the target workload instead of
+dismissing them universally. Do not invent expected percentage gains.
 
-Skip advisory-only noise: hover-transition "non-composited animation" flags and other
-Lighthouse heuristics that have no mobile-user impact (see `foundation-performance.md` §7).
+## Findings Model and Repair Handoff
 
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
+Preserve the caller's finding/work identity. Each finding carries:
+
+- Target/source state, affected workload, metric and method, baseline and variability.
+- Mechanism and source/resource location, supporting evidence and remaining uncertainty.
+- Impact severity, applicable budget and blocking policy.
+- Proposed repair and intended outcome; expected benefit stays a hypothesis until measured.
+- Comparable after-measurement method and correctness checks for the repair consumer.
+
+A supplied finding remains the selected issue. Recheck stale premises and retain costly unresolved
+findings with an owner; do not replace them with easier unrelated work.
+Evidence does not confer repair authority. `foundation-testing.md` owns proof validity and
+lifecycle gates; passing code checks cannot substitute for comparable performance evidence.
 
 ## Definition of Done
-- [ ] LCP / INP / CLS / TBT recorded with named method and run count
-- [ ] Actual LCP element and top long tasks identified
-- [ ] Every High/Critical finding has a measured number behind it
-- [ ] Budget violations from `project-invariants.md` flagged Critical
-- [ ] Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
-- [ ] Report ends with prioritized handoff list for `performance-fix` — zero code changed
+
+Each selected lens is `finding | checked-clean | not-applicable | not-verified`, with scope,
+evidence and reason. Missing measurements name the next check/owner. No measured improvement,
+no findings, and an unresolved bottleneck are valid bounded results.
+Store necessary redacted evidence in the caller's approved location and return the scoped handoff
+to `performance-fix`. No application code or performance configuration changed.

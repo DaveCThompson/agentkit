@@ -1,52 +1,23 @@
 ---
-description: Generate an ephemeral backlog view from distributed TICKET-* files — no second manual backlog.
+description: Derive an on-demand ticket view from canonical artifacts without maintaining a second backlog.
 model: haiku
 ---
 
 # Backlog Status Workflow
 
-Generate an on-demand overview of working tickets by reading the distributed `TICKET-*` files,
-instead of maintaining a parallel `docs/backlog/` that drifts.
+Read the resolved live ticket stores and their indexes. Enumerate actual `TICKET-*` files, including
+locally ignored working docs; use bounded fallback if an index is incomplete. This is a read-only
+status request, not permission to repair metadata, merge work or archive tickets.
 
-## Goal
-A scannable, ephemeral status view derived from the `TICKET-*.md` files themselves.
+Use `pattern-docs-artifacts.md` and `pattern-agent-orchestration.md` for lifecycle semantics:
+frontmatter status is authoritative; legacy body status is a fallback. Distinguish ready, active,
+blocked, reported, merged, closed and pending-human-proof states. Unknown or contradictory state
+must remain visible. A reported deliverable is not necessarily landed or published; ancestry
+evidence says nothing by itself about required acceptance.
 
-## Inputs (optional)
-- Status filter: `open` (`ready`/`in-progress`), `done` (`reported`/`merged`), `all` (default: `open`).
-- Tier filter: `staff`, `senior`, `junior`, `all` (default: `all`) — read from the filename suffix.
+Return a compact view of title/link, status, dependency/blocker, owner or next action where known.
+Honor requested filters and state coverage limits. Show stale metadata as a candidate for review,
+not an automatic status transition. Derive ordering from actual dependencies and priorities.
 
-## Procedure
-1. **Scan — enumerate from the FILESYSTEM.** Glob `docs/working/TICKET-*.md` **and**
-   `docs/backlog/TICKET-*.md`. Never build the list from a README: the index is the claim under
-   test, and a ticket missing from it is exactly the one a sweep needs to catch. (A live bulk pass
-   took "all 19" from an index and missed the unindexed 20th, which still read `ready` after it had
-   merged.)
-2. **Read metadata** — the real fields, per the ticket contract
-   (`pattern-agent-orchestration.md` §2), in this precedence:
-   - `status` from YAML frontmatter, else the `**Status**:` bold line (both are valid; the CLI reads
-     either, and so do you).
-   - `**Priority**` (`P0`–`P3`), `**Agent Tier**`, `**Verify**`, `**Depends**` — bold lines.
-   - `updated` / `landed` from frontmatter where present.
-   - The H1 for the title, and the tier suffix from the filename.
-3. **Filter**: Apply the status/tier filters.
-4. **Generate view**: Write `LOG-ticket-status-view.md` under `docs/working/` with
-   `| Ticket | Title | Status | Priority | Tier | Verify | Depends |`, backlog and working sectioned
-   separately.
-5. **Cross-check, don't re-derive**: run `agentkit check --hygiene`. It reports landed-in-backlog and
-   non-ancestor `landed:` SHAs, and prints the **generated human-gate view** (every
-   `needs-human-verify` artifact). Surface those alongside the table rather than hand-assembling a
-   second gate list — a hand-written one omitted a gate that was correctly marked on both its ticket
-   and the board.
-6. **Summarize**: total open count, anything blocked or awaiting a human gate, and a link to the view.
-
-## Notes
-- Never modifies any `TICKET-*` file — the generated view is disposable and regenerable at will,
-  with zero merge-conflict risk.
-- This exists specifically so the project needs no second, hand-maintained backlog.
-- **Read only fields that exist.** Earlier versions of this workflow named `scope`, `category` and
-  `created`, which appear in no ticket and in no template — a documented field set that was fiction.
-  If you need a new axis, add it to the §2 contract and the template first.
-
-## Example usage
-- `/backlog-status` — all open tickets · `/backlog-status open staff` — open staff-tier tickets ·
-  `/backlog-status all` — everything.
+The default output is the reply. Persist only when requested, using the caller's path or an
+exclusively owned output. Do not overwrite a shared LOG file or create a second manual backlog.

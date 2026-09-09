@@ -1,129 +1,135 @@
 ---
 trigger: model-decision
-description: Consult before refactoring layout pages or any behavior-preserving refinement — CSS Module extraction, hardcoded-color eradication, conductor preservation, dead-code deletion hygiene, dormant-feature exclusions.
+description: Consult before behavior-preserving refinement or structural refactoring — discovered design conventions, semantic preservation, responsibility boundaries and deletion evidence.
 domain: code-quality
 ---
 
 # High-Rigor Refactoring Standards
 
+Preserve the relevant behavior while improving a concrete responsibility or readability boundary.
+Use the repository's actual styling and design contract; a refactor does not authorize a new visual
+language, broader cleanup or changed behavior.
+
 ## Purpose
 
-This document outlines the **High-Rigor Quality Standards** used to refactor and align layout pages within the the application. This approach guards against layout fragility, prevents "Utility Class Pollution", and enforces absolute design system adherence.
-
-These standards also apply more broadly to behavior-preserving code refinement:
-- extract pure helpers before abstractions
-- prefer same-file subcomponent extraction before creating more files
-- preserve documented fragile exceptions
-- improve responsibility boundaries, not just line counts
-
----
+Identify the external contract and semantic risks before editing: evaluation order/count, identity,
+mutation, exceptions, side effects, timing, subscriptions, resource lifetime and accessible interaction.
+Preserve documented compatibility and fragile exceptions. Use `foundation-testing.md` for evidence
+validity and `implement-refactor` or `refine-code` for the appropriate transformation method.
 
 ## 📐 1. Layout Bounding & Extraction (CSS Modules)
 
 ### Policy
-**Do not use inline Tailwind classes for viewport anchors, grids, or iterative list gaps.** Layout behavior should reside in a scoped `.module.css` file.
+
+Follow the discovered styling system: CSS Modules, utility classes, scoped styles or another
+established approach. Extract repeated layout responsibilities when that makes ownership clearer.
+Do not convert valid Tailwind layouts to CSS Modules merely because this shared rule has a CSS example.
 
 ### Standard Bounding Classes
-All viewports should define or utilize standard semantic layout hooks:
 
--   **`.container`**: Manages bounding box layouts (e.g. `max-width: 80rem`, `padding: 1.5rem`).
--   **`.flexRow`**: Flex containers that safely toggle between `flex-direction: column` and `row` using responsive media queries without polluting the HTML element.
--   **`.cardList` / `.tabsContent`**: Scoped container wrappers managing loop iterations (e.g., `<Card>` maps) using accurate `gap` declarations instead of inline top-margin (`space-y-4`) utilities.
+Names such as `.container`, `.flexRow`, `.cardList` and `.tabsContent` are illustrative semantic hooks,
+not required classes. Preserve actual bounding widths, min-content behavior, gap, scrolling,
+overflow and responsive/container conditions. Introducing a wrapper can change grid placement,
+selectors, focus or measurement even when its CSS looks equivalent.
 
 ### 📝 Example: Layout Extraction
 
-**❌ Avoid (Inline Grids)**
-```tsx
-<div className="mx-auto max-w-7xl px-6 py-10">
-  <section className="space-y-4">
-    {items.map(card => <Card className="p-4 flex gap-4">{card}</Card>)}
-  </section>
-</div>
-```
-
-**✅ Prefer (Modular layout)**
-```tsx
-/* Page.module.css */
-.container { max-width: 80rem; margin: 0 auto; padding: 1.5rem; }
-.cardList { display: flex; flex-direction: column; gap: 1rem; }
-
-/* Page.tsx */
-<div className={styles.container}>
-  <section className={styles.cardList}>
-    {items.map(card => <Card className={styles.sessionCard}>{card}</Card>)}
-  </section>
-</div>
-```
-
----
+For a project using CSS Modules, moving a repeated card-list layout into its existing module may
+clarify ownership. For a utility-first project, a shared layout component or consistent utilities
+may serve the same purpose. Compare computed geometry at affected widths and content sizes;
+do not substitute new padding, radii or gap values under the name of extraction.
 
 ## 🎨 2. Absolute Color String Eradication
 
 ### Policy
-**Absolute Hex Strings (`#5E984C`) or Hardcoded Background Classes (`bg-red-50`) must not exist in layout nodes.** All colors must follow semantic design mappings.
+
+Where the project exposes semantic tokens, use them for semantic roles. Resolve actual definitions,
+themes and exceptions under `foundation-design-tokens.md`. Do not invent token names or translate
+raw values into the wrong semantic role just to remove literals.
 
 ### Mappings
--   Use semantic tokens: `var(--surface-bg-primary)`, `var(--text-secondary)`, and the project's error tokens (see `project-invariants.md`).
--   **No fallback values** in `var()` calls — if a token is missing, fix the token layer, do not paper over it with hex fallbacks.
--   Direct primitive references (`var(--primitives-green-600)`) are acceptable for one-off alert colors but must not include hardcoded fallbacks.
 
----
+Keep accepted brand, data-visualization and runtime-color cases when their contract requires them.
+A primitive reference or fallback can be legitimate at an owned token/component API boundary;
+follow documented project policy and inspect its effect. Fix accidental missing required tokens
+at their source. Do not hide missing-token defects with an arbitrary fallback.
 
 ## 🎛️ 3. Tactile Feedback & States
 
 ### Button Overlays
-All critical action frames utilize scaling layers (e.g., sizing background masks via `::before` overlays) ensuring interactions scale linearly without causing layout buffer wobble weights.
+
+Preserve existing rest, hover, focus, pressed, disabled and loading behavior. Pseudo-element scale
+layers are a technique when they fit the design; they can also alter hit testing, stacking and text
+rendering. Verify those effects if the refactor touches them.
 
 ### Segmented Controls (Capsule Pills)
-Tabs or list view buttons acting as primary feature switches must adopt **Cylindrical Capsule Models** (`border-radius: 9999px`). 
-Standard `<TabsList>` and `<TabsTrigger>` implementations are upgraded globally using absolute capsules instead of discrete standard layout radii to achieve absolute switch slider feedback faithfully.
 
----
+Use the existing control component and shape. Capsule radii and sliding backgrounds are project
+design choices, not generic refactor requirements. Do not globally restyle tabs while restructuring
+one page. Preserve tab/selection semantics, keyboard operation, focus and motion preferences.
 
 ## 🔬 4. Checklist for Future Refactoring
 
-Before committing a UI feature rewrite, ensure:
-1.  [ ] **Zero inline display grids/flex models** remain in the render return.
-2.  [ ] At least **one scoped `.module.css`** oversees page dimension heights.
-3.  [ ] **No direct sizing calculations** are written on text headings.
-4.  [ ] Absolute values are fully mapped back onto primitive maps securely.
+- [ ] The intended clarity or ownership improvement is concrete.
+- [ ] Actual design tokens, layout conventions and visual states remain compatible.
+- [ ] Relevant semantic invariants and consumers have evidence or explicit coverage gaps.
+- [ ] New wrappers, exports and dependency directions have been checked for unintended effects.
+- [ ] Deliberate behavior changes are covered by the task's authority and described as such.
 
 ## 5. Modern Refine Patterns
 
 ### Transport Extraction
 
-When live/dev or live/mock branching repeats across query hooks, extract it into a transport module so hooks stay focused on query contracts.
+When live/dev or live/mock branching repeats across query hooks, an existing transport seam can
+keep hooks focused on query contracts. Preserve authentication, cancellation, retries, errors and
+cache identity; a new transport module is not required for a simple branch.
 
 ### Overlay Extraction
 
-When page-level modal branches become dense:
-- extract overlay state to a hook if it improves clarity
-- extract overlay rendering to a renderer component if the conditional JSX obscures the page conductor
+Extract overlay state into a hook or rendering into a component when it clarifies a dense page.
+Keep focus restoration, modal containment, event propagation and ownership explicit.
 
 ### Conductor Preservation
 
-Pages should become clearer conductors after a refactor. If a refactor moves complexity around without making the page easier to read, it is not yet finished.
+Pages can act as readable conductors of state and focused views. Extract pure helpers or same-file
+subcomponents when they expose a real boundary. Moving complexity behind a new name or splitting
+by line count alone is not evidence of improved structure.
 
 ### Fragile Exceptions
 
-If a narrow exception exists for visual stability or behavioral safety, preserve it and document it with `// WHY:` and `// CONSTRAINT:` markers instead of “normalizing” it away.
+Preserve narrow exceptions needed for visual stability or behavioral safety. Use existing
+`// WHY:` and `// CONSTRAINT:` markers when they help future maintainers understand the boundary.
+A proposed correction to an exception needs evidence and authority for the behavior change.
 
 ## 6. Dead-Code Deletion Hygiene
 
-Deleting a feature means deleting its whole footprint, not just the `.tsx`. The build will not catch the leftovers, so they hide as dead code.
+A deletion claim needs evidence of reachability and the full owned footprint, not only a green build.
 
-- **CSS Modules do not fail the build on unused classes.** When you remove a component or feature, remove its matching `.module.css` classes, any custom properties or z-index tokens it introduced, and its media-query overrides in the same change.
-- **Verify after deletion**, do not assume a green build means clean. Grep the module for the removed feature's class prefix (e.g. `grep -n "sandbox" x.module.css`) and confirm zero hits.
-- **Mechanical multi-file rewrites leave debt.** A regex/`sed` import swap rewrites each statement in place and can produce multiple imports from the same module. After any bulk rewrite, merge same-source imports and re-run lint. Prefer a codemod that merges, or a formatter pass, over a bare find-replace.
-- **The footprint includes the DOCUMENTATION, not just the code.** Deleting a route, component, exported symbol, script, or dependency makes every doc and **rule** that describes it false in the same commit. Enumerate deletions from the diff (`git diff --name-status --diff-filter=DR`) and grep `docs/knowledge-base/`, `.agent/rules/` plus mirrored vendor rule dirs, `docs/working/`, and `docs/backlog/` with `rg --no-ignore`. Full procedure: `implement-session-land` §2.0, run at wrap-up and land. A stale spec misleads a reader; a stale **rule** instructs every future agent — a retired icon library survived in a rule long after the dependency was gone. And a deleted file named on a live ticket's `**Files**` line means that ticket's premise is dead: re-verdict it, don't leave it standing.
+- Inspect exports, dynamic registration, configuration, test importers and external consumers.
+  A symbol used locally may lose an unnecessary export while its implementation remains required.
+- When removing an authorized feature, locate associated styles, custom properties, media queries,
+  assets and registrations. Remove only those proven exclusive to it; shared tokens and selectors
+  may have other consumers. CSS unused-class checks alone do not establish runtime reachability.
+- Search affected source and documentation for removed symbols and paths, including active work
+  items. Update current canonical guidance through its owner; generated mirrors are regenerated,
+  never hand-edited. Preserve historical evidence and re-evaluate live tickets whose premise changed.
+  Use the shared document lifecycle and wrap/land owners for broader archival work.
+- After mechanical import rewrites, inspect same-source duplicates, type-only imports, evaluation
+  order and cycles. Run the applicable formatter/lint and consumer checks; do not assume regex
+  replacement preserved module initialization.
 
 ### Intentionally-dormant features (the inverse case)
 
-Not every unreferenced-looking file is dead. A feature **kept on purpose but disabled** (gated behind a default-off flag, e.g. `showFilmStrip={false}`) must not be deleted as "dead code."
-
-- **Exclude it from Fallow** by adding its path/glob to `ignorePatterns` in `.fallowrc.jsonc` (the same lever used for `interactive-career-timeline/**`), with a comment naming the owning ticket. This keeps the dead-code scan and `fallow fix` from flagging or auto-removing it.
-- **Keep the owning ticket truthful.** If you disable a feature, its ticket reads "built but disabled," not "deleted." A "deleted" claim that a later restore reverses is documentation drift. State the current code reality and link the CHANGELOG entry.
+Retain intentionally disabled features with their owner, reason and current state. Inspect flags,
+runtime routes and planned consumers before treating an unreferenced-looking file as dead.
+Use a narrowly scoped scanner exception only when scanner configuration changes are authorized;
+record the excluded signal and how it remains reviewable. Do not invent a project-specific ignore glob.
 
 ### Suppression hygiene (config-only noise reduction)
 
-When an honest `.fallowrc.jsonc` floods the scan with known-benign findings, quiet it with config levers, never source edits: `"ignoreExportsUsedInFile": true` (the demote-to-non-exported-never-delete class), `ignoreExports` by explicit name only — never `"*"` — with a cite-or-run verified test importer per name, and `duplicates.ignore` for fixture/dev-data and vendored paths. After any suppression-only change, the unused-file count must be identical before/after — that comparison is the proof no real signal was hidden — and the every-change gate tier (`foundation-testing.md` §1) still runs. Full lever contracts and the live evidence: `integrations/fallow.md` (Noise suppression).
+For authorized scanner tuning, use the installed tool's supported configuration and the applicable
+`integrations/fallow.md` guidance. Keep explicit export-name exceptions backed by actual importers;
+do not use wildcard suppression to hide uncertainty. Compare finding identities, roots, exclusions
+and relevant counts before/after. Equal unused-file counts alone cannot prove that no signal moved
+or disappeared. Retain meaningful violating fixtures for changed gates under `foundation-testing.md`.
+Report unreachable tooling and missing evidence without installing it or running auto-fix implicitly.

@@ -1,5 +1,121 @@
 # Changelog
 
+## [1.0.0] — 2026-09-07 — Comprehensive agent-kit update
+
+### Breaking changes
+- Advance each project as one coherent kit on explicit sync. Reject nonempty or malformed legacy
+  pins before mutation. Keep absent/empty legacy pins compatible and use explicit asset exclusions
+  for opt-outs. No background upgrade, network pull or per-file version resolver is introduced.
+- Introduce lock schema 2, explicit source/transform identity and typed settings acquisition.
+  Preserve borrowed and ambiguous legacy settings. Known conflicts stop the whole plan before writes;
+  force cannot waive invalid schema, containment, routing or unsupported adoption.
+- Require a meaningful title for changelog-fragment assembly and retain the original fragments.
+  Assembly is not combined verification, archival or permission to discard evidence.
+- Require an acquisition ID to release an orchestrator lock. Serialize cooperating local
+  acquire/release operations with an exclusive guard; reject foreign, malformed and legacy state.
+  Existing callers must retain and supply the acquired ID. Recovery is explicit and ownership-checked.
+- Return verifier exit 2 for incomplete declared-check coverage, including under `--warn-only`.
+  Preserve readable findings across individual rule read/discovery failures and report coverage,
+  exact source errors, exclusions and unautomated obligations separately from findings.
+
+### Added
+- Support optional Git-ignored working/backlog index companions. Keep published navigation portable
+  while retaining hard missing-link checks, stale-row detection and combined local index coverage.
+- Add a machine-local launcher setup and explicit pending-operation recovery. Portable project hooks
+  use the launcher without embedding a checkout path. Interrupted operations retain private exact
+  before/after bytes; intervening edits stop recovery. Consumer sync does not publish kit metadata.
+- Add independent preservation, settings acquisition, metadata adoption, migration and interruption
+  regressions. Add parsed native MCP and isolated Gemini discovery tests, and Windows/Linux CI lanes
+  for Node 20, 22 and 24. Configured CI lanes remain unexecuted until an authorized CI run.
+- Register the concrete agentkit and Tailscale CLI dependencies. Document conditional/native
+  capabilities and distinguish version probing from tool, project or deployment readiness.
+- Detect raw palette utility candidates across stylesheet and supported source files. Keep
+  token-definition exceptions local to their color checks so unrelated checks still run.
+- Add lock ownership/race, verifier coverage/fault and actual all-vendor packaging regressions,
+  including meaningful missing-target and malformed/unreadable-input negative controls.
+
+### Changed
+- Resolve physical Git roots for verification receipts, including Windows short-path and filesystem
+  aliases. Retain child-directory exclusion and invalidate receipts when source content changes.
+- Preflight the complete Codex TOML file and reject unowned semantic server collisions. Validate
+  accumulated canonical metadata and native routes before adoption, and resolve required workflow
+  skills against the actual selected tree. Reject raw nonstring MCP scalars without coercion.
+- Reject forbidden raw TOML controls before publication, including quoted keys and comments.
+  Keep valid escapes, tabs and CRLF; report a redacted source line without adding a parser dependency.
+- Include redacted native target, ownership and reconciliation context in settings refusals.
+  Parse the documented setup/changelog value flags and report missing-title failures in human output.
+- Validate transformed destinations, metadata and native routing collisions. Preserve canonical
+  metadata during supported generated-body adoption and reject unsupported inverses. Quote native
+  YAML/TOML scalars and translate the supported local-stdio MCP fields explicitly.
+- Generate selected Gemini skills without duplicate standard-skill copies in combined Codex/Gemini
+  installs. Stop emitting the non-skill template entry point; retain all 71 standard skill names.
+- Narrow default command grants and require explicit opt-in for broader runners. Track introduced,
+  borrowed and unresolved settings independently so removal cannot claim user-owned values.
+- Align documentation consumers with a declared KB-root mapping, proportional records and retained
+  evidence. Treat unknown ancestry as incomplete verification, not a clean result.
+- Refactor all 71 operational skills and 20 workflow routers. Retain all public skill and workflow
+  names, the specialist references and the four already-correct communication mappings.
+- Reconcile shared authority, evidence, artifact, orchestration and lifecycle contracts across
+  canonical rules, skills, workflows, templates and governance. Preserve public entry points and
+  domain expertise while removing conflicting recipes, ritual counts and imported project assumptions.
+- Correct 38 of 39 rules; retain the already-contextual UI-copy rule. Preserve compatible heading
+  targets and conditional specialist techniques while correcting misleading routing descriptions.
+- Make diagnosis, preparation, implementation, integration, publication and paused closure distinct
+  outcomes. Preserve local-only evidence, accepted intent and required proof through handoffs.
+- Preserve graph/research, security/RLS, WCAG, animation/diagram, React/performance and operational
+  methods while correcting examples and making project-specific architecture and styling conditional.
+- Route shared references through canonical project resources or an explicit kit-checkout resolver;
+  preserve missing-selection and unavailable-tool boundaries in generated instructions.
+- Align document/ticket/skill scaffolds, recovery guidance and dependency metadata with their owners.
+  Existing historical evidence and public entry points are preserved; no operational skill is removed.
+
+### Evidence and provenance
+- Additional need: deployment, documentation and platform reviews demonstrated overwrite, wrong-source
+  adoption, containment, settings-ownership and coverage defects. Three Astra/high implementation
+  workers follow the reconciled synthesis and independent Astra/high design corrections. User choices
+  favor coherent explicit updates and minimal machine-local setup, not customization layers.
+- Need: static source reviews found cross-skill contradictions, technical example defects and
+  state-preservation gaps. Staff Astra/high reviewers and an independent synthesizer informed the
+  design; the coordinator adjudicated recommendations. Predicted behavior improvements require
+  candidate testing, not reviewer consensus.
+- KB consulted: governance contracts, authoring guidance, docs standard and verification profiles.
+
+### Verification
+- After the public-index and receipt-alias corrections, 324/324 tests pass on Windows Node 20,
+  22 and 24 with zero skips. A publishable-files-only Windows Node 22 checkout passes self-sync,
+  drift and content checks, then npm test: 323 pass, zero fail, one optional installed-Gemini check
+  skipped. Both corrections passed independent Astra/high review. This is local rehearsal, not
+  hosted CI or Linux/second-machine proof; those and remaining native-client lanes stay pending.
+- After the acceptance repairs, combined platform suites pass 317/317 on Windows Node 20.20.2,
+  22.19.0 and 24.19.0, with zero skips. Final record/generation reconciliation is coordinator-owned.
+  Independent TOML parsing and installed Gemini discovery are included. Isolated native Codex 0.153.4
+  project-config loading passes; its retained old-adapter behavioral assertion fails as expected.
+- Isolated full-candidate generation across all adapters passes drift checking and a byte-identical
+  repeat, including lock and manifest. The approved local Codex-block reconciliation retains an exact
+  backup. Local self-sync updates generated mirrors and repeats byte-identically. Existing settings
+  remain preserved. A separately approved, backed-up reconciliation clears the three remaining
+  legacy ownership files, removes obsolete kit grants/hook and retains user-owned MCP permissions.
+  MCP and entry-point bytes are unchanged; normal repeat sync and local drift checking are clean.
+- The machine-local launcher resolves the selected checkout without a PATH change. No dependencies
+  were installed for that binding, no other fleet project was migrated, and no publication occurred.
+- Canonical source, dependency and reference checks pass. Content has no findings with the mapped KB
+  included; taxonomy retains three existing dormant-waiver warnings at unchanged baseline three.
+- Independent review accepts all six repairs and the CLI correction. Unchanged final reviewer
+  probes pass all twelve boundary and five publication cases; the regression oracles are accepted.
+  POSIX/CI execution, remaining native discovery/permissions and second-device proof
+  remain pending. No integration, publication or broad cross-platform acceptance is claimed.
+- The following results belong to the earlier skills-update phase, at its recorded inputs:
+- Baseline `npm test`: 150 passed. Expanded suite: 182 passed, including five all-vendor
+  packaging tests and lock/coverage fault regressions.
+- Canonical YAML, dependency metadata and exact local references checked. All seven detector
+  declarations exercised with violating, legitimate and scoped-exclusion fixtures.
+- Twenty-three specialist runtime check groups passed in Node/Chrome with pinned React, GSAP and
+  React Flow versions. Two paired Astra/high trials covered twelve tasks and nine adverse responses;
+  they establish bounded outcomes, not a statistical model-performance or live-deployment claim.
+- Exact canvas/Motion JavaScript snippets passed focused Chrome/Node checks; the Python containment
+  example passed seven cases. These do not certify deployed consumers or every platform.
+- Local implementation candidate only. Publication and consuming-project migration are separate actions.
+
 ## [0.3.1] — 2026-09-04 — CI runtime maintenance
 
 ### Changed

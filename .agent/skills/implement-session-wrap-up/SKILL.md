@@ -1,166 +1,131 @@
 ---
 name: implement-session-wrap-up
-description: Close a session with a cite-or-run verification gate, changelog entry, and archival — light wrap by default; full wrap (distillation, flowback, session log) only on deterministic triggers. Pattern/rule codification and agent health checks have their own skills.
+description: Prepare a local session checkpoint with truthful evidence, scoped records, and preserved remaining work. Use for ordinary wrap-up or as a bounded preparation step called by land or close.
 tier: core
 ---
 
 # Implement Session Wrap-Up
 
-Ensure the repository is left in a "Gold Standard" state with 0 drift between code and
-documentation, without re-doing work the session already did. Follow the lifecycle defined by the
-four-directory docs model (canonical: `governance/docs-standard.md`).
+Prepare the local record and return to the caller. Wrap does not invoke land, publish, delete
+branches/worktrees, or archive the conversation. Existing authority survives this boundary, but
+those actions remain with their owning caller.
+
+## When to Use
+
+Use at a checkpoint, a finished local change, or a paused session needing a durable record.
+`implement-session-land` owns authorized integration/publication. `close` owns task archive
+preparation and session-resource disposition.
 
 ## Approach
 
-### Phase 1: Technical Gate — cite-or-run (deterministic, never re-run by default)
+### Phase 1: Identify the boundary and collect evidence
 
-Do **not** unconditionally run the broad validate. Apply the lifecycle and evidence rules in
-`foundation-testing.md` §1:
+Read the requested outcome, current work identity, accepted decisions, owned changes, prior wrap
+receipt, and remaining Acceptance. Resolve the project's docs root/KB equivalent, changelog
+convention, status owners, and evidence location. Do not assume a Node project or app KB layout.
 
-1. **Identify the boundary.** Is this focused local proof, the final standalone/integrated tree, or
-   a release boundary? The boundary decides whether focused proof, the one broad gate, or release
-   validation is required.
-2. **Collect evidence.** Find the recorded lane, exact commands, real results, and exact commit
-   SHA/tree identity in the transcript, a worker report, CI, or a working doc.
-3. **Exact state → CITE, don't re-run.** If the evidence covers the exact final SHA/tree and the
-   required lane, copy it into the changelog `### Verification` block and state its source (for
-   example, "CI run for SHA …" or "run earlier this session; tree unchanged"). A fast-forward does
-   not invalidate evidence when the final tree identity is the same.
-4. **Otherwise → run only the missing proof.** Run focused proof for the touched change class; run
-   the broad gate once when this session owns the final standalone/integrated tree; run release
-   validation only when this session crosses the release boundary.
-5. **If it fails**: STOP. Report which step failed with specific output. Fix before proceeding.
+Apply `foundation-testing.md` §1 to identify focused, final-tree, or release ownership. Collect
+existing exact-state evidence under §1A; do not run a broad gate before record/generation edits that
+will change the candidate. A land/train caller may own the final gate after this bounded return.
 
-### Phase 2: Choose the wrap tier (deterministic triggers)
+A failed check bars unsupported completion/integration claims, not preservation of a paused task.
+Record failures, useful negative evidence, and their next owner. Fix only authorized in-scope defects;
+continue independent record preparation where safe.
 
-**Light wrap (default).** Applies when the session was docs-only/small, or the gate was citable
-per Phase 1. Do only:
-- the changelog entry (Phase 4)
-- archival + backlog triage (Phase 5)
-Then stop — no distillation pass, no flowback, no session log.
+### Phase 2: Choose the wrap tier
 
-**Full wrap.** Required when ANY of these checkable conditions holds:
-- behavior, schema, or build surface changed this session — copy/content-only changes
-  (user-visible strings, docs prose, no logic or styling) do not count — light wrap suffices
-- ≥1 ticket was completed
-- `agentkit check` reports LOCALLY-EDITED kit-owned files, or a new local skill/rule was created
-Full wrap adds Phases 3 and 6, and the flowback gate below.
+Evaluate full-wrap triggers first:
 
-### Phase 3: Distillation (full wrap only — the question that decides where truth goes)
-
-Ask: **"What did this session make TRUE that wasn't true before?"** Route each answer:
-- **Behavior** (how agents must act from now on) → a rule or skill change, via the `kit-contribute`
-  skill (it decides kit vs overlay vs discard).
-- **Fact** (what IS true about the system: a contract, a decision, a spec) → `docs/knowledge-base/`
-  with the proper prefix (`SPEC- / PRD- / STRATEGY- / RUNBOOK- / DECISION-`), `applies-to:` +
-  `last-verified:` frontmatter, and a trigger-table line in the KB README index.
-- **Event** (what WAS done) → the CHANGELOG entry only.
-Nothing durable may ride to the archive raw — archiving without distilling is truth deletion.
-
-**Flowback gate:** run the `kit-contribute` skill **only if** the `agentkit check` trigger in
-Phase 2 fired — any LOCALLY-EDITED kit-owned file, new local skill/rule, or un-codified pattern
-gets a disposition (adopt / overlay / defer / discard) before the session ends. If the trigger
-did not fire, skip it. **If `agentkit` isn't installed**, detect the drift with `git status`/`git
-diff` over `.agent/` and follow `kit-contribute`'s CLI-absent path (edit source, leave vendors
-stale, log "sync pending", flag the user) — absence of the CLI is not a reason to skip flowback.
-
-### Phase 4: Changelog (both tiers)
-
-- [ ] Add a dated entry to `CHANGELOG.md` — what/why, a `### Verification` block (the exact
-      commands + observed results from Phase 1, cited or run), and a **`KB consulted:`** line
-      naming the KB docs read this session (or "none").
-- [ ] Roll per the project convention when the file exceeds its threshold — harvest durable facts
-      into the KB first.
-
-### Phase 5: Ticket closeout & archival (both tiers)
-
-**Drift-proof ticket closeout — run for every ticket this session completed.** This is the
-executable form of `pattern-docs-artifacts.md`'s status-of-record contract: it keeps the ticket's
-status honest against git reality so a "done" ticket never sits "open" in an index (the exact drift
-the hygiene check in `agentkit check --hygiene` flags). `/ship` routes its Phase 4 here; `/wrap-up`
-runs it directly.
-
-- [ ] **Flip status + cite the SHA (per completed ticket)**: set the ticket's `**Status**` → `Done`
-      (or `merged`) and cite the completion **commit SHA** in the ticket body. This makes "done"
-      machine-checkable — `agentkit check --hygiene` proves the cited SHA is an ancestor of the main
-      branch. Convert the ticket to an execution record: plan XOR record, never both.
-- [ ] **Fix every referencing doc (anti-drift step)**: grep the ticket ID/filename across `docs/`
-      and update every row/link that referenced it — `working/README`, `backlog/README`, any
-      source-of-truth/status board, KB indexes. A referencing row that survives after its ticket
-      moved is a live routing defect. This is why closeout is *ticket-scoped*, not session-scoped.
-- [ ] **Deletion-impact sweep (session-scoped)**: run
-      `git diff --name-status --diff-filter=DR <session-base>...HEAD`. **Empty result → done, this
-      costs nothing.** Otherwise run the canonical procedure defined in `implement-session-land`
-      §2.0 against the session's removed names — grep `docs/knowledge-base/`, `.agent/rules/` and
-      its mirrored vendor dirs, `docs/working/`, `docs/backlog/` with `rg --no-ignore`; fix or ticket
-      every hit before closing; re-verdict any live ticket whose `**Files**` line names a deleted
-      path. Ticket-scoped closeout above catches the ticket's *own* filename; this catches what the
-      **code** removed, which is the class that produced a retired-icon mandate surviving inside an
-      agent rule.
-- [ ] **README-trim**: after archiving, trim the README's historical rows. **README = forward
-      index** (what exists + what's next); **CHANGELOG/archive = historical record**. Do not let
-      completed-work rows accumulate in the forward index.
-- [ ] **Archive by month**: Move completed tickets from `docs/working/` (or `docs/backlog/`) to
-      `docs/archive/YYYY-MM/` (derive the month; never hardcode).
-- [ ] **Backlog triage**: Move unstarted or deferred items from `docs/working/` to `docs/backlog/`.
-- [ ] **Untracked-docs hygiene**: run `git status --porcelain` and flag untracked or uncommitted
-      files under `docs/` and other managed dirs. The artifact rules govern *where* docs go, not
-      that they get *committed* — an untracked ticket is never on origin and one `git reset` from
-      gone. Parallel/worktree runs make this acute (worktrees are discarded on cleanup). Commit
-      durable docs before closing, or state explicitly why a file stays uncommitted.
-
-### Phase 6: Session log (full wrap only — the exception, not the default)
-
-The changelog entry is the default session record. Create
-`docs/archive/2026-MM/LOG-[session-name].md` **only** when the work spans sessions and a future
-agent needs handoff context the changelog entry cannot carry (key decisions, remaining blockers,
-next steps). Update `docs/working/README.md` with current status if applicable.
-
-### Phase 7: Branch closure decision
-
-`wrap-up` is run frequently, so it must be safe both as a checkpoint and as the end of a session.
-Always inspect `git branch --show-current`, `git status --short`, and the branch's relationship to
-`origin/main` after Phases 1–6:
-
-| State | Action |
+| Condition | Work added to the common record steps |
 | --- | --- |
-| `main` | Record that there is no session branch to close. |
-| Feature branch with incomplete work, dirty owned files, pending verification, or an explicit next step | Retain the branch and report `retained: active work` with the exact reason. |
-| Feature branch with a clean tree, required evidence, no open remainder, and a completed-session signal | Route to `implement-session-land` in the same session. Land owns the final-tree gate, push, release-tree closure audit, and local branch deletion. Do not duplicate those operations in wrap-up. |
-| Feature branch already merged into `main` | Switch to `main` and delete the local branch with `git branch -d`; report the removed ref. |
-| Diverged, dirty foreign worktree, or ambiguous ownership | Retain the branch and stop at a named blocker; never force-delete or infer completion. |
+| A material behavior/schema/build decision produced uncaptured durable truth | Distill the affected truth in Phase 3 |
+| Session agent-system edits, a new local asset, or an evidenced uncodified pattern needs disposition | Route that item through `kit-contribute` |
+| Multi-session recovery needs context the existing work item/changelog cannot carry | Consider Phase 6's exceptional log |
+| None applies | Light wrap |
 
-The completion signal may be an explicit user request to finish/land, a completed ticket with no
-open remainder, or a workflow that deliberately invokes `land`. A routine checkpoint is not a
-completion signal. `wrap-up` never deletes an unmerged branch directly; it delegates completed
-branches to `land` or retains them with a reason.
+Citable proof, a completed ticket, or file count does not override these predicates. Full wrap may
+conclude there is no new durable truth after inspection. Both tiers complete the common record and
+return phases; neither automatically launches broader maintenance.
 
-### Optional: reviewer buy-in package (only when the session needs sign-off)
+### Phase 3: Distillation and flowback (when triggered)
 
-When the work needs a reviewer's approval — a PR, a stakeholder demo, a shareable "here's what I
-built and why" — package it into one `docs/working/REVIEW-<name>.md` (or a PR description) built for
-a skeptic, in this order:
-1. **Visual demo** first (GIF/screenshot) if there's a user-facing change; ask for one if missing.
-2. **Problem + chosen approach** in ≤2 paragraphs.
-3. **Hardest questions answered** — the 3–5 objections a domain expert would raise (edge cases,
-   scale, failure modes, migration), answered honestly. Naming a real weakness builds credibility;
-   hiding it destroys it.
-4. **Deviations** from the plan, and explicit **out-of-scope** boundaries.
-Keep it to one page with links to the full artifacts. This is the buy-in-facing counterpart to
-`handoff` (which is implementer-facing) — reach for it only when someone must approve the work, not
-on every wrap.
+Separate changed current truth, proposed behavior, and event history. Route durable facts to the
+project's actual KB equivalent using `governance/docs-standard.md`'s type registry. Prospective PRD
+requirements stay in lifecycle stores; dissolve landed truth and unlanded remainder under that
+standard rather than promoting the whole PRD.
 
-## Verification / Definition of Done
+Use `kit-contribute` for agent-system changes and uncodified patterns. Pass provenance, scope,
+target owner, and existing grants. Accept explained deferred, candidate, or sync-pending results
+with the next action/owner. A local wrap does not itself authorize adoption into another repository
+or fleet sync. If detection tooling is absent, report bounded source/diff evidence and its limits.
 
-- [ ] The `### Verification` block names the lifecycle point, exact commands + real results, and
-      the exact SHA/tree identity — cited when it matches or actually run at this phase. Never
-      "all green" without evidence.
-- [ ] The wrap tier chosen is stated, with the trigger that chose it.
-- [ ] `docs/working/` holds only in-flight items; completed work is archived, unstarted work is
-      in backlog.
-- [ ] Every completed ticket is flipped to `Done`/`merged` with its completion SHA cited, every
-      referencing doc updated, and the README trimmed to a forward index (drift-proof closeout).
-- [ ] `git status --porcelain` shows no unexplained untracked/uncommitted files under `docs/`.
-- [ ] Branch closure decision recorded: landed and deleted, already-merged and deleted, or retained
-      with an exact active-work/blocker reason. A clean completed feature branch must not be left
-      unexplained.
+Do not erase or archive the only durable truth before its appropriate owner has preserved it.
+Do not manufacture a new rule or knowledge document merely to satisfy full wrap.
+
+### Phase 4: Changelog (common record step)
+
+Create or update the session's entry when it records a material event, using the project's
+changelog dialect and `pattern-docs-artifacts.md` rolling window. Reuse an entry already covering
+the change; an unchanged checkpoint needs no duplicate event.
+
+Record what changed and why, actual verification or pending final-gate owner, and consulted
+knowledge where the project contract requests it. Do not embed a self-referential final SHA before
+it exists. Final receipts belong in the existing excluded/local evidence location.
+
+Only the authorized changelog owner writes it. A worker supplies assigned fragments or proposed
+content to that owner. Roll history recoverably and retain its archive navigation.
+Fragment assembly follows `governance/docs-standard.md` §(b): finalize a titled entry with actual
+proof limits before consuming recoverable fragments. Keep assembly, combined verification and
+history archival distinct. Moving a report permits reuse of matching proof under `foundation-testing.md`.
+
+### Phase 5: Ticket closeout and affected references
+
+Use `pattern-docs-artifacts.md` for status and storage. Frontmatter owns work status; legacy
+prose remains readable. Update only assigned tickets and keep retained prose consistent.
+`reported` is not `merged`; populate `landed` only with verified integration ancestry.
+Record publication separately. A body SHA or heuristic hygiene hit is not proof of completion.
+
+Reconcile this session's tickets and references affected by its changes. Run the deletion-impact
+method in `implement-session-land` §2.0 as a bounded reference procedure, not a call to land.
+Inspect semantic removals in modified files and relevant uncommitted owned changes as well as
+deleted/renamed paths. Report out-of-scope corrections to their owners.
+
+Keep pending Acceptance, proof lanes, and paused work in active stores. Archive a finished record
+only when allowed, or after an explicit reachable successor owns its remaining work. Indexes point
+to current artifacts without duplicating status. Broader unrelated cleanup needs its own mandate.
+
+For authorized moves, use `maintain-docs`' preservation procedure: resolve tracking policy,
+destination collisions, inbound references, outgoing relative targets, and immutable-source
+navigation before moving. Verify the destination and links; retain the source on unresolved
+preservation. Local-only files stay local. Inventory useful ignored evidence explicitly; ordinary
+Git status does not enumerate it.
+
+### Phase 6: Session log (exception)
+
+Use the existing work item as the resumption record when possible. Create a log under the project's
+`archive/YYYY-MM/` convention only when separately useful handoff context cannot fit there.
+Keep an active resumption pointer for unfinished work. Record partial effects, useful proof,
+remaining accepted outcomes, owners, and next action; do not duplicate the changelog.
+
+### Phase 7: Final proof and bounded return
+
+Finalize authorized authored/generated content belonging to this wrap. If wrap owns the final
+tree, run or cite its applicable gate now under `foundation-testing.md`. If land/train owns it,
+return the changed paths and missing proof for that owner. Reconcile any later tracked edit rather
+than citing stale evidence; identify ignored report content separately.
+
+Return completed record steps, changed/moved paths, evidence identity, remainder/dispositions,
+and retained branch/resources. Ordinary wrap ends locally. A caller already authorized to land
+continues its own operation with this receipt; wrap never delegates back to it.
+
+For a requested reviewer package, give the actual problem, result, material objections, deviations,
+and evidence. Include visual proof when it supports a visible claim. Unavailable visuals remain a
+named limit; no fixed objection count or extra approval step is implied.
+
+## Definition of Done
+
+- The local checkpoint has a truthful result, relevant evidence, and explicit remaining work.
+- Records are idempotent, scoped to their owners, and preserve current truth and navigation.
+- Pending lanes remain discoverable; status, integration ancestry, and publication stay distinct.
+- Final-state proof is valid or explicitly handed to its owner.
+- The caller receives a bounded return without publication, resource deletion, or recursive land.

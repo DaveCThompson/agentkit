@@ -5,109 +5,122 @@ domain: testing
 
 # Testing & Verification
 
-Always attach truthful evidence to implementation, integration, and release claims. Verification is
-lifecycle-aware: a local change needs focused proof, an integrated final tree gets one broad gate, and
-a release gets release validation. Do not repeat a broader gate merely because a workflow reached a
-new wording of "done".
+Support each completion claim with evidence for the outcome and state actually checked.
+This rule owns evidence validity and lifecycle gates; skills supply domain-specific proof, not
+copied gate recipes.
 
 ## 1. Lifecycle-Aware Verification Gate
-**The canonical gate. Skills reference this section; do not restate it elsewhere.** Scale
-verification to blast radius — the tiers are the contract; adapt to the project's
-lint/typecheck/test/build equivalents, never assume one stack's scripts.
+
+Select project-equivalent commands and environments from the acceptance criteria and repository
+configuration. Do not invent lint, typecheck, build, server or browser requirements for a project
+that does not have or need them. Absence of an applicable check is a coverage limit, not a pass.
 
 | Lifecycle point | Required evidence |
-| :--- | :--- |
-| **Focused local proof** | Every change: `lint` + `typecheck`; behavior/schema/route changes: focused tests; SSR/routing/build-affecting changes: `build`. |
-| **Final tree** | Run the project's broad validate once on the final standalone or integrated tree: lint + typecheck + tests + build, as applicable. A worker branch normally supplies focused proof; the integration owner supplies this final-tree gate. |
-| **Release boundary** | Run the project's release validation once at the release boundary. It includes the broad final-tree gate plus packaging/deploy, target-environment, migration, and required human checks as applicable. See `verify-pre-deploy.md`. |
+| --- | --- |
+| Focused local proof | Relevant static checks and tests for the changed behavior; packaging/build checks when affected. Documentation needs source, reference and contract checks. |
+| Final tree | One applicable broad gate on the final standalone or integrated candidate. A worker normally supplies focused proof and names the integration owner. |
+| Release boundary | Final-tree evidence plus applicable packaging, target-environment, migration and required human checks. See `verify-pre-deploy.md`. |
 
-Focused proof supports a worker `reported` or implementation-progress claim when the report names
-the final-tree gate owner and marks it pending. A `merged`/`released` claim needs the corresponding
-final-tree or release evidence. A human-owned lane remains `needs-human-verify` until that lane is
-closed.
+Map consequential acceptance outcomes to proof, not just commands. Record each required lane
+(machine, runtime, human, docs, landing) with owner, result or pending check, and the transition
+it gates. Include relevant lanes; at a parallel handoff account for each core lane, using justified
+non-applicability where necessary. Do not split one behavior ticket merely because it needs mixed
+proof. A pending required acceptance item blocks integration and completion unless an explicit
+project policy assigns it only to a later transition. It never silently becomes green.
+
+Focused evidence can support `reported` with the final-tree gate pending. A human-owned check
+remains `needs-human-verify` until confirmed; preserve its authoritative work item through closure.
 
 ### 1A. Evidence identity and cite-or-run
-Evidence is reusable only when it identifies the exact state it covers: prefer a commit SHA; for an
-uncommitted tree record its tree identity (for example, `git write-tree`), plus the lane, exact
-command, true exit code, and the runner's real pass line. Local and CI evidence are equivalent when
-they cover the exact final SHA/tree and the required lane. Otherwise run the missing proof.
 
-Use `agentkit receipt` to record this evidence mechanically when practical. `agentkit receipt
---check` must pass before citing a receipt on a later lifecycle boundary; a stale receipt is missing
-evidence, not a warning.
+Record the proposition checked, exact relevant state, method/command, true result, environment,
+coverage and limits. Local and CI evidence are reusable when these still match. A branch name is
+mutable; identify the accepted commit or working-tree content, including relevant untracked inputs.
+An index tree alone does not identify unstaged work.
 
-- **Run each gate as a single command, not a compound pipeline.** Run a tier — or the whole gate — as
-  a single, prefix-matchable command. This is the permission-friendly form (`pattern-command-shape.md`):
-  a bespoke `cd … && <runner> … > log 2>&1; echo EXIT=$?; grep … | tail` compound is unique every run,
-  so it prompts every run and never re-matches a saved allow. It **also** kills the pipe-masking
-  trap below for free — the script process owns the true exit code, so there is no `| tail` between
-  the runner and the verdict and no `set -o pipefail` / `${PIPESTATUS[0]}` segment to defeat
-  matching. A project without a one-command gate convention should add one; the app-repo `gate:*`
-  npm-script convention lives in `tech-node-gate.md` — until an equivalent exists, adapt the tier
-  command names but keep the one-command shape.
-- **Bug fixes: failing repro test FIRST.** Write the test that reproduces the bug, watch it fail,
-  then fix and watch it go green. A fix without a failed-then-green test proves nothing.
-- **Never claim green on unrun commands.** Name the lifecycle point and evidence actually covered.
-  Focused local validation is not the broad final-tree or release gate — say which ran. Local
-  validation is not staging or live-data verification.
-- **Read the TRUE exit code — never let a pipe mask it.** `cmd | tail` / `| grep` / `| head` returns
-  the *filter's* exit status (0), not `cmd`'s — so a failing validate reads "green" and a real defect
-  ships. A green must be *proven*: use `set -o pipefail` or `${PIPESTATUS[0]}`, or redirect the run to
-  a file and read the exit code **and** the runner's actual "tests passed / build clean" pass line —
-  assert on that line, never a bare printed number. A filtered-away failure is an unrun-green claim.
-  (Live incident: a `| tail`-masked gate pushed red commits and made the orchestrator override two
-  workers who were both correct.)
+Moving or promoting a report does not by itself invalidate its proof. Reassess the proposition,
+relevant source identity and environment premises; cite matching evidence and run only missing or
+changed proof. Verify preservation and navigation separately. An exact whole-tree receipt can become
+stale after a document edit while narrower source-bound evidence remains valid for its stated claim.
+
+Use `agentkit receipt` when practical; `agentkit receipt --check` must pass before later reuse.
+The receipt digest excludes ignored files and its own verification store. Include separate content
+identity for ignored evidence when the claim depends on it. A stale receipt is missing evidence.
+
+Finalize authored/generated candidate content before the broad gate. Keep post-gate receipts in
+the existing excluded verification store. Any later tracked edit requires reconciliation and
+evidence for the actual final identity; a documentation attestation must not hide a changed tree.
+
+- Read the runner's true exit code and actual result, not a filter's exit or an invented pass count.
+  Prefer one normal project command per gate. If filtering output, retain the runner result.
+- Never claim runtime, staging, release or complete acceptance from a narrower static/local check.
+- For reproducible software bugs, establish a collected test failing on the intended behavior,
+  then the same behavioral assertion passing after repair. Preserve input, expected outcome and
+  before/after state; setup/import failure is not behavioral red.
+- Reuse a supplied valid reproduction. If the fixture or oracle changes, explain why against the
+  intended contract and re-establish applicable before/after evidence. A renamed test keeps provenance.
+- When safe reproduction is unavailable, or authorized containment must precede it, record the
+  reason, alternative evidence, causal confidence and missing proof. Containment is not a verified
+  repair of an untested symptom. High-risk unresolved evidence may still block implementation/release.
+- A diagnosis-only request can end unresolved with discriminating evidence and the next useful
+  probe. A reproduction-only request can finish with intentional red; it does not authorize repair.
 
 #### 1B. Cite-or-Run
-Any commit SHA, file path, or test count written into code, comments, or docs MUST be verified first
-(`git log`/`ls`/the runner's real pass line). An unverified citation is a defect — a SHA that was
-never checked is indistinguishable from a fabricated one, and a file path that was never confirmed
-to exist is a narrative claim, not evidence.
 
-**Coverage / breadth claims count too.** Any completion claim of the form "X now backs all N
-routes/pages/consumers" (an engine, hook, schema, or component that supposedly covers a whole set)
-MUST be proven by grepping the importers, not asserted from intent — one un-migrated consumer makes
-it false. A false "backs all four routes" claim that reaches a ticket or changelog propagates the
-drift downstream, so the cheap grep is mandatory before the claim is recorded. (Live incident: a
-"engine backs all four AI routes" claim was false for the streaming route and had already reached a
-ticket + changelog before a grep caught it.)
+Verify cited paths, revisions, counts and breadth claims against actual files, Git or runner output.
+Label proposed paths as new. Confirm all relevant consumers before claiming universal coverage.
+A successful fetch establishes what a source says, not independent verification of its claims.
+An empty, excluded, malformed or skipped scan cannot substantiate a complete invariant pass.
 
-#### 1C. Red-Proof (Sabotage Proof)
-To *claim a gate works*, trip it — paste the failing output, then the passing output. Asserting a
-gate is green is not evidence it can go red. A gate that was never seen to fail is an unverified
-claim. This applies to any eval axis, threshold, or fixture expectation the worker wrote or modified.
+#### 1C. Red-Proof (Detection Proof)
+
+When claiming a new or changed gate detects a violation, exercise a meaningful violating fixture
+and a conforming fixture in a safe isolated environment. Preserve their actual results. Do not
+manufacture destructive sabotage or require a new counterexample for every wording/expectation edit.
+Disclose test, fixture and threshold changes; an independent reviewer checks whether the oracle
+still represents the intended behavior. Author tier is not evidence that a gate is sound.
 
 ## 2. Refactor Verification (behavior-preserving)
-1. Run the gate (§1) at the behavior-change tier even though the intent is "no behavior change" —
-   the touched domain's tests are the proof of preservation.
-2. If a refactor changes a visible interaction contract, update stale tests to assert the new real
-   contract — do not preserve obsolete internal-text assertions.
-3. Do not call a refactor "green" unless the commands actually ran in the current branch state.
+
+Identify the relevant external contract and semantic risks: evaluation order, identity, mutation,
+exceptions, timing and compatibility where affected. Use existing tests and focused characterization
+for meaningful gaps. Green tests are bounded evidence, not proof of all behavior.
+An intentional visible-contract change belongs to behavior-change scope; do not silently rewrite
+expectations to relabel it a refactor.
 
 ## 3. Documentation Truthfulness
-- Tickets and logs must list the exact commands actually run.
-- Do not cite nonexistent test files or vague claims like "100% pass" without naming the suite.
+
+Name the exact checks that ran, state they cover the relevant artifact revision, and preserve
+unverified scope. A design expectation is not runtime assurance. Completion records state actual
+outcomes, not planned verification.
+Document age is a review signal, not semantic drift. Checker success covers only its named roots,
+checks and exclusions. An unknown ancestry result is incomplete evidence, not a pass or proof of
+non-ancestry; one integrated partial-fix commit does not establish whole-ticket acceptance.
 
 ## 4. No New Errors
-Do not introduce new lint/type errors. If an existing error is discovered, note it but stay focused
-on the current task — unless it blocks truthful validation, in which case fix it first.
-If lint or build fails: parse the error, fix, re-run. Escalate to the user after 3 attempts.
+
+Fix introduced failures within scope. Investigate a failed check before changing its expectation.
+A baseline comparison can support attribution but is not causal certainty. Preserve the same
+command/environment when comparing; use an isolated baseline, never reset a live tree to test blame.
+Report unrelated failures and their effect on acceptance. Escalate when new authority or information
+is needed, or further approaches no longer yield useful evidence—not after an arbitrary command count.
 
 ## 5. Know Where Tests Are Collected
-Test runners only collect files matching their configured `include` globs. A test placed outside
-those globs silently **never runs** — a false sense of coverage. Before adding a test, confirm the
-runner will actually collect it, and confirm the environment (node vs jsdom) the file needs.
 
-## 6. Prefer Testing Pure Functions
-Extract a hook's or component's decision/math logic into a sibling pure module and unit-test that
-directly; leave only orchestration (timers, subscriptions, DOM/pointer events) in the hook, covered
-by manual QA. This keeps tests fast, deterministic, and independent of a DOM test harness.
+Confirm discovery globs, execution environment and collection. A passing runner that did not
+collect the new test has not checked it. Prefer actual observable outcomes over implementation-text
+assertions, except for contractual literals, serialization and routing metadata.
+
+## 6. Prefer Existing Test Seams
+
+Test pure logic directly when that expresses the behavior. Use integration/runtime tests for effects
+that a pure seam omits. Extract production code only within authorized implementation/refactor scope;
+a test-only request does not authorize extraction. Keep reproduction fixtures owned by their issue
+so concurrent investigations do not overwrite or clean each other's evidence.
 
 ## 7. Determinism & Mock Quality
-- **Time:** Anchor time-dependent logic to a fixed baseline date and use fake timers
-  (`setSystemTime`) so fixtures and the runner share one clock — prevents bucketing drift.
-- **Mocks:** Align mocks/fixtures with the production schemas; use `Partial<T>` helpers so a test
-  specifies only the fields it cares about. Update centralized fixtures first when a schema changes.
-- **E2E:** Never hardcode credentials (use env vars with a safe local default); inject deterministic
-  state via init scripts rather than driving real auth. (Framework-specific typing/API detail lives
-  in `tech-node-gate.md`.)
+
+Anchor clocks and randomness where they affect assertions. Keep fixtures aligned with real schemas
+and model relevant failures; mocks do not prove a live service contract. Use non-secret test identities,
+never live credentials or destructive targets. Platform-specific harness details belong in the
+project's testing guidance and applicable technology rules.

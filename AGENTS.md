@@ -55,28 +55,28 @@ Defaults:
 <!-- >>> AGENTKIT WORKFLOWS >>> (generated — do not edit; run 'agentkit sync') -->
 | Command | What it does |
 | --- | --- |
-| `/architect` | Produce a technical architecture specification after PRD approval. |
-| `/async-maint` | Run non-blocking maintenance jobs (deps, bundle, git, a11y) that emit timestamped health reports. |
-| `/audit` | Universal audit router. Run a scoped or full, scan-only health audit citing rule/invariant violations. |
-| `/backlog-status` | Generate an ephemeral backlog view from distributed TICKET-* files — no second manual backlog. |
-| `/build` | Implement a feature from an approved plan, with per-phase verification and a hostile-QA gate. |
-| `/close` | Prepare a task for archive by resolving session state, finalizing durable work, and closing session-owned resources. |
-| `/debug` | Debug with systematic root-cause analysis; a failing reproduction test is mandatory before any fix. |
-| `/explore` | Exploration hub. Routes an ideation request to the matching explore-* skill before any plan is drafted. |
+| `/architect` | Create a technical architecture specification from an accepted problem and constraints. |
+| `/async-maint` | Run requested or configured background diagnostics and return uniquely identified health reports. |
+| `/audit` | Route scoped or full scan-only audits and report findings with explicit coverage. |
+| `/backlog-status` | Derive an on-demand ticket view from canonical artifacts without maintaining a second backlog. |
+| `/build` | Implement an accepted contract with risk-appropriate proof and truthful remaining acceptance. |
+| `/close` | Prepare a task for archive while preserving pending work and session-owned resources. |
+| `/debug` | Diagnose, reproduce or repair a bug using discriminating evidence and scoped authority. |
+| `/explore` | Route open questions to concept, technical, visual or interaction exploration. |
 | `/huh` | Repeat the latest explanation in one line of simple English. |
-| `/land` | Land the session on origin/main — wrap-up + changelog, backlog/working archived clean, READMEs + status current with next steps, worktrees and merged branches closed, ff-merge pushed. |
-| `/onboard` | Rapidly load project context by reading the routers (indexes), not the corpus — deep pass only for an unfamiliar repo. |
-| `/plan` | Scale-evaluate a request, then produce an approved implementation plan (feature or architecture). |
-| `/prd` | Create an approved Product Requirements Document for a large feature or epic. |
-| `/quick-fix` | Atomic fix for small bugs or tweaks (≤30 lines, ≤5 files) with a scope guard. |
-| `/refactor` | Restructure code with zero behavior change, guarded by an invariant + DX-standards check. |
+| `/land` | Land the scoped session on its authorized integration target with proof and safe cleanup. |
+| `/onboard` | Load sufficient project context index-first and preserve current intent on resume. |
+| `/plan` | Produce a right-sized implementation plan while preserving the accepted work contract. |
+| `/prd` | Define product outcomes, states and acceptance when those decisions are still open. |
+| `/quick-fix` | Apply a small, well-understood change with a risk-based scope guard. |
+| `/refactor` | Restructure code while preserving the agreed observable behavior and compatibility. |
 | `/remind` | Reorient the user to the session purpose, completed work, current state, and next action. |
-| `/research` | Conduct external research and synthesize findings into project-specific recommendations. |
-| `/ship` | Take a ticket and ship it — contract-driven implementation from Decision lines through Acceptance to a drift-proof closeout. |
-| `/test` | Generate unit/integration/reproduction tests following the project's existing test patterns. |
+| `/research` | Research open questions and map supported findings to the project without implying approval. |
+| `/ship` | Deliver one ticket against its accepted contract and close out its actual state truthfully. |
+| `/test` | Create meaningful unit, integration or reproduction tests within the requested test boundary. |
 | `/tldr` | Give exactly three bullets summarizing the requested scope, each under ten words. |
 | `/todo` | List every known completed and outstanding session step as Markdown checkboxes. |
-| `/verify-pre-deploy` | Pre-production GO/NO-GO verification — automated checks plus a project-defined manual-flow gate. |
-| `/walk` | Walk through the current explanation one point per user-controlled turn. |
-| `/wrap-up` | Session exit protocol — cite-or-run technical gate, changelog, archival, and opportunistic branch closure; full wrap (codify, session log) only on deterministic triggers. |
+| `/verify-pre-deploy` | Assess release readiness on the exact candidate with applicable proof and explicit pending gates. |
+| `/walk` | Walk through the selected explanation one point per user-controlled turn. |
+| `/wrap-up` | Close out scoped local work with reusable proof and honest remaining state. |
 <!-- <<< AGENTKIT WORKFLOWS <<< -->

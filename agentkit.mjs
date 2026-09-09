@@ -2,7 +2,7 @@
 // agentkit — one canonical .agent/ source, generated vendor surfaces, drift detection, flowback.
 // Verbs: init | sync | check | adopt | lock | surfaces | inventory | doctor          (decision 14)
 // State model:
-//   .agentkit.json  = pure intent (vendors, stack, tools, overlay, pins)          (decision 36)
+//   .agentkit.json  = pure intent (vendors, stack, tools, overlay, exclusions)          (decision 36)
 //   .agentkit.lock  = shipped state (per-file out-hash + src-hash + kitVersion),  COMMITTED (decisions 25/36)
 //   manifest.json   = COMPILED index of the kit, never hand-edited                (decision 28)
 // All staleness reads the lock or git history — never mtime (cloud-synced churns it). (decisions 25/37)
@@ -43,14 +43,21 @@ function writeJson(p, obj) {
   writeText(p, JSON.stringify(obj, null, 2) + '\n');
 }
 
-export function walk(dir, filter = () => true) {
+export function walk(dir, filter = () => true, opts = {}) {
   const out = [];
   if (!fs.existsSync(dir)) return out;
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch (e) {
+    if (!opts.onError) throw e;
+    opts.onError(e, dir, 'discovery');
+    return out;
+  }
+  for (const ent of entries) {
     const p = path.join(dir, ent.name);
     if (ent.isDirectory()) {
       if (ent.name === 'node_modules' || ent.name === '.git') continue;
-      out.push(...walk(p, filter));
+      out.push(...walk(p, filter, opts));
     } else if (filter(p)) {
       out.push(p);
     }
@@ -175,7 +182,10 @@ function receiptExcluded(file, excludes) {
 
 function ownGitRoot(projectRoot) {
   const root = git(projectRoot, ['rev-parse', '--show-toplevel'], { soft: true })?.trim();
-  return root && path.resolve(root) === path.resolve(projectRoot);
+  if (!root) return false;
+  // Git expands Windows short names and filesystem aliases. Compare actual roots, not spellings.
+  try { return fs.realpathSync.native(root) === fs.realpathSync.native(projectRoot); }
+  catch { return false; }
 }
 
 function worktreeFiles(projectRoot, excludes, useGit) {
@@ -309,13 +319,13 @@ export function tierOf(fm, type, name) {
 }
 
 function loadEntry(root, subPath, owner) {
-  const abs = path.join(root, '.agent', ...subPath.split('/'));
+  const abs = containedPath(root, '.agent/' + subPath);
   const raw = readText(abs);
   const { type, name } = classifyAgentFile(subPath);
   const { fm, body } = subPath.endsWith('.md') ? parseFrontmatter(raw) : { fm: null, body: raw };
   return {
     srcRel: `.agent/${subPath}`, subPath, type, name, owner,
-    fm, body, raw: normalizeEol(raw), tier: tierOf(fm, type, name),
+    fm, body, inputHash: rawHash(Buffer.from(raw)), raw: normalizeEol(raw), tier: tierOf(fm, type, name),
   };
 }
 
@@ -338,13 +348,27 @@ function applyNestedSkillTierInheritance(entries) {
   }
 }
 
-export function scanKitAgent(kitRoot = KIT_ROOT) {
+// Verification may retain partial evidence. Mutating/non-verifier callers omit onError and
+// keep the original fail-fast contract; they must never act on an incomplete asset inventory.
+function loadScannedEntries(root, subPaths, owner, opts) {
+  const entries = [];
+  for (const subPath of subPaths) {
+    try { entries.push(loadEntry(root, subPath, owner)); }
+    catch (e) {
+      if (!opts.onError) throw e;
+      opts.onError(e, path.join(root, '.agent', ...subPath.split('/')), 'read');
+    }
+  }
+  return entries;
+}
+
+export function scanKitAgent(kitRoot = KIT_ROOT, opts = {}) {
   const base = path.join(kitRoot, '.agent');
-  const entries = walk(base)
+  const subPaths = walk(base, undefined, opts)
     .map((p) => rel(base, p))
     .filter((s) => !s.startsWith('journals/') && !s.startsWith('scratch/'))
-    .sort()
-    .map((s) => loadEntry(kitRoot, s, 'core'));
+    .sort();
+  const entries = loadScannedEntries(kitRoot, subPaths, 'core', opts);
   applyNestedSkillTierInheritance(entries);
   return entries;
 }
@@ -361,11 +385,66 @@ function loadHooks(kitRoot, projectRoot) {
   return hooks.map((h) => ({ ...h, command: h.command.replaceAll('{KIT}', kitCli).replaceAll('{PROJECT}', projectRoot) }));
 }
 
+// Parse only the supported local MCP fields. The general frontmatter subset has one
+// nested level, so it cannot safely ingest env or block args beneath mcp.
+function parseMcpMetadata(raw, tool) {
+  const header = markdownParts(normalizeEol(raw)).prefix;
+  const lines = header.split('\n'), start = lines.findIndex(l => /^mcp:\s*$/.test(l));
+  if (start < 0) throw new Error('MCP ' + tool + ': use an indented local-server map');
+  const result = {}, fields = new Set();
+  let nested = null;
+  const scalar = token => {
+    const text = token.trim();
+    if (text.startsWith('"')) { const value = JSON.parse(text); if (typeof value !== 'string') throw new Error('expected string'); return value; }
+    if (text.startsWith("'")) { if (!/^'(?:[^']|'')*'$/.test(text)) throw new Error('invalid quoted string'); return text.slice(1, -1).replaceAll("''", "'"); }
+    if (!text || /[\[\]{}&*!|>#]/.test(text)) throw new Error('unsupported scalar; quote the exact value');
+    if (/^(?:true|false|null|~|yes|no|on|off|[-+]?(?:[0-9][0-9_]*(?:\.[0-9_]*)?(?:e[-+]?[0-9]+)?|\.[0-9_]+(?:e[-+]?[0-9]+)?|0[xob][0-9a-f_]+|\.inf|\.nan))$/i.test(text)) throw new Error('MCP ' + tool + ': nonstring scalar; quote the literal to use it as a string');
+    return text;
+  };
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim() || line.trim().startsWith('#')) continue;
+    if (!line.startsWith(' ')) break;
+    const field = line.match(/^  ([a-z]+):\s*(.*)$/);
+    if (field) {
+      const [, key, token] = field;
+      if (!['command', 'args', 'env', 'enabled'].includes(key) || fields.has(key)) throw new Error('MCP ' + tool + ': unsupported or duplicate field ' + key);
+      fields.add(key); nested = null;
+      if (key === 'env') {
+        if (token.trim() && token.trim() !== '{}') throw new Error('MCP env must use an indented string map');
+        result.env = {}; nested = 'env';
+      } else if (key === 'args') {
+        if (!token.trim()) { result.args = []; nested = 'args'; }
+        else {
+          // JSON arrays preserve commas, quotes and escapes; bare YAML lists are supported
+          // only where their tokens are unambiguous under the documented subset.
+          try { result.args = JSON.parse(token); }
+          catch { if (!/^\[[^[\]{}"']*\]$/.test(token.trim())) throw new Error('MCP args must be a JSON string array or simple bare list');
+            result.args = token.trim().slice(1, -1).split(',').filter(s => s.trim()).map(scalar); }
+        }
+      } else if (key === 'enabled') {
+        if (!/^(true|false)$/.test(token.trim())) throw new Error('MCP enabled must be boolean');
+        result.enabled = token.trim() === 'true';
+      } else result.command = scalar(token);
+    } else if (nested === 'args' && /^    - /.test(line)) result.args.push(scalar(line.slice(6)));
+    else if (nested === 'env' && /^    [A-Za-z_][A-Za-z0-9_]*:/.test(line)) {
+      const [, key, token] = line.match(/^    ([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+      if (Object.hasOwn(result.env, key)) throw new Error('duplicate MCP environment key');
+      result.env[key] = scalar(token);
+    } else throw new Error('MCP ' + tool + ': unsupported nesting or field syntax');
+  }
+  if (typeof result.command !== 'string' || !result.command.trim() ||
+      (result.args && (!Array.isArray(result.args) || result.args.some(x => typeof x !== 'string')))) throw new Error('invalid local MCP command/args: string values required; quote scalar-looking literals');
+  return result;
+}
+
 // integrations/<tool>.md frontmatter may declare an `mcp:` server config + `check-command:`.
 export function loadIntegration(kitRoot, tool) {
-  const p = path.join(kitRoot, 'integrations', `${tool}.md`);
+  const p = containedPath(kitRoot, 'integrations/' + tool + '.md');
   if (!fs.existsSync(p)) return null;
-  const { fm } = parseFrontmatter(readText(p));
+  const raw = readText(p);
+  const { fm } = parseFrontmatter(raw);
+  if (fm && Object.hasOwn(fm, 'mcp')) fm.mcp = parseMcpMetadata(raw, tool);
   return { tool, fm: fm || {}, path: p };
 }
 
@@ -380,10 +459,185 @@ function mcpServersFor(kitRoot, cfg) {
 
 // ---------- selection + planning ----------
 
+// A single contained path seam is used for inputs, outputs, ownership and recovery.
+// Symlinks (including leaf links), non-files and multiply linked files are unsupported.
+function containedPath(root, name, { directory = false } = {}) {
+  if (typeof name !== 'string' || !name || name.includes('\\') || name.includes('\0') ||
+      path.posix.isAbsolute(name) || /^[A-Za-z]:/.test(name) ||
+      name.split('/').some(s => !s || s === '.' || s === '..' || /[<>:"|?*\x00-\x1f]/.test(s) || /[. ]$/.test(s) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s))) {
+    throw new Error('unsafe relative path: ' + String(name));
+  }
+  const base = path.resolve(root);
+  for (let ancestor = base; ; ancestor = path.dirname(ancestor)) {
+    if (fs.lstatSync(ancestor).isSymbolicLink()) throw new Error('unsafe linked root ancestor: ' + ancestor);
+    if (path.dirname(ancestor) === ancestor) break;
+  }
+  let current = base;
+  const rootStat = fs.lstatSync(base);
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) throw new Error('unsafe root: ' + base);
+  const parts = name.split('/');
+  for (let i = 0; i < parts.length; i++) {
+    current = path.join(current, parts[i]);
+    let stat;
+    try { stat = fs.lstatSync(current); } catch (e) { if (e.code === 'ENOENT') continue; throw e; }
+    const isDir = i < parts.length - 1 || directory;
+    if (stat.isSymbolicLink() || (isDir ? !stat.isDirectory() : !stat.isFile()) ||
+        (!isDir && stat.nlink > 1)) throw new Error('unsafe linked or non-regular path: ' + name);
+  }
+  return current;
+}
+
+const LOCK_SCHEMA = 2;
+const PENDING_FILE = '.agentkit.pending.json';
+const rawHash = bytes => bytes === null ? null : crypto.createHash('sha256').update(bytes).digest('hex');
+const jsonBytes = obj => JSON.stringify(obj, null, 2) + '\n';
+function fileBytes(root, name) {
+  const abs = containedPath(root, name);
+  try { return fs.readFileSync(abs); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+}
+function pendingOperation(root) {
+  const bytes = fileBytes(root, PENDING_FILE);
+  return bytes === null ? null : JSON.parse(bytes.toString('utf8'));
+}
+function requireNoPending(root) {
+  if (pendingOperation(root)) throw new Error('pending operation: run agentkit recover before another mutation');
+}
+function snapshotEffect(root, name, content, mode) {
+  const before = fileBytes(root, name);
+  const after = content === null ? null : Buffer.isBuffer(content) ? content : Buffer.from(content);
+  const beforeMode = before === null ? null : fs.statSync(containedPath(root, name)).mode & 0o777;
+  return { rel: name, before: before?.toString('base64') ?? null, after: after?.toString('base64') ?? null,
+    beforeHash: rawHash(before), afterHash: rawHash(after), beforeMode,
+    afterMode: after === null ? null : mode ?? beforeMode ?? 0o644 };
+}
+function effectMatches(root, effect, state) {
+  if (rawHash(fileBytes(root, effect.rel)) !== effect[state + 'Hash']) return false;
+  const mode = effect[state + 'Mode'];
+  return process.platform === 'win32' || mode == null ||
+    (fs.statSync(containedPath(root, effect.rel)).mode & 0o777) === mode;
+}
+function replaceBytes(root, name, bytes, id, mode = 0o644) {
+  const abs = containedPath(root, name);
+  if (bytes === null) {
+    if (fs.existsSync(abs)) fs.unlinkSync(abs);
+    return;
+  }
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  const stageRel = name + '.agentkit-stage-' + id;
+  const stage = containedPath(root, stageRel);
+  try {
+    // This exact scratch name belongs to the retained journal. A process interrupted during its
+    // write may leave partial bytes; reconstruct it from the journal after all targets preflight.
+    fs.writeFileSync(stage, bytes, { flag: 'w', mode });
+    if (process.platform !== 'win32') fs.chmodSync(stage, mode);
+    containedPath(root, name);
+    fs.renameSync(stage, abs);
+  } finally {
+    if (fs.existsSync(stage)) fs.unlinkSync(stage);
+  }
+}
+
+// Exact bytes, prepared once. Progress is reconstructed from hashes, never trusted labels.
+// The final effect publishes the completed ownership/manifest record. A journal surviving that
+// publication is finalized without replay. This is process recovery, not power-loss atomicity.
+function applyOperation(root, effects, metadata = {}, opts = {}) {
+  requireNoPending(root);
+  const changed = effects.filter(e => e.beforeHash !== e.afterHash || (process.platform !== 'win32' && e.beforeMode !== e.afterMode));
+  if (!changed.length) return { ok: true, completed: true, effects: [] };
+  const names = new Set();
+  for (const e of changed) {
+    const key = e.rel.toLowerCase();
+    if (names.has(key) || e.rel === PENDING_FILE) throw new Error('duplicate/reserved operation target: ' + e.rel);
+    names.add(key);
+    if (!effectMatches(root, e, 'before')) throw new Error('input changed before apply: ' + e.rel);
+  }
+  for (const input of metadata.inputs || []) {
+    if (rawHash(fileBytes(input.root, input.rel)) !== input.hash) throw new Error('source input changed: ' + input.rel);
+  }
+  const journal = { schema: 1, id: crypto.randomUUID(), root: path.resolve(root), metadata, effects: changed };
+  const journalPath = containedPath(root, PENDING_FILE);
+  fs.writeFileSync(journalPath, jsonBytes(journal), { flag: 'wx', mode: 0o600 });
+  return finishOperation(root, journal, opts);
+}
+function finishOperation(root, journal, opts = {}) {
+  if (journal.schema !== 1 || journal.root !== path.resolve(root) || !Array.isArray(journal.effects) ||
+      !/^[0-9a-f-]{36}$/.test(journal.id)) throw new Error('invalid pending operation schema or root');
+  const names = new Set();
+  const conflicts = [];
+  for (const e of journal.effects) {
+    const key = String(e.rel).toLowerCase();
+    if (names.has(key) || e.rel === PENDING_FILE) throw new Error('invalid pending target: ' + e.rel);
+    names.add(key);
+    containedPath(root, e.rel + '.agentkit-stage-' + journal.id);
+    for (const state of ['before', 'after']) {
+      if (e[state] !== null && typeof e[state] !== 'string') throw new Error('invalid pending bytes: ' + e.rel);
+      const mode = e[state + 'Mode'];
+      if (mode != null && (!Number.isInteger(mode) || mode < 0 || mode > 0o777)) throw new Error('invalid pending mode: ' + e.rel);
+      if (rawHash(e[state] === null ? null : Buffer.from(e[state], 'base64')) !== e[state + 'Hash']) throw new Error('pending bytes hash mismatch: ' + e.rel);
+    }
+    if (!effectMatches(root, e, 'before') && !effectMatches(root, e, 'after')) conflicts.push(e.rel);
+  }
+  if (conflicts.length) return { ok: false, pending: true, reason: 'intervening edits stop recovery', conflicts, written: [], pruned: [] };
+  const applied = [];
+  try {
+    for (const e of journal.effects) {
+      if (effectMatches(root, e, 'after')) continue;
+      if (!effectMatches(root, e, 'before')) throw new Error('intervening edit: ' + e.rel);
+      replaceBytes(root, e.rel, e.after === null ? null : Buffer.from(e.after, 'base64'), journal.id, e.afterMode);
+      applied.push(e.rel);
+      // Inject only through the public API test seam; never through an environment variable.
+      if (opts.afterEffect) opts.afterEffect(e.rel, applied.length);
+    }
+    fs.unlinkSync(containedPath(root, PENDING_FILE));
+    return { ok: true, completed: true, recovered: !!opts.recover, effects: journal.effects.map(e => e.rel), result: journal.metadata.result };
+  } catch (error) {
+    return { ok: false, pending: true, reason: error.message, applied, remaining: journal.effects
+      .filter(e => !effectMatches(root, e, 'after')).map(e => e.rel), written: [], pruned: [] };
+  }
+}
+export function recoverOperation(projectRoot, opts = {}) {
+  try {
+    const pending = pendingOperation(projectRoot);
+    return pending ? finishOperation(projectRoot, pending, { ...opts, recover: true }) :
+      { ok: true, completed: true, recovered: false, effects: [] };
+  } catch (e) { return { ok: false, pending: true, reason: e.message }; }
+}
+function validateConfig(cfg) {
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) throw new Error('.agentkit.json must be an object');
+  if (Object.hasOwn(cfg, 'pins') && (cfg.pins === null || typeof cfg.pins !== 'object' ||
+      Array.isArray(cfg.pins) || Object.keys(cfg.pins).length)) {
+    throw new Error('pins are unsupported: remove nonempty or malformed pins after explicitly choosing coherent sync or an overlay; --force cannot bypass migration');
+  }
+  for (const key of ['vendors', 'stack', 'kinds', 'tools', 'exclude']) {
+    if (cfg[key] !== undefined && (!Array.isArray(cfg[key]) || cfg[key].some(x => typeof x !== 'string' || !x)))
+      throw new Error(key + ' must be an array of nonempty strings');
+  }
+  for (const tool of cfg.tools || []) if (!/^[a-z0-9][a-z0-9-]*$/.test(tool)) throw new Error('invalid tool identifier: ' + tool);
+  if (cfg.overlay !== undefined) {
+    if (!cfg.overlay || typeof cfg.overlay !== 'object' || Array.isArray(cfg.overlay)) throw new Error('overlay must be an object');
+    for (const [key, values] of Object.entries(cfg.overlay)) if (!['rules', 'skills', 'workflows', 'paths', 'claims'].includes(key) ||
+      !Array.isArray(values) || values.some(v => typeof v !== 'string')) throw new Error('invalid overlay claims: ' + key);
+  }
+  if (cfg.permissions !== undefined) {
+    if (!cfg.permissions || typeof cfg.permissions !== 'object' || Array.isArray(cfg.permissions)) throw new Error('permissions must be an object');
+    if (cfg.permissions.enabled !== undefined && typeof cfg.permissions.enabled !== 'boolean') throw new Error('permissions.enabled must be boolean');
+    if (cfg.permissions.extra !== undefined && (!Array.isArray(cfg.permissions.extra) || cfg.permissions.extra.some(v => typeof v !== 'string'))) throw new Error('permissions.extra must be a string array');
+  }
+  if (cfg.docs !== undefined && (!cfg.docs || typeof cfg.docs !== 'object' || Array.isArray(cfg.docs))) throw new Error('docs must be an object');
+}
+export function kbRootFor(projectRoot, cfg = loadConfig(projectRoot) || {}) {
+  const name = cfg.docs?.kbRoot === undefined ? 'docs/knowledge-base' : cfg.docs.kbRoot;
+  if (typeof name !== 'string' || !name.trim()) throw new Error('docs.kbRoot must be a nonempty contained repository-relative string');
+  containedPath(projectRoot, name, { directory: true });
+  return name;
+}
+
 export function loadConfig(projectRoot) {
   const p = path.join(projectRoot, '.agentkit.json');
   if (!fs.existsSync(p)) return null;
-  const cfg = readJson(p, {});
+  const cfg = readJson(containedPath(projectRoot, '.agentkit.json'), {});
+  validateConfig(cfg);
+  kbRootFor(projectRoot, cfg);
   cfg.vendors = cfg.vendors || [];
   cfg.stack = cfg.stack || [];
   cfg.kinds = cfg.kinds || ['app'];
@@ -394,7 +648,20 @@ export function loadConfig(projectRoot) {
 }
 
 export function loadLock(projectRoot) {
-  return readJson(path.join(projectRoot, '.agentkit.lock'), { kitVersion: null, files: {}, settings: {}, edits: {} });
+  const lock = readJson(containedPath(projectRoot, '.agentkit.lock'), { kitVersion: null, files: {}, settings: {}, edits: {} });
+  if (!lock || (lock.schema !== undefined && lock.schema !== LOCK_SCHEMA)) throw new Error('unsupported lock schema');
+  for (const field of ['files', 'settings', 'edits']) {
+    if (!lock[field] || typeof lock[field] !== 'object' || Array.isArray(lock[field])) throw new Error('invalid lock ' + field);
+    for (const name of Object.keys(lock[field])) containedPath(projectRoot, name);
+  }
+  for (const [name, meta] of Object.entries(lock.files)) {
+    if (!meta || typeof meta !== 'object' || !/^[a-f0-9]{64}$/.test(meta.out)) throw new Error('invalid ownership record: ' + name);
+    if (meta.src !== null && meta.src !== undefined) {
+      if (!meta.src.startsWith('.agent/')) throw new Error('invalid canonical source: ' + meta.src);
+      containedPath(projectRoot, meta.src);
+    }
+  }
+  return lock;
 }
 
 function overlayGlobs(cfg) {
@@ -403,11 +670,17 @@ function overlayGlobs(cfg) {
 }
 
 export function selectEntries(entries, cfg) {
+  validateConfig(cfg);
+  const exclusions = new Set(cfg.exclude || []);
+  const identities = new Set(entries.map(e => e.type === 'skill' ? '.agent/skills/' + e.name : e.srcRel));
+  for (const excluded of exclusions) if (!identities.has(excluded)) throw new Error('unknown exclusion: ' + excluded);
+  for (const e of entries) if (!/^(core|overlay|tech:[a-z0-9-]+|kind:[a-z0-9-]+)$/.test(e.tier)) throw new Error('invalid tier ' + e.tier + ' in ' + e.srcRel);
   const globs = overlayGlobs(cfg);
   // Defensive fallback (mirrors loadConfig's default) so a directly-constructed cfg that omits
   // `kinds` — as every pre-kinds caller's config does — still resolves to the same selection.
   const kinds = cfg.kinds || ['app'];
   return entries.filter((e) => {
+    if (exclusions.has(e.type === 'skill' ? '.agent/skills/' + e.name : e.srcRel)) return false;
     if (e.tier === 'overlay') return false;               // kit never ships overlay-tier content
     // A project overlay glob claims a path as its own — UNLESS the kit explicitly pinned that asset
     // `tier: core` in frontmatter. Otherwise a default `project-*`/`domain-*` overlay silently drops a
@@ -426,7 +699,7 @@ export function selectEntries(entries, cfg) {
 
 // Overlay = files in the project's .agent that the kit does not ship (owner: project). Decision 34:
 // adapters run over the MERGED tree so overlay skills reach vendor surfaces too.
-export function scanProjectOverlay(projectRoot, shippedAgentRels, lock) {
+export function scanProjectOverlay(projectRoot, shippedAgentRels, lock, opts = {}) {
   const base = path.join(projectRoot, '.agent');
   const shipped = new Set(shippedAgentRels);
   // A file the LOCK says the kit shipped (owner core) is never overlay — when it falls out of the
@@ -436,11 +709,38 @@ export function scanProjectOverlay(projectRoot, shippedAgentRels, lock) {
       .filter(([r, m]) => m.owner === 'core' && r.startsWith('.agent/'))
       .map(([r]) => r.slice('.agent/'.length)),
   );
-  return walk(base)
+  const subPaths = walk(base, undefined, opts)
     .map((p) => rel(base, p))
     .filter((s) => !s.startsWith('journals/') && !s.startsWith('scratch/') && !shipped.has(s) && !lockShipped.has(s) && s !== 'hooks.json')
-    .sort()
-    .map((s) => loadEntry(projectRoot, s, 'project'));
+    .sort();
+  return loadScannedEntries(projectRoot, subPaths, 'project', opts);
+}
+
+function requiredSkillValidations(entries, excluded = new Set()) {
+  const skills = new Set(entries.filter(e => e.type === 'skill' && e.subPath === 'skills/' + e.name + '/SKILL.md' && e.name !== '_templates').map(e => e.name));
+  const validations = [];
+  for (const e of entries.filter(e => e.type === 'workflow' && e.fm?.skill !== undefined)) {
+    const required = Array.isArray(e.fm.skill) ? e.fm.skill : [e.fm.skill];
+    for (const name of required) if (typeof name !== 'string' || !skills.has(name)) validations.push({
+      level: 'error', msg: e.srcRel + ' requires ' + (excluded.has('.agent/skills/' + name) ? 'excluded' : 'unavailable') + ' capability .agent/skills/' + String(name) + '; restore the required skill in the selected tree or exclude the workflow as well',
+    });
+  }
+  return validations;
+}
+
+// Validate the entire inventory together: one-entry adapter calls miss cross-entry route collisions.
+function canonicalValidation(entries, kitRoot) {
+  const ctx = { kitPath: kitRoot, projectRoot: '<project>', config: {}, mcpServers: {}, hooks: [] };
+  const validations = requiredSkillValidations(entries);
+  const outputs = {};
+  for (const vendor of VENDORS) {
+    const out = adapters[vendor](entries, ctx);
+    validations.push(...out.validations);
+    outputs[vendor] = out;
+  }
+  const errors = validations.filter(v => v.level === 'error');
+  if (errors.length) throw new Error('canonical candidate validation: ' + [...new Set(errors.map(e => e.msg))].join('; '));
+  return outputs;
 }
 
 // The single planner: sync applies it, check compares against it, --dry-run prints it.
@@ -458,7 +758,7 @@ export function planSync(projectRoot, opts = {}) {
     for (const e of selected) {
       const ext = path.extname(e.subPath).toLowerCase();
       const content = e.subPath === 'hooks.json' ? e.raw : injectHeader(e.raw, e.srcRel, ext);
-      actions.push({ rel: e.srcRel, content, src: e.srcRel, srcHash: sha(e.raw), owner: 'core', vendor: null });
+      actions.push({ rel: e.srcRel, content, src: e.srcRel, transform: 'copy', srcHash: sha(e.raw), owner: 'core', vendor: null });
     }
   }
 
@@ -485,7 +785,13 @@ export function planSync(projectRoot, opts = {}) {
   };
   const settingsActions = [];
   const validations = [];
+  for (const tool of cfg.tools || []) if (!loadIntegration(kitRoot, tool)) validations.push({ level: 'warn', msg: 'selected tool has no integration/prerequisite guidance: ' + tool });
   validations.push(...validateBrowserProfile(cfg));
+  // Workflow implementation skills are explicit required routing edges. Body citations,
+  // including the React scaffold's app-only references, remain conditional guidance.
+  validations.push(...requiredSkillValidations(merged, new Set(cfg.exclude || [])));
+  // Metadata also applies to canonical-only selections; adapter validation is side-effect free.
+  if (!cfg.vendors.length) validations.push(...adapters.codex(merged, ctx).validations);
   // sibling-branch warn: syncing pulls whatever the kit clone currently has checked out.
   const branchWarn = kitBranchWarn(kitRoot, projectRoot, opts.allowBranch);
   if (branchWarn) validations.push(branchWarn);
@@ -494,14 +800,28 @@ export function planSync(projectRoot, opts = {}) {
     if (!adapter) { validations.push({ level: 'error', msg: `unknown vendor '${vendor}' in .agentkit.json` }); continue; }
     const out = adapter(merged, ctx);
     for (const f of out.files) {
-      const src = merged.find((e) => f.rel.endsWith(e.subPath) || f.content.includes(e.srcRel));
+      const src = merged.find((e) => e.srcRel === f.source);
+      if (f.source && !src) validations.push({ level: 'error', msg: 'unknown adapter source: ' + f.source });
+      if (!['body-md', 'copy', 'unsupported'].includes(f.transform)) validations.push({ level: 'error', msg: 'missing adapter transform: ' + f.rel });
       actions.push({
-        rel: f.rel, content: f.content, src: src ? src.srcRel : null,
+        rel: f.rel, content: f.content, src: src ? src.srcRel : null, transform: f.transform,
         srcHash: src ? sha(src.raw) : null, owner: src?.owner === 'project' ? 'project-generated' : 'core', vendor,
       });
     }
     for (const s of out.settings) settingsActions.push({ ...s, vendor });
     validations.push(...out.validations.map((v) => ({ ...v, vendor })));
+  }
+
+  const targets = new Map();
+  for (const a of actions) {
+    containedPath(projectRoot, a.rel);
+    const key = a.rel.toLowerCase();
+    if (targets.has(key)) validations.push({ level: 'error', msg: 'output collision: ' + a.rel + ' from ' + targets.get(key) + ' and ' + a.src });
+    targets.set(key, a.src);
+  }
+  for (const a of settingsActions) {
+    containedPath(projectRoot, a.file);
+    if (targets.has(a.file.toLowerCase())) validations.push({ level: 'error', msg: 'file/settings collision: ' + a.file });
   }
 
   // K3: AGENTS.md workflow-map — vendor-neutral, generated from .agent/workflows/ so it can't drift.
@@ -530,14 +850,14 @@ export function planSync(projectRoot, opts = {}) {
 
 // ---------- manifest (compiled, never authored — decision 28) ----------
 
-export function compileManifest(kitRoot = KIT_ROOT) {
-  const entries = scanKitAgent(kitRoot);
-  const ctx = { kitPath: kitRoot, projectRoot: '<project>', config: {}, mcpServers: {}, hooks: [] };
+export function compileManifest(kitRoot = KIT_ROOT, opts = {}) {
+  const entries = opts.entries || scanKitAgent(kitRoot);
+  const outputs = canonicalValidation(entries, kitRoot);
   const items = entries.map((e) => {
     const generatedTargets = {};
     for (const vendor of VENDORS) {
-      const out = adapters[vendor]([e], ctx);
-      if (out.files.length) generatedTargets[vendor] = out.files.map((f) => f.rel);
+      const files = outputs[vendor].files.filter(f => f.source === e.srcRel);
+      if (files.length) generatedTargets[vendor] = files.map(f => f.rel);
     }
     return {
       path: e.srcRel, type: e.type, name: e.name, tier: e.tier, sha256: sha(e.raw),
@@ -547,19 +867,22 @@ export function compileManifest(kitRoot = KIT_ROOT) {
     };
   });
   const manifest = {
-    kitVersion: kitVersion(kitRoot),
+    kitVersion: opts.version || kitVersion(kitRoot),
     compiledAt: new Date().toISOString().slice(0, 10),
-    note: 'COMPILED by agentkit sync/inventory — never hand-edit (a hand edit here is itself drift; decision 28)',
+    note: 'COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)',
     entries: items,
   };
   // write-if-changed (F-cli-sync-dirties-kit): every downstream sync calls this, and a rewrite
   // whose only delta is compiledAt dirties the kit clone's tree on any later day — foreign
   // modifications in every concurrent kit-side session. Skipping the no-op write makes compiledAt
   // mean "when the CONTENT last compiled", which is the honest reading.
-  const outPath = path.join(kitRoot, 'manifest.json');
+  const outPath = containedPath(kitRoot, 'manifest.json');
   const existing = readJson(outPath, null);
   if (existing && JSON.stringify({ ...existing, compiledAt: null }) === JSON.stringify({ ...manifest, compiledAt: null })) return existing;
-  writeJson(outPath, manifest);
+  if (!opts.noWrite) {
+    const applied = applyOperation(kitRoot, [snapshotEffect(kitRoot, 'manifest.json', jsonBytes(manifest))], { kind: 'manifest' });
+    if (!applied.ok) throw new Error(applied.reason);
+  }
   return manifest;
 }
 
@@ -586,94 +909,317 @@ export function renderWorkflowMap(entries) {
   return ['| Command | What it does |', '| --- | --- |', ...rows].join('\n');
 }
 
-export function mergeSettings(action, existingContent, lockKeys) {
-  if (action.merge === 'claude-hooks') {
-    const json = existingContent ? JSON.parse(existingContent) : {};
-    json.hooks = json.hooks || {};
-    const isOurs = (h) => (h.command || '').includes('agentkit');
-    // lockKeys for .claude/settings.json is the union of hook-event names AND permission entries
-    // (two merge kinds share this file). Permission entries are paren-shaped (`Bash(…)`, `Read(…)`);
-    // event names never are — so filter them out here to avoid iterating perms as pseudo-events.
-    const priorEvents = (lockKeys || []).filter((k) => !/[()]/.test(k));
-    const events = new Set([...priorEvents, ...action.data.map((d) => d.event)]);
-    for (const event of events) {
-      let groups = json.hooks[event] || [];
-      groups = groups.map((g) => ({ ...g, hooks: (g.hooks || []).filter((h) => !isOurs(h)) })).filter((g) => (g.hooks || []).length);
-      const ours = action.data.filter((d) => d.event === event);
-      if (ours.length) groups.push({ hooks: ours.map((d) => ({ type: 'command', command: d.command })) });
-      if (groups.length) json.hooks[event] = groups; else delete json.hooks[event];
+// Read-only guard for the TOML shapes accepted at the managed-block boundary. It never renders
+// user text. Unsupported forms fail precisely rather than guessing ownership from textual spelling.
+function tomlClaims(text) {
+  let i = 0, table = [];
+  const root = new Map(), claims = [];
+  const blockStart = text.indexOf(TOML_BLOCK_START), blockEnd = text.indexOf(TOML_BLOCK_END);
+  const fail = reason => {
+    const error = new Error('TOML preflight at line ' + (text.slice(0, i).split('\n').length) + ': ' + reason);
+    error.safeReason = error.message; throw error;
+  };
+  const invalidControl = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]|\r(?!\n)/.exec(text);
+  if (invalidControl) { i = invalidControl.index; fail('forbidden raw control character'); }
+  const space = () => { while (/[ \t\r]/.test(text[i] || '\0')) i++; };
+  const trivia = () => {
+    for (;;) { space(); if (text[i] === '#') while (i < text.length && text[i] !== '\n') i++;
+      if (text[i] !== '\n') break; i++; }
+  };
+  const string = () => {
+    const quote = text[i++];
+    if (text.slice(i, i + 2) === quote.repeat(2)) fail('multiline strings are unsupported at this merge boundary; preserve and reconcile this file locally');
+    let value = '';
+    while (i < text.length) {
+      const ch = text[i++];
+      if (ch === quote) return value;
+      if (ch === '\n' || ch === '\r' || ch.charCodeAt(0) < 32 && ch !== '\t') fail('invalid control character in string');
+      if (ch !== '\\' || quote === "'") { value += ch; continue; }
+      const esc = text[i++], escapes = { b: '\b', t: '\t', n: '\n', f: '\f', r: '\r', '"': '"', '\\': '\\' };
+      if (Object.hasOwn(escapes, esc)) value += escapes[esc];
+      else if (esc === 'u' || esc === 'U') {
+        const size = esc === 'u' ? 4 : 8, hex = text.slice(i, i + size);
+        if (!new RegExp('^[0-9a-fA-F]{' + size + '}$').test(hex)) fail('invalid Unicode escape');
+        const cp = parseInt(hex, 16); if (cp > 0x10ffff || cp >= 0xd800 && cp <= 0xdfff) fail('invalid Unicode scalar');
+        value += String.fromCodePoint(cp); i += size;
+      } else fail('unsupported string escape');
     }
-    if (!Object.keys(json.hooks).length) delete json.hooks;
-    return { content: JSON.stringify(json, null, 2) + '\n', managedKeys: action.data.map((d) => d.event) };
+    fail('unterminated string');
+  };
+  const keys = () => {
+    const parts = [];
+    for (;;) {
+      space();
+      if (text[i] === '"' || text[i] === "'") parts.push(string());
+      else { const match = text.slice(i).match(/^[A-Za-z0-9_-]+/); if (!match) fail('expected a bare or quoted key'); parts.push(match[0]); i += match[0].length; }
+      space(); if (text[i] !== '.') return parts; i++;
+    }
+  };
+  const declare = (tree, parts, type) => {
+    let level = tree;
+    for (let n = 0; n < parts.length; n++) {
+      const key = parts[n], last = n === parts.length - 1;
+      let node = level.get(key);
+      if (last) {
+        if (node && !(type === 'header' && node.type === 'implicit')) fail('duplicate or incompatible semantic key/table declaration');
+        if (!node) { node = { type, children: new Map() }; level.set(key, node); } else node.type = type;
+      } else {
+        if (node?.type === 'value') fail('cannot extend a scalar or sealed inline-table key');
+        if (!node) { node = { type: type === 'header' ? 'implicit' : 'dotted', children: new Map() }; level.set(key, node); }
+        level = node.children;
+      }
+    }
+  };
+  const value = () => {
+    space();
+    if (text[i] === '"' || text[i] === "'") { string(); return; }
+    if (text[i] === '[') {
+      i++; trivia();
+      if (text[i] === ']') { i++; return; }
+      for (;;) { value(); trivia(); if (text[i] === ']') { i++; return; }
+        if (text[i++] !== ',') fail('expected array comma or closing bracket');
+        trivia(); if (text[i] === ']') { i++; return; } }
+    }
+    if (text[i] === '{') {
+      i++; space(); const inline = new Map();
+      if (text[i] === '}') { i++; return; }
+      for (;;) {
+        const parts = keys(); if (text[i++] !== '=') fail('expected inline-table assignment');
+        value(); declare(inline, parts, 'value'); space();
+        if (text[i] === '}') { i++; return; }
+        if (text[i++] !== ',') fail('expected inline-table comma or closing brace');
+        space(); if (text[i] === '}') fail('trailing inline-table comma is unsupported');
+      }
+    }
+    const token = text.slice(i).match(/^[^,\]}#\n\r]+/)?.[0].trim() || '';
+    if (!/^(?:true|false|[-+]?(?:inf|nan)|[-+]?(?:0|[1-9](?:_?[0-9])*)(?:\.[0-9](?:_?[0-9])*)?(?:[eE][-+]?[0-9](?:_?[0-9])*)?|0x[0-9a-fA-F](?:_?[0-9a-fA-F])*|0o[0-7](?:_?[0-7])*|0b[01](?:_?[01])*)$/.test(token)) fail('unsupported or invalid value; this boundary accepts strings, numbers, booleans, arrays and inline tables');
+    i += token.length;
+  };
+  while (i < text.length) {
+    trivia(); if (i >= text.length) break;
+    const start = i, managed = blockStart >= 0 && start > blockStart && start < blockEnd;
+    let parts, type;
+    if (text[i] === '[') {
+      i++; if (text[i] === '[') fail('arrays of tables are unsupported at this merge boundary');
+      parts = keys(); if (text[i++] !== ']') fail('expected closing table bracket');
+      type = 'header'; declare(root, parts, type); table = parts;
+    } else {
+      parts = [...table, ...keys()]; if (text[i++] !== '=') fail('expected key assignment');
+      value(); type = 'value'; declare(root, parts, type);
+    }
+    const raw = text.slice(start, i);
+    space(); if (text[i] === '#') while (i < text.length && text[i] !== '\n') i++;
+    if (i < text.length && text[i] !== '\n') fail('unexpected trailing syntax');
+    claims.push({ parts, type, raw, managed });
   }
-  if (action.merge === 'claude-permissions') {
-    // Non-destructive union into permissions.allow (decision 16, revised): add the kit baseline,
-    // prune stale kit entries (previously ours, no longer in the baseline), and preserve every
-    // user-added entry. Kit-managed entries are the exact (paren-shaped) baseline strings, which is
-    // how they are told apart from the claude-hooks event names that share this file's lockKeys.
-    const json = existingContent ? JSON.parse(existingContent) : {};
+  return claims;
+}
+function preflightTomlMerge(before, after, action, prior) {
+  const old = tomlClaims(before);
+  const desired = tomlClaims(TOML_BLOCK_START + '\n' + (action.data || '') + '\n' + TOML_BLOCK_END);
+  const managedServers = new Set(desired.filter(c => c.managed && c.parts[0] === 'mcp_servers' && c.parts.length > 1).map(c => c.parts[1]));
+  const overlap = old.find(c => !c.managed && c.parts[0] === 'mcp_servers' && c.parts.length > 1 && managedServers.has(c.parts[1]));
+  if (overlap) throw settingsFailure(action, prior, 'mcp_servers.' + overlap.parts[1], before, 'unowned server identity overlaps the managed block');
+  const next = tomlClaims(after);
+  const userClaims = list => JSON.stringify(list.filter(c => !c.managed).map(c => [c.parts, c.type, c.raw]));
+  if (userClaims(old) !== userClaims(next)) throw settingsFailure(action, prior, 'document', before, 'replacement would change the semantic location of project-owned settings');
+}
+
+function settingsFailure(action, prior, key, current, reason = 'contribution differs from the required or retained value') {
+  const p = prior.find(r => r.kind === action.merge && r.key === key);
+  const ownership = p?.ownership || 'unowned';
+  const safeKey = action.merge === 'claude-permissions' ? 'allow-entry' : /^[a-zA-Z0-9_. -]+$/.test(String(key)) ? String(key) : 'redacted-key';
+  const digest = value => rawHash(Buffer.from(JSON.stringify(value) ?? 'null'));
+  const nextAction = 'Inspect only this native contribution. Preserve unrelated settings. Restore an edited introduced value, or explicitly remove the named ambiguous contribution only after choosing its disposition, then rerun sync. Do not edit the machine lock or bulk-clear settings.';
+  const context = { file: action.file || '(unspecified native file)', kind: action.merge, key: safeKey,
+    ownership, state: ownership === 'introduced' ? 'edited' : ownership,
+    hash: digest(current), priorHash: p ? digest(p.value) : null, keyHash: digest(key), action: nextAction };
+  const error = new Error(context.file + ': settings conflict (' + context.kind + ', key ' + context.key + ', ownership ' + ownership + '): ' + reason + '; ' + nextAction);
+  error.settingsConflict = context;
+  return error;
+}
+
+// Records are exact contributions, independently retired by kind. A legacy string list
+// proves membership only; preserve it as unresolved rather than inventing acquisition.
+export function mergeSettings(action, existingContent, lockKeys = []) {
+  const kind = action.merge;
+  if (kind === 'create-if-absent') return { content: existingContent === null ? action.data : null, managedKeys: [] };
+  const legacy = lockKeys.filter(x => typeof x === 'string');
+  const prior = lockKeys.filter(x => x && typeof x === 'object' && x.kind === kind);
+  const records = [];
+  const record = (key, value, ownership) => records.push({ kind, key, value, ownership });
+  const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const conflict = (key, current) => { throw settingsFailure(action, prior, key, current); };
+  if (kind === 'toml-block' || kind === 'md-block') {
+    const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
+    const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
+    const text = existingContent ?? '';
+    const starts = text.split(start).length - 1, ends = text.split(end).length - 1;
+    if (starts !== ends || starts > 1 || (starts && text.indexOf(end) < text.indexOf(start))) throw new Error('malformed managed block: ' + kind);
+    if (kind === 'md-block' && !starts) return { content: null, managedKeys: [] };
+    const current = starts ? text.slice(text.indexOf(start), text.indexOf(end) + end.length) : null;
+    const desired = action.data ? start + '\n' + action.data + '\n' + end : null;
+    const p = prior[0];
+    if (p && p.ownership === 'introduced' && current !== p.value) conflict('block', current);
+    if (current !== null && (!p || p.ownership !== 'introduced') && current !== desired) {
+      // Empty explicit Markdown markers are an enrollment request. Nonempty blocks are not.
+      const emptyOptIn = kind === 'md-block' && !text.slice(text.indexOf(start) + start.length, text.indexOf(end)).trim() && !legacy.length;
+      if (!emptyOptIn) {
+        if (desired !== null) conflict('block', current);
+        if (p) records.push(p);
+        return { content: null, managedKeys: records, unresolved: legacy };
+      }
+    }
+    if (p && p.ownership !== 'introduced' && desired === null) return { content: null, managedKeys: current === null ? [] : [p], unresolved: legacy };
+    if (desired !== null) record('block', desired, current === null ? 'introduced' : p?.ownership || (legacy.length ? 'unresolved' : current === desired ? 'borrowed' : 'introduced'));
+    let content = text;
+    if (current !== null) content = text.replace(current, desired || '');
+    else if (desired) content = text.trimEnd() + (text.trim() ? '\n\n' : '') + desired + '\n';
+    if (kind === 'toml-block') preflightTomlMerge(text, content, action, prior);
+    return { content, managedKeys: records, unresolved: legacy };
+  }
+  const json = existingContent ? JSON.parse(existingContent) : {};
+  if (!json || typeof json !== 'object' || Array.isArray(json)) throw new Error('settings must be a JSON object');
+  if (kind === 'claude-permissions') {
+    if (json.permissions !== undefined && (!json.permissions || typeof json.permissions !== 'object' || Array.isArray(json.permissions))) throw new Error('invalid permissions object');
     const perms = json.permissions || {};
-    const allow = Array.isArray(perms.allow) ? perms.allow : [];
-    const baseline = action.data || [];
-    const baselineSet = new Set(baseline);
-    const priorKit = (lockKeys || []).filter((k) => /[()]/.test(k)); // our prior permission entries
-    // keep everything except a stale kit entry (was ours, not in the new baseline) — user entries stay
-    const kept = allow.filter((e) => !(priorKit.includes(e) && !baselineSet.has(e)));
-    const keptSet = new Set(kept);
-    const merged = [...kept, ...baseline.filter((e) => !keptSet.has(e))];
-    if (merged.length) perms.allow = merged; else delete perms.allow;
-    if (Object.keys(perms).length) json.permissions = perms; else delete json.permissions;
-    return { content: JSON.stringify(json, null, 2) + '\n', managedKeys: baseline };
-  }
-  if (action.merge === 'mcp-json') {
-    const json = existingContent ? JSON.parse(existingContent) : {};
-    json.mcpServers = json.mcpServers || {};
-    for (const k of lockKeys || []) delete json.mcpServers[k];
-    for (const [k, v] of Object.entries(action.data)) json.mcpServers[k] = v;
-    return { content: JSON.stringify(json, null, 2) + '\n', managedKeys: Object.keys(action.data) };
-  }
-  if (action.merge === 'opencode-mcp') {
-    const json = existingContent ? JSON.parse(existingContent) : {};
-    const servers = json.mcp && typeof json.mcp === 'object' && !Array.isArray(json.mcp) ? json.mcp : {};
-    for (const k of lockKeys || []) delete servers[k];
-    for (const [k, v] of Object.entries(action.data)) servers[k] = v;
-    if (Object.keys(servers).length) json.mcp = servers; else delete json.mcp;
-    return { content: JSON.stringify(json, null, 2) + '\n', managedKeys: Object.keys(action.data) };
-  }
-  if (action.merge === 'toml-block') {
-    let text = existingContent ? normalizeEol(existingContent) : '';
-    const start = text.indexOf(TOML_BLOCK_START);
-    if (start !== -1) {
-      const end = text.indexOf(TOML_BLOCK_END);
-      text = (text.slice(0, start) + text.slice(end === -1 ? text.length : end + TOML_BLOCK_END.length)).replace(/\n{3,}/g, '\n\n');
+    if (perms.allow !== undefined && !Array.isArray(perms.allow)) throw new Error('permissions.allow must be an array');
+    let allow = [...(perms.allow || [])];
+    const desired = action.data || [];
+    for (const p of prior) {
+      if (p.ownership === 'introduced' && !allow.includes(p.value)) conflict(p.key, null);
+      if (!desired.includes(p.value) && p.ownership === 'introduced') allow = allow.filter(x => x !== p.value);
+      else if (!desired.includes(p.value) && allow.includes(p.value)) records.push(p);
     }
-    const block = action.data ? `${TOML_BLOCK_START}\n${action.data}\n${TOML_BLOCK_END}\n` : '';
-    const content = (text.trimEnd() + (text.trim() && block ? '\n\n' : '\n') + block).replace(/^\n+/, '');
-    return { content: content.trimEnd() + '\n', managedKeys: ['block'] };
+    for (const value of desired) {
+      const p = prior.find(x => x.value === value);
+      const exists = allow.includes(value);
+      record(value, value, exists ? (p?.ownership || (legacy.includes(value) ? 'unresolved' : 'borrowed')) : 'introduced');
+      if (!exists) allow.push(value);
+    }
+    if (allow.length) perms.allow = allow; else delete perms.allow;
+    if (Object.keys(perms).length) json.permissions = perms; else delete json.permissions;
+  } else if (kind === 'claude-hooks') {
+    if (json.hooks !== undefined && (!json.hooks || typeof json.hooks !== 'object' || Array.isArray(json.hooks))) throw new Error('invalid hooks object');
+    const hooks = json.hooks || {};
+    for (const [event, groups] of Object.entries(hooks)) {
+      if (!Array.isArray(groups) || groups.some(g => !g || !Array.isArray(g.hooks))) throw new Error('invalid hook groups: ' + event);
+    }
+    const desired = (action.data || []).map(d => ({ key: d.event, value: { hooks: [{ type: 'command', command: d.command }] } }));
+    for (const p of prior) {
+      const groups = hooks[p.key] || [];
+      const exact = groups.findIndex(g => equal(g, p.value));
+      if (p.ownership === 'introduced' && exact < 0) conflict(p.key, groups);
+      if (!desired.some(d => d.key === p.key && equal(d.value, p.value))) {
+        if (p.ownership === 'introduced') {
+          groups.splice(exact, 1);
+          if (groups.length) hooks[p.key] = groups; else delete hooks[p.key];
+        } else if (exact >= 0) records.push(p);
+      }
+    }
+    for (const d of desired) {
+      const groups = hooks[d.key] || [];
+      const p = prior.find(x => x.key === d.key && equal(x.value, d.value));
+      const satisfied = groups.some(g => (g.hooks || []).some(h => equal(h, d.value.hooks[0])));
+      record(d.key, d.value, satisfied ? (p?.ownership || (legacy.includes(d.key) ? 'unresolved' : 'borrowed')) : 'introduced');
+      if (!satisfied) groups.push(d.value);
+      hooks[d.key] = groups;
+    }
+    if (Object.keys(hooks).length) json.hooks = hooks; else delete json.hooks;
+  } else if (kind === 'mcp-json' || kind === 'opencode-mcp') {
+    const key = kind === 'mcp-json' ? 'mcpServers' : 'mcp';
+    if (json[key] !== undefined && (!json[key] || typeof json[key] !== 'object' || Array.isArray(json[key]))) throw new Error('invalid MCP object');
+    const servers = json[key] || {};
+    for (const p of prior) {
+      if (p.ownership === 'introduced' && !equal(servers[p.key], p.value)) conflict(p.key, servers[p.key]);
+      if (!Object.hasOwn(action.data, p.key)) {
+        if (p.ownership === 'introduced') delete servers[p.key]; else if (Object.hasOwn(servers, p.key)) records.push({ ...p, value: servers[p.key] });
+      }
+    }
+    for (const [name, value] of Object.entries(action.data)) {
+      const p = prior.find(x => x.key === name);
+      const exists = Object.hasOwn(servers, name);
+      if (exists && !equal(servers[name], value) && p?.ownership !== 'introduced') conflict(name, servers[name]);
+      record(name, value, exists ? (p?.ownership || (legacy.includes(name) ? 'unresolved' : 'borrowed')) : 'introduced');
+      servers[name] = value;
+    }
+    if (Object.keys(servers).length) json[key] = servers; else delete json[key];
+  } else throw new Error('unknown settings merge kind: ' + kind);
+  return { content: jsonBytes(json), managedKeys: records, unresolved: legacy };
+}
+function legacySettingsRecords(file, keys, content) {
+  const records = keys.filter(k => k && typeof k === 'object');
+  const old = keys.filter(k => typeof k === 'string');
+  if (!old.length || content === null) return records;
+  const add = (kind, key, value) => records.push({ kind, key, value, ownership: 'unresolved' });
+  if (file.endsWith('.toml') || file.endsWith('.md')) {
+    const kind = file.endsWith('.toml') ? 'toml-block' : 'md-block';
+    const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
+    const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
+    if (content.includes(start)) add(kind, 'block', content.slice(content.indexOf(start), content.indexOf(end) + end.length));
+  } else {
+    const json = JSON.parse(content);
+    for (const key of old) {
+      if (file === '.claude/settings.json') {
+        if (/[()]/.test(key)) {
+          if (json.permissions?.allow?.includes(key)) add('claude-permissions', key, key);
+        } else for (const group of json.hooks?.[key] || []) add('claude-hooks', key, group);
+      } else {
+        const kind = file === 'opencode.json' ? 'opencode-mcp' : 'mcp-json';
+        const values = kind === 'opencode-mcp' ? json.mcp : json.mcpServers;
+        if (values && Object.hasOwn(values, key)) add(kind, key, values[key]);
+      }
+    }
   }
-  if (action.merge === 'md-block') {
-    // opt-in: never inject into an authored file that hasn't placed the markers.
-    if (existingContent === null) return { content: null, managedKeys: [] };
-    const text = normalizeEol(existingContent);
-    const start = text.indexOf(MD_BLOCK_START);
-    if (start === -1) return { content: null, managedKeys: [] }; // no markers → leave file untouched
-    const endIdx = text.indexOf(MD_BLOCK_END);
-    const end = endIdx === -1 ? text.length : endIdx + MD_BLOCK_END.length;
-    const block = action.data ? `${MD_BLOCK_START}\n${action.data}\n${MD_BLOCK_END}` : '';
-    const content = (text.slice(0, start) + block + text.slice(end)).replace(/\n{3,}/g, '\n\n');
-    return { content: content.replace(/\s*$/, '') + '\n', managedKeys: action.data ? ['workflow-map'] : [] };
+  return records;
+}
+function prepareSettings(projectRoot, actions, lock, initialEffects = []) {
+  const files = new Set([...actions.map(a => a.file), ...Object.keys(lock.settings || {})]);
+  const settings = {}, effects = [], unresolved = [];
+  for (const file of files) {
+    const before = fileBytes(projectRoot, file)?.toString('utf8') ?? null;
+    const initial = initialEffects.find(e => e.rel === file);
+    let content = initial ? (initial.after === null ? null : Buffer.from(initial.after, 'base64').toString('utf8')) : before;
+    const stored = lock.settings[file] || [];
+    if (!Array.isArray(stored)) throw new Error('invalid settings ownership: ' + file);
+    const previous = legacySettingsRecords(file, stored, content);
+    const wanted = actions.filter(a => a.file === file);
+    const kinds = new Set([...wanted.map(a => a.merge), ...previous.filter(x => typeof x === 'object').map(x => x.kind)]);
+    const records = [];
+    for (const kind of kinds) {
+      const same = wanted.filter(a => a.merge === kind);
+      if (same.length > 1) throw new Error('duplicate settings merge: ' + file + ' ' + kind);
+      const empty = ['claude-hooks', 'claude-permissions'].includes(kind) ? [] :
+        ['mcp-json', 'opencode-mcp'].includes(kind) ? {} : '';
+      const action = { ...(same[0] || { merge: kind, data: empty }), file };
+      let result;
+      try { result = mergeSettings(action, content, previous); }
+      catch (error) {
+        if (error.settingsConflict) throw error;
+        throw settingsFailure(action, previous, 'document', content, error.safeReason || 'invalid or unsupported native settings syntax; inspect the native file locally');
+      }
+      if (result.content !== null) content = result.content;
+      records.push(...result.managedKeys);
+    }
+    if (records.length) settings[file] = records;
+    for (const record of records.filter(r => r.ownership === 'unresolved')) unresolved.push({ file, ...record,
+      reason: 'legacy introduction is unproven; preserve as user-owned, or explicitly remove this exact native contribution then sync to establish new introduction' });
+    if (content !== before) effects.push(snapshotEffect(projectRoot, file, content));
   }
-  if (action.merge === 'create-if-absent') {
-    if (existingContent !== null) return { content: null, managedKeys: [] };
-    return { content: action.data, managedKeys: [] };
-  }
-  throw new Error(`unknown settings merge kind: ${action.merge}`);
+  return { settings, effects, unresolved };
 }
 
 // ---------- check (the 4-state matrix — decision 25) ----------
 
 export function checkProject(projectRoot, opts = {}) {
+  const pending = pendingOperation(projectRoot);
   const lock = loadLock(projectRoot);
+  if (pending) return {
+    project: projectRoot, kitVersion: kitVersion(opts.kitRoot || KIT_ROOT), lockKitVersion: lock.kitVersion,
+    pending: true, clean: false, results: [{ rel: PENDING_FILE, verdict: 'PENDING-RECOVERY' }],
+    validations: [], nags: [], gitDirty: [], dirtyManaged: [], kitMovedAhead: false,
+    survivingByAbsence: [], browserProfile: resolveBrowserProfile(loadConfig(projectRoot)),
+  };
   const results = [];
   const plan = opts.quick ? null : planSync(projectRoot, opts);
   const expected = new Map();
@@ -710,15 +1256,45 @@ export function checkProject(projectRoot, opts = {}) {
     if (verdict !== 'IN-SYNC' || opts.all) results.push({ rel: r, verdict, vendor: locked?.vendor ?? exp?.vendor ?? null });
   }
 
+  // Settings participate in the same comparison; diagnostics never write completed ownership.
+  if (plan) {
+    try {
+      const settings = prepareSettings(projectRoot, plan.settingsActions, lock);
+      for (const effect of settings.effects) results.push({ rel: effect.rel, verdict: 'SETTINGS-STALE' });
+      for (const item of settings.unresolved) results.push({ rel: item.file, verdict: 'OWNERSHIP-UNRESOLVED' });
+    } catch (error) {
+      results.push({ rel: error.settingsConflict?.file || '(settings)', verdict: 'SETTINGS-CONFLICT', detail: error.message, ...(error.settingsConflict ? { settingsConflict: error.settingsConflict } : {}) });
+    }
+  } else {
+    for (const [file, records] of Object.entries(lock.settings)) {
+      if (records.some(r => typeof r === 'string' || r.ownership === 'unresolved')) results.push({ rel: file, verdict: 'OWNERSHIP-UNRESOLVED' });
+      // Reconcile retained introduced contributions with themselves to detect edits without kit planning.
+      try {
+        const actions = [];
+        for (const kind of new Set(records.filter(r => typeof r === 'object').map(r => r.kind))) {
+          const owned = records.filter(r => r.kind === kind);
+          let data;
+          if (kind === 'claude-permissions') data = owned.map(r => r.value);
+          else if (kind === 'claude-hooks') data = owned.map(r => ({ event: r.key, command: r.value.hooks[0].command }));
+          else if (kind === 'mcp-json' || kind === 'opencode-mcp') data = Object.fromEntries(owned.map(r => [r.key, r.value]));
+          else if (kind === 'toml-block' || kind === 'md-block') {
+            const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
+            const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
+            data = owned[0]?.value.slice(start.length + 1, -(end.length + 1)) || '';
+          } else continue;
+          actions.push({ file, merge: kind, data });
+        }
+        if (prepareSettings(projectRoot, actions, { settings: { [file]: records } }).effects.length) results.push({ rel: file, verdict: 'SETTINGS-STALE' });
+      } catch (error) { results.push({ rel: file, verdict: 'SETTINGS-CONFLICT', detail: error.message, ...(error.settingsConflict ? { settingsConflict: error.settingsConflict } : {}) }); }
+    }
+  }
+
   // record first-detected edit dates in the lock (the >7-day flowback nag reads this, never mtime)
   const now = new Date().toISOString().slice(0, 10);
-  let lockDirty = false;
   const editedNow = new Set(results.filter((x) => x.verdict === 'LOCALLY-EDITED' || x.verdict === 'CONFLICT').map((x) => x.rel));
-  for (const r of editedNow) if (!lock.edits[r]) { lock.edits[r] = now; lockDirty = true; }
-  for (const r of Object.keys(lock.edits)) if (!editedNow.has(r)) { delete lock.edits[r]; lockDirty = true; }
-  if (lockDirty && !opts.noWrite && fs.existsSync(path.join(projectRoot, '.agentkit.lock'))) {
-    writeJson(path.join(projectRoot, '.agentkit.lock'), lock);
-  }
+  for (const r of editedNow) if (!lock.edits[r]) lock.edits[r] = now;
+  for (const r of Object.keys(lock.edits)) if (!editedNow.has(r)) delete lock.edits[r];
+  // Detection dates are diagnostic in-memory hints. Completed lock publication belongs to sync.
 
   const nags = [];
   for (const [r, d] of Object.entries(lock.edits)) {
@@ -785,8 +1361,13 @@ const CODE_EXT = /\.(md|mdx|ts|tsx|js|jsx|mjs|cjs|json|jsonc|css|scss|sql|ps1|sh
 //    them drift. (The upstream implementation this ports from excludes docs/backlog/ for the same
 //    reason.) Their INDEX READMEs are scanned, because an index must point at things that exist.
 //  - archive/ + raw-research/ are history and evidence: naming dead things is their job.
-const DOCS_SCAN_DIRS = ['knowledge-base'];
-const DOCS_SCAN_INDEXES = ['docs/working/README.md', 'docs/backlog/README.md', 'docs/README.md'];
+const LOCAL_DOCS_INDEXES = ['docs/working/README.local.md', 'docs/backlog/README.local.md'];
+const DOCS_SCAN_INDEXES = ['docs/working/README.md', 'docs/backlog/README.md', 'docs/README.md', ...LOCAL_DOCS_INDEXES];
+const isDocsIndex = r => path.basename(r) === 'README.md' || LOCAL_DOCS_INDEXES.includes(r);
+function localDocsIndexFor(r) {
+  const local = r.replace(/\/README\.md$/, '/README.local.md');
+  return LOCAL_DOCS_INDEXES.includes(local) ? local : null;
+}
 // Cross-repo citation notation (TICKET-25 / D6). A path or asset reference whose FIRST SEGMENT names
 // another repo can only resolve there — flagging it is a false positive whose only workaround is
 // degrading correct prose. Declared per-project as `externalRoots: ["a predecessor kit", …]`; the notation
@@ -838,6 +1419,8 @@ function looksLikeRepoPath(tok, roots) {
 
 function resolveCitation(projectRoot, kitRoot, tok, citingDir) {
   let t = tok.trim().replace(/^\.\//, '').replace(/[),.;:]+$/, '');
+  // Optional generated/evidence stores are directory contracts, not promises that any named file exists.
+  if (['reports', '.agentkit/verification', 'docs/raw-research', 'docs/raw-research/inbox', 'docs/research'].includes(t.replace(/\/$/, ''))) return true;
   // kit-relative citations resolve against the kit repo. Globs resolve their literal prefix — the
   // wildcard branch below is unreachable from here, so `integrations/*.md` must be handled inline
   // (it was reported as a phantom before this: a real directory cited with a valid glob).
@@ -885,7 +1468,7 @@ export function checkContentIntegrity(projectRoot, opts = {}) {
   for (const root of ['AGENTS.md', 'README.md']) { const p = path.join(projectRoot, root); if (fs.existsSync(p)) scan.push(p); }
   // TICKET-29: docs are a citing surface too. Live stores only — archive/ and raw-research/ are
   // history and evidence, deliberately allowed to name things that no longer exist.
-  for (const sub of DOCS_SCAN_DIRS) scan.push(...walk(path.join(projectRoot, 'docs', sub), (f) => f.endsWith('.md')));
+  scan.push(...walk(path.join(projectRoot, kbRootFor(projectRoot, cfg)), (f) => f.endsWith('.md')));
   for (const idx of DOCS_SCAN_INDEXES) { const p = path.join(projectRoot, ...idx.split('/')); if (fs.existsSync(p)) scan.push(p); }
   // CI job names (TICKET-29 / C1c): a doc naming a job that does not exist reads exactly like one that
   // does. Absent .github/workflows ⇒ the check is a no-op, never a false positive.
@@ -938,7 +1521,7 @@ export function checkContentIntegrity(projectRoot, opts = {}) {
     // routing hole C5 describes. Held hard. A docs BODY file lands at 'warn': KBs legitimately carry
     // imported and ported documents whose citations belong to another repo, and a guard that arrives
     // red on day one gets disabled (K10 cry-wolf). Ratchet it per repo once its KB is conforming.
-    const isIndex = /(^|\/)README\.md$/.test(relFile);
+    const isIndex = isDocsIndex(relFile);
     const docSev = isDurableDoc && !isIndex ? { severity: 'warn' } : {};
     // Shared suppression vocabulary with taxonomyLint's D2 (TICKET-25): a line carrying the marker is
     // deliberate prose — historical, negated, or illustrative — and is skipped by BOTH citation checkers.
@@ -1023,12 +1606,14 @@ export function checkContentIntegrity(projectRoot, opts = {}) {
   // de-dup identical (file, token)
   const seen = new Set();
   const unique = findings.filter((x) => { const k = `${x.file}|${x.kind}|${x.token}`; if (seen.has(k)) return false; seen.add(k); return true; });
-  return { project: projectRoot, findings: unique, clean: unique.length === 0 };
+  return { project: projectRoot, findings: unique, clean: unique.length === 0,
+    coverage: { kbRoot: kbRootFor(projectRoot, cfg), roots: ['.agent/rules', '.agent/skills', '.agent/workflows', 'AGENTS.md', 'README.md', ...DOCS_SCAN_INDEXES, kbRootFor(projectRoot, cfg)],
+      excluded: ['working/backlog bodies', 'archive/evidence bodies', 'illustrative templates'], scope: 'concrete supported citation syntax; semantic truth and all prose are not verified' } };
 }
 
 // check --kb <paths…> — the mechanical read-side KB router (decision 31)
 export function kbMatch(projectRoot, paths) {
-  const kbDir = path.join(projectRoot, 'docs', 'knowledge-base');
+  const kbDir = path.join(projectRoot, kbRootFor(projectRoot));
   const matches = [];
   for (const p of walk(kbDir, (f) => f.endsWith('.md'))) {
     const { fm } = parseFrontmatter(readText(p));
@@ -1045,9 +1630,10 @@ export function kbMatch(projectRoot, paths) {
 
 // ---------- sync ----------
 
-function threeWayBase(kitRoot, lockVer, srcRel) {
-  if (!lockVer) return null;
-  return git(kitRoot, ['show', `v${lockVer}:${srcRel}`], { soft: true });
+function threeWayBase(kitRoot, lockVer, srcRel, srcHash) {
+  if (!lockVer || !srcRel || !srcHash) return null;
+  const base = git(kitRoot, ['show', 'v' + lockVer + ':' + srcRel], { soft: true });
+  return base !== null && sha(base) === srcHash ? base : null;
 }
 
 // Junction/symlink guard (pilot finding 2026-07-03): if a vendor dir is a reparse point into
@@ -1065,7 +1651,7 @@ export function findReparseAncestors(projectRoot, rels) {
   const offenders = new Map();
   for (const r of rels) {
     const segs = r.split('/');
-    for (let i = 1; i < segs.length; i++) {
+    for (let i = 1; i <= segs.length; i++) {
       const dirRel = segs.slice(0, i).join('/');
       const abs = path.join(projectRoot, ...dirRel.split('/'));
       if (isLink(abs)) {
@@ -1084,13 +1670,13 @@ function isOverlayClean(a, abs, projectRoot) {
   if (!fs.existsSync(abs)) return true;
   const diskText = readText(abs);
   const expText = a.content;
-  const cleanDisk = stripHeader(diskText).trim();
-  const cleanExp = stripHeader(expText).trim();
+  const cleanDisk = stripHeader(diskText);
+  const cleanExp = stripHeader(expText);
   if (cleanDisk === cleanExp) return true;
   const srcAbs = path.join(projectRoot, ...a.src.split('/'));
-  if (fs.existsSync(srcAbs)) {
+  if (a.owner === 'project-generated' && path.resolve(srcAbs) !== path.resolve(abs) && fs.existsSync(srcAbs)) {
     const srcText = readText(srcAbs);
-    if (cleanDisk === stripHeader(srcText).trim()) return true;
+    if (cleanDisk === stripHeader(srcText)) return true;
   }
   return false;
 }
@@ -1099,8 +1685,12 @@ function isOverlayClean(a, abs, projectRoot) {
 // given managed rels. Used by both the sync git-clean guard and check's kit-moved-ahead nudge.
 function dirtyManagedPaths(projectRoot, rels) {
   if (!rels.length || !fs.existsSync(path.join(projectRoot, '.git'))) return [];
-  return (git(projectRoot, ['status', '--porcelain', '--', ...rels.slice(0, 200)], { soft: true }) || '')
-    .split('\n').filter((l) => l.trim() && !l.startsWith('??'));
+  const result = [];
+  for (let i = 0; i < rels.length; i += 150) {
+    result.push(...(git(projectRoot, ['status', '--porcelain', '--', ...rels.slice(i, i + 150)], { soft: true }) || '')
+      .split('\n').filter(l => l.trim() && !l.startsWith('??')));
+  }
+  return result;
 }
 
 // Path out of a porcelain-v1 line: `XY <path>` (rename: `XY <old> -> <new>`; special chars quoted).
@@ -1112,238 +1702,200 @@ function porcelainPath(line) {
   return p.trim();
 }
 
+function mutationInputs(projectRoot, plan) {
+  const inputs = [];
+  const add = (root, name, hash = rawHash(fileBytes(root, name))) => inputs.push({ root: path.resolve(root), rel: name, hash });
+  add(projectRoot, '.agentkit.json');
+  add(plan.kitRoot, 'package.json');
+  // In fixtures adapters execute from this module, not from the synthetic kit directory.
+  add(KIT_ROOT, 'adapters.mjs');
+  for (const e of plan.selected) add(plan.kitRoot, e.srcRel, e.inputHash || rawHash(Buffer.from(e.raw)));
+  for (const e of plan.overlay) add(projectRoot, e.srcRel, e.inputHash || rawHash(Buffer.from(e.raw)));
+  for (const tool of plan.cfg.tools) add(plan.kitRoot, 'integrations/' + tool + '.md');
+  add(plan.kitRoot, '.agent/hooks.json');
+  return inputs;
+}
+function recoveryIgnoreEffect(projectRoot) {
+  const existing = fileBytes(projectRoot, '.gitignore')?.toString('utf8') ?? '';
+  const needed = ['.agentkit.pending.json', '*.agentkit-stage-*'];
+  const missing = needed.filter(line => !existing.split(/\r?\n/).includes(line));
+  return missing.length ? snapshotEffect(projectRoot, '.gitignore',
+    existing + (existing && !existing.endsWith('\n') ? '\n' : '') + missing.join('\n') + '\n') : null;
+}
 export function syncProject(projectRoot, opts = {}) {
-  const kitRoot = opts.kitRoot || KIT_ROOT;
-  const plan = planSync(projectRoot, { ...opts, kitRoot });
-  const lock = loadLock(projectRoot);
-  const errors = plan.validations.filter((v) => v.level === 'error');
-  if (errors.length && !opts.force) {
-    return { ok: false, reason: 'validation errors', errors, written: [], pruned: [] };
-  }
-
-  // HARD guard, before any classification: no write may pass through a junction/symlink.
-  const reparse = findReparseAncestors(projectRoot, plan.actions.map((a) => a.rel));
-  if (reparse.length) {
-    return {
-      ok: false,
-      reason: 'reparse-point vendor path(s) — a junction/symlink here makes vendor writes clobber the canonical source. Remove the link first (Windows: rmdir <dir> — removes only the link), then re-run sync. NOT overridable by --force.',
-      reparse, written: [], pruned: [],
-    };
-  }
-
-  // classify writes
-  const writes = []; const refusals = [];
-  for (const a of plan.actions) {
-    const abs = path.join(projectRoot, ...a.rel.split('/'));
-    const exists = fs.existsSync(abs);
-    const diskHash = exists ? sha(readText(abs)) : null;
-    const expHash = sha(a.content);
-    if (diskHash === expHash) continue; // already correct
-    const locked = lock.files[a.rel];
-    if (exists && locked && diskHash !== locked.out && !opts.force) {
-      if (isOverlayClean(a, abs, projectRoot)) {
-        // clean overlay — bypass refusal
-      } else {
-        refusals.push({ rel: a.rel, why: 'LOCALLY-EDITED since last sync', base: threeWayBase(kitRoot, lock.kitVersion, a.src) !== null ? `git show v${lock.kitVersion}:${a.src}` : '(no base tag)' });
+  try {
+    requireNoPending(projectRoot);
+    const kitRoot = opts.kitRoot || KIT_ROOT;
+    const plan = planSync(projectRoot, { ...opts, kitRoot });
+    const lock = loadLock(projectRoot);
+    const errors = plan.validations.filter(v => v.level === 'error');
+    if (errors.length) return { ok: false, reason: 'validation errors', errors, written: [], pruned: [] };
+    const allPaths = [...plan.actions.map(a => a.rel), ...plan.settingsActions.map(a => a.file),
+      ...Object.keys(lock.files), ...Object.keys(lock.settings), ...(opts.initialEffects || []).map(e => e.rel), '.agentkit.lock', PENDING_FILE, '.gitignore'];
+    const reparse = findReparseAncestors(projectRoot, allPaths);
+    if (reparse.length) return { ok: false, reason: 'unsafe reparse-point path; --force cannot bypass containment', reparse, written: [], pruned: [] };
+    for (const name of allPaths) containedPath(projectRoot, name);
+    const observed = new Map(allPaths.map(name => [name, rawHash(fileBytes(projectRoot, name))]));
+    const writes = [], prunes = [], refusals = [], effects = [...(opts.initialEffects || [])];
+    for (const a of plan.actions) {
+      const abs = containedPath(projectRoot, a.rel);
+      const disk = fileBytes(projectRoot, a.rel);
+      if (disk !== null && sha(disk.toString('utf8')) === sha(a.content)) continue;
+      const previous = lock.files[a.rel];
+      if (disk !== null && !opts.force && (!previous || sha(disk.toString('utf8')) !== previous.out) &&
+          !isOverlayClean(a, abs, projectRoot)) {
+        refusals.push({ rel: a.rel, why: previous ? 'LOCALLY-EDITED since last sync' : 'exists but not lockfile-tracked',
+          base: previous && threeWayBase(kitRoot, previous.kitVersion || lock.kitVersion, previous.src, previous.srcHash) !== null ? 'verified historical source available' : '(matching historical base unavailable)' });
         continue;
       }
+      writes.push(a.rel);
+      effects.push(snapshotEffect(projectRoot, a.rel, a.content));
     }
-    if (exists && !locked && !opts.force) {
-      if (isOverlayClean(a, abs, projectRoot)) {
-        // clean overlay — bypass refusal
-      } else {
-        refusals.push({ rel: a.rel, why: 'exists but not lockfile-tracked (pre-migration content?)' });
-        continue;
+    const planned = new Set(plan.actions.map(a => a.rel));
+    for (const [name, meta] of Object.entries(lock.files)) {
+      if (planned.has(name)) continue;
+      const bytes = fileBytes(projectRoot, name);
+      if (bytes !== null && sha(bytes.toString('utf8')) !== meta.out && !opts.force) {
+        refusals.push({ rel: name, why: 'locally edited — refusing to prune' }); continue;
       }
+      prunes.push(name);
+      if (bytes !== null) effects.push(snapshotEffect(projectRoot, name, null));
     }
-    writes.push(a);
-  }
-
-  // prunes: lockfile entries that fell out of the plan (decision 29 — only files we wrote)
-  const planned = new Set(plan.actions.map((a) => a.rel));
-  const prunes = []; const pruneRefusals = [];
-  for (const [r, meta] of Object.entries(lock.files)) {
-    if (planned.has(r)) continue;
-    const abs = path.join(projectRoot, ...r.split('/'));
-    if (!fs.existsSync(abs)) { prunes.push({ rel: r, missing: true }); continue; }
-    if (sha(readText(abs)) === meta.out || opts.force) prunes.push({ rel: r });
-    else pruneRefusals.push({ rel: r, why: 'locally edited — refusing to prune without --force' });
-  }
-
-  // git-clean guard (decision 36): every sync must be trivially revertible. TICKET-18 narrowing:
-  // dirt whose content this sync would reproduce anyway (isOverlayClean — disk already matches the
-  // expected generated content modulo the provenance header, or matches the overlay source) is
-  // sync's own output, not user work at risk. Drop those entries and refuse only when genuinely-
-  // user-dirty paths remain; the refusal names only those. Protection of real user edits is
-  // untouched — a path whose dirt is NOT reproducible still refuses exactly as before.
-  const touched = [...writes.map((w) => w.rel), ...prunes.filter((p) => !p.missing).map((p) => p.rel)];
-  if (!opts.force && !opts.dryRun && touched.length) {
-    const actionByRel = new Map(writes.map((w) => [w.rel, w]));
-    const dirty = dirtyManagedPaths(projectRoot, touched).filter((line) => {
-      const r = porcelainPath(line);
-      const a = actionByRel.get(r);
-      if (!a) return true; // prune target or unparseable line — keep it protected
-      return !isOverlayClean(a, path.join(projectRoot, ...r.split('/')), projectRoot);
-    });
-    if (dirty.length) {
-      return { ok: false, reason: 'git not clean on managed paths (commit or stash first, or --force)', dirty, written: [], pruned: [], refusals, plan };
+    const settings = prepareSettings(projectRoot, plan.settingsActions, lock, opts.initialEffects);
+    for (const effect of settings.effects) {
+      const index = effects.findIndex(e => e.rel === effect.rel);
+      if (index < 0) effects.push(effect); else effects[index] = effect;
     }
-  }
-
-  if (opts.dryRun) {
-    return { ok: true, dryRun: true, wouldWrite: writes.map((w) => w.rel), wouldPrune: prunes.map((p) => p.rel), refusals: [...refusals, ...pruneRefusals], validations: plan.validations, survivingByAbsence: plan.survivingByAbsence, plan };
-  }
-
-  for (const a of writes) writeText(path.join(projectRoot, ...a.rel.split('/')), a.content);
-  for (const p of prunes) {
-    if (p.missing) continue;
-    const abs = path.join(projectRoot, ...p.rel.split('/'));
-    fs.rmSync(abs);
-    let d = path.dirname(abs);
-    while (d !== projectRoot && fs.existsSync(d) && !fs.readdirSync(d).length) { fs.rmdirSync(d); d = path.dirname(d); }
-  }
-
-  // settings key-merges
-  const newSettings = {};
-  const settingsWritten = [];
-  for (const s of plan.settingsActions) {
-    const abs = path.join(projectRoot, ...s.file.split('/'));
-    const existing = fs.existsSync(abs) ? readText(abs) : null;
-    const { content, managedKeys } = mergeSettings(s, existing, (lock.settings || {})[s.file]);
-    if (content !== null && content !== existing) { writeText(abs, content); settingsWritten.push(s.file); }
-    // Accumulate: .claude/settings.json is written by TWO kinds (claude-hooks + claude-permissions),
-    // so the lock records the union of both kinds' managed keys for that file.
-    if (managedKeys.length) newSettings[s.file] = [...(newSettings[s.file] || []), ...managedKeys];
-  }
-  // settings files we managed before but no longer: strip our keys
-  for (const [file, keys] of Object.entries(lock.settings || {})) {
-    if (newSettings[file]) continue;
-    const abs = path.join(projectRoot, ...file.split('/'));
-    if (!fs.existsSync(abs)) continue;
-    if (file.endsWith('.md') || file.endsWith('.toml') || file.includes('mcp') || file === 'opencode.json') {
-      const kind = file.endsWith('.md') ? 'md-block' : file.endsWith('.toml') ? 'toml-block' : file === 'opencode.json' ? 'opencode-mcp' : 'mcp-json';
-      const emptyData = kind === 'mcp-json' || kind === 'opencode-mcp' ? {} : '';
-      const { content } = mergeSettings({ merge: kind, data: emptyData }, readText(abs), keys);
-      if (content !== null) { writeText(abs, content); settingsWritten.push(file); }
-    } else {
-      // .claude/settings.json may hold both kinds — strip hooks (event keys) and permissions
-      // (paren-shaped keys) in turn, each reading the running content.
-      const hookKeys = keys.filter((k) => !/[()]/.test(k));
-      const permKeys = keys.filter((k) => /[()]/.test(k));
-      let content = readText(abs);
-      content = mergeSettings({ merge: 'claude-hooks', data: [] }, content, hookKeys).content;
-      content = mergeSettings({ merge: 'claude-permissions', data: [] }, content, permKeys).content;
-      if (content !== null) { writeText(abs, content); settingsWritten.push(file); }
+    const ignored = recoveryIgnoreEffect(projectRoot);
+    if (ignored) effects.unshift(ignored);
+    const dirty = !opts.force ? dirtyManagedPaths(projectRoot, effects.map(e => e.rel)).filter(line => {
+      const name = porcelainPath(line), a = plan.actions.find(a => a.rel === name);
+      return !a || !isOverlayClean(a, containedPath(projectRoot, name), projectRoot);
+    }) : [];
+    if (refusals.length || dirty.length) return { ok: false, reason: refusals.length ? 'known conflicts; no files changed' : 'git not clean on managed paths',
+      written: [], pruned: [], refusals, dirty, wouldWrite: writes, wouldPrune: prunes, plan };
+    const version = kitVersion(kitRoot);
+    const files = Object.fromEntries(plan.actions.map(a => [a.rel, {
+      out: sha(a.content), src: a.src, srcHash: a.srcHash, transform: a.transform, owner: a.owner, vendor: a.vendor, kitVersion: version,
+      // Retain only the generated metadata region, sufficient to reject native metadata edits.
+      ...(a.transform === 'body-md' ? { nativeMetadata: markdownParts(stripHeader(a.content)).prefix } : {}),
+    }]));
+    const source = mutationInputs(projectRoot, plan);
+    const newLock = { schema: LOCK_SCHEMA, kitVersion: version, syncedAt: new Date().toISOString(),
+      files, settings: settings.settings, edits: {}, source: { inputs: source.filter(i => i.root !== path.resolve(projectRoot)).map(({rel,hash}) => ({rel,hash})) } };
+    const previousBytes = fileBytes(projectRoot, '.agentkit.lock');
+    if (previousBytes && JSON.stringify({ ...lock, syncedAt: null }) === JSON.stringify({ ...newLock, syncedAt: null })) newLock.syncedAt = lock.syncedAt;
+    if (plan.selfSync) {
+      const manifest = compileManifest(kitRoot, { noWrite: true });
+      effects.push(snapshotEffect(projectRoot, 'manifest.json', jsonBytes(manifest)));
     }
-  }
-
-  // write the lock — the shipped-state record, committed to git (decision 36).
-  // CRITICAL: a lock entry means "this content was shipped by sync". For refused writes the disk
-  // content is the USER'S, not ours — preserve the old shipped record so the local edit stays
-  // detectable as LOCALLY-EDITED and the next sync cannot silently clobber it.
-  const files = {};
-  const edits = {};
-  for (const a of plan.actions) {
-    const abs = path.join(projectRoot, ...a.rel.split('/'));
-    if (!fs.existsSync(abs)) continue; // refused writes on new files
-    const diskHash = sha(readText(abs));
-    if (diskHash === sha(a.content)) {
-      files[a.rel] = { out: diskHash, src: a.src, srcHash: a.srcHash, owner: a.owner, vendor: a.vendor };
-    } else if (lock.files[a.rel]) {
-      files[a.rel] = lock.files[a.rel];
-      if (lock.edits?.[a.rel]) edits[a.rel] = lock.edits[a.rel]; // keep the first-detected edit date
-    }
-    // else: untracked pre-existing file we refused to touch — stays untracked
-  }
-  // a refused PRUNE must not drop out of the lock either — else the stale file becomes permanently
-  // invisible to every later command (check/doctor can no longer see it was ever kit-shipped). Carry
-  // the old record forward, flagged, so checkProject's PRUNED/ORPHAN branch keeps seeing it. A later
-  // successful prune (sync --force) or adopt naturally drops it — this loop just isn't reached for it.
-  for (const p of pruneRefusals) {
-    if (!lock.files[p.rel]) continue;
-    files[p.rel] = { ...lock.files[p.rel], refusedPrune: true };
-    if (lock.edits?.[p.rel]) edits[p.rel] = lock.edits[p.rel];
-  }
-  const newLock = {
-    kitVersion: kitVersion(kitRoot), syncedAt: new Date().toISOString(),
-    files, settings: newSettings, edits,
-  };
-  // write-if-changed, same rule as compileManifest: a no-op sync must not rewrite the lock with a
-  // fresh syncedAt — timestamp-only churn is exactly the attribution noise syncedAt exists to cut.
-  // syncedAt therefore means "the last sync that CHANGED something", which is the useful reading.
-  const lockPath = path.join(projectRoot, '.agentkit.lock');
-  const prevLock = readJson(lockPath, null);
-  if (!(prevLock && JSON.stringify({ ...prevLock, syncedAt: null }) === JSON.stringify({ ...newLock, syncedAt: null }))) {
-    writeJson(lockPath, newLock);
-  }
-  compileManifest(kitRoot);
-
-  return {
-    ok: true, written: writes.map((w) => w.rel), pruned: prunes.map((p) => p.rel),
-    settingsWritten, refusals: [...refusals, ...pruneRefusals], validations: plan.validations,
-    survivingByAbsence: plan.survivingByAbsence,
-  };
+    effects.push(snapshotEffect(projectRoot, '.agentkit.lock', jsonBytes(newLock)));
+    const result = { ok: true, written: writes, pruned: prunes, settingsWritten: settings.effects.map(e => e.rel),
+      refusals: [], validations: plan.validations, unresolvedSettings: settings.unresolved, survivingByAbsence: plan.survivingByAbsence,
+      source: { kitRoot: path.resolve(kitRoot), version, inputs: source.map(({ root, rel, hash }) => ({ root, rel, hash })),
+        branch: kitBranchState(kitRoot), workingChanges: (git(kitRoot, ['status', '--porcelain', '--', '.agent', 'integrations', 'package.json', 'adapters.mjs'], { soft: true }) || '').split('\n').filter(Boolean) } };
+    if (opts.dryRun) return { ...result, dryRun: true, wouldWrite: effects.filter(e => e.after !== null && e.beforeHash !== e.afterHash).map(e => e.rel),
+      wouldPrune: prunes, plan };
+    for (const effect of effects) if (observed.has(effect.rel) && observed.get(effect.rel) !== effect.beforeHash) throw new Error('destination changed during preflight: ' + effect.rel);
+    const applied = applyOperation(projectRoot, effects, { kind: 'sync', inputs: source, result }, opts);
+    return applied.ok ? result : { ...result, ...applied, ok: false };
+  } catch (e) { return { ok: false, reason: e.message, written: [], pruned: [], refusals: [], ...(e.settingsConflict ? { settingsConflicts: [e.settingsConflict] } : {}) }; }
 }
 
 // ---------- adopt (flowback — decisions 7/26) ----------
 
+function markdownParts(text) {
+  const match = text.match(/^(\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$))([\s\S]*)$/);
+  return match ? { prefix: match[1], body: match[2] } : { prefix: '', body: text };
+}
+function removeGeneratedHeader(text) {
+  return text.replace(/^(?:<!-- |# |\/\/ )AGENTKIT GENERATED from [^\r\n]*(?:\r?\n|$)/m, '');
+}
 export function adoptFile(projectRoot, fileRel, opts = {}) {
-  const kitRoot = opts.kitRoot || KIT_ROOT;
-  const relNorm = fileRel.split(path.sep).join('/');
-  const abs = path.join(projectRoot, ...relNorm.split('/'));
-  if (!fs.existsSync(abs)) return { ok: false, reason: `no such file: ${relNorm}` };
-  const lock = loadLock(projectRoot);
-  const locked = lock.files[relNorm];
-
-  if (opts.defer) {
-    const qPath = path.join(kitRoot, 'flowback-queue.json');
-    const q = readJson(qPath, []);
-    q.push({ project: path.basename(projectRoot), file: relNorm, date: new Date().toISOString().slice(0, 10) });
-    writeJson(qPath, q);
-    return { ok: true, deferred: true };
-  }
-
-  let srcRel;
-  if (locked && locked.src) {
-    srcRel = locked.src;
-    // reverse clobber guard (decision 26): refuse when the kit moved since this project last synced
-    const kitAbs = path.join(kitRoot, ...srcRel.split('/'));
-    const kitCurrent = fs.existsSync(kitAbs) ? sha(readText(kitAbs)) : null;
-    if (kitCurrent !== null && kitCurrent !== locked.srcHash && !opts.force) {
-      return {
-        ok: false, reason: `kit source ${srcRel} changed since this project last synced (another project adopted first, or the kit was edited directly) — 3-way merge needed`,
-        base: `git -C "${kitRoot}" show v${lock.kitVersion}:${srcRel}`,
-      };
+  try {
+    const kitRoot = opts.kitRoot || KIT_ROOT;
+    requireNoPending(projectRoot);
+    requireNoPending(kitRoot);
+    const cfg = loadConfig(projectRoot);
+    if (!cfg) throw new Error('no .agentkit.json');
+    validateConfig(cfg);
+    const relNorm = fileRel.split(path.sep).join('/');
+    const input = fileBytes(projectRoot, relNorm);
+    if (input === null) return { ok: false, reason: 'no such file: ' + relNorm };
+    const lock = loadLock(projectRoot), locked = lock.files[relNorm];
+    if (opts.defer) {
+      const q = readJson(containedPath(kitRoot, 'flowback-queue.json'), []);
+      if (!Array.isArray(q)) throw new Error('flowback queue must be an array');
+      q.push({ project: path.basename(projectRoot), file: relNorm, date: new Date().toISOString().slice(0, 10) });
+      const result = { ok: true, deferred: true };
+      const applied = applyOperation(kitRoot, [snapshotEffect(kitRoot, 'flowback-queue.json', jsonBytes(q))],
+        { kind: 'deferred-adoption', inputs: [{ root: path.resolve(projectRoot), rel: relNorm, hash: rawHash(input) }], result }, opts);
+      return applied.ok ? result : applied;
     }
-  } else {
-    if (!relNorm.startsWith('.agent/')) return { ok: false, reason: 'new files must live under .agent/ to be adoptable' };
-    srcRel = relNorm;
-  }
-
-  const content = stripHeader(readText(abs));
-  const kitAbs = path.join(kitRoot, ...srcRel.split('/'));
-  const isNew = !fs.existsSync(kitAbs);
-  writeText(kitAbs, content);
-
-  // version semantics (decision 33): patch = content fix to existing asset; minor = new asset
-  const pkgPath = path.join(kitRoot, 'package.json');
-  const pkg = readJson(pkgPath, {});
-  const [maj, min, pat] = (pkg.version || '0.0.0').split('.').map(Number);
-  pkg.version = isNew ? `${maj}.${min + 1}.0` : `${maj}.${min}.${pat + 1}`;
-  writeJson(pkgPath, pkg);
-
-  // kit CHANGELOG entry with provenance
-  const clPath = path.join(kitRoot, 'CHANGELOG.md');
-  const today = new Date().toISOString().slice(0, 10);
-  const entry = `## [${today}] — v${pkg.version} adopt: ${srcRel}\n- ${isNew ? 'New asset' : 'Content fix'} adopted from \`${path.basename(projectRoot)}\` (${relNorm})\n`;
-  const cl = fs.existsSync(clPath) ? readText(clPath) : '# Changelog\n';
-  const lines = normalizeEol(cl).split('\n');
-  const insertAt = lines.findIndex((l) => l.startsWith('## '));
-  if (insertAt === -1) lines.push('', entry); else lines.splice(insertAt, 0, entry, '');
-  writeText(clPath, lines.join('\n'));
-
-  compileManifest(kitRoot);
-  return { ok: true, srcRel, isNew, newVersion: pkg.version, note: `commit the kit and tag v${pkg.version}, then re-sync the fleet` };
+    let srcRel = locked?.src || relNorm;
+    if (!srcRel.startsWith('.agent/')) throw new Error('new files must live under .agent/ to be adoptable');
+    containedPath(kitRoot, srcRel);
+    const original = fileBytes(kitRoot, srcRel);
+    if (locked && original !== null && sha(original.toString('utf8')) !== locked.srcHash && !opts.force) {
+      return { ok: false, reason: 'kit source ' + srcRel + ' changed since this project last synced; 3-way merge needed',
+        base: threeWayBase(kitRoot, locked.kitVersion || lock.kitVersion, srcRel, locked.srcHash) !== null ? 'verified historical source available' : '(matching historical base unavailable)' };
+    }
+    let content = removeGeneratedHeader(input.toString('utf8'));
+    if (!locked && original !== null && !Buffer.from(content).equals(original) && !opts.force) throw new Error('existing canonical source has no verified shipped base: ' + srcRel + '; reconcile before adoption');
+    if (!relNorm.startsWith('.agent/')) {
+      if (lock.schema !== LOCK_SCHEMA || !locked || !['copy', 'body-md'].includes(locked.transform)) throw new Error('unsupported or legacy generated adoption; edit canonical ' + srcRel + ' and reconcile ownership');
+      const expected = planSync(projectRoot, { ...opts, kitRoot }).actions.find(a => a.rel === relNorm);
+      if (!expected || expected.src !== srcRel || expected.transform !== locked.transform) throw new Error('generated provenance no longer agrees with adapter; edit ' + srcRel);
+      if (locked.transform === 'body-md') {
+        if (original === null || typeof locked.nativeMetadata !== 'string') throw new Error('canonical metadata base unavailable: ' + srcRel);
+        const native = markdownParts(content);
+        if (normalizeEol(native.prefix) !== locked.nativeMetadata) throw new Error('unsupported native metadata edit; edit canonical metadata in ' + srcRel);
+        content = markdownParts(original.toString('utf8')).prefix + native.body;
+      }
+    }
+    const isNew = original === null;
+    // Parse and prepare every metadata effect before writing the canonical asset.
+    const pkg = readJson(containedPath(kitRoot, 'package.json'), null);
+    if (!pkg || typeof pkg !== 'object' || !/^\d+\.\d+\.\d+$/.test(pkg.version)) throw new Error('invalid adoption package version');
+    if (original !== null && Buffer.from(content).equals(original)) return { ok: true, srcRel, unchanged: true, newVersion: pkg.version };
+    const [maj, min, pat] = pkg.version.split('.').map(Number);
+    pkg.version = isNew ? maj + '.' + (min + 1) + '.0' : maj + '.' + min + '.' + (pat + 1);
+    const cl = fileBytes(kitRoot, 'CHANGELOG.md')?.toString('utf8') ?? '# Changelog\n';
+    const today = new Date().toISOString().slice(0, 10);
+    const entry = '## [' + today + '] — v' + pkg.version + ' adopt: ' + srcRel + '\n- ' +
+      (isNew ? 'New asset' : 'Content fix') + ' adopted from ' + JSON.stringify(path.basename(projectRoot)) + ' (' + relNorm + ')\n';
+    const at = cl.search(/^## /m);
+    const changelog = at < 0 ? cl.trimEnd() + '\n\n' + entry : cl.slice(0, at) + entry + '\n' + cl.slice(at);
+    const entries = scanKitAgent(kitRoot);
+    const kitInputs = entries.map(e => ({ root: path.resolve(kitRoot), rel: e.srcRel, hash: e.inputHash }));
+    const parsed = srcRel.endsWith('.md') ? parseFrontmatter(content) : { fm: null, body: content };
+    const subPath = srcRel.slice('.agent/'.length), identity = classifyAgentFile(subPath);
+    const replacement = { ...identity, srcRel, subPath, owner: 'core', raw: normalizeEol(content),
+      ...parsed, tier: tierOf(parsed.fm, identity.type, identity.name) };
+    const index = entries.findIndex(e => e.srcRel === srcRel);
+    if (index < 0) entries.push(replacement); else entries[index] = replacement;
+    applyNestedSkillTierInheritance(entries);
+    selectEntries(entries, cfg); // validate raw tiers even for entries not selected by this consumer
+    canonicalValidation(entries, kitRoot);
+    const candidate = planSync(projectRoot, { ...opts, kitRoot, kitEntries: entries });
+    const errors = candidate.validations.filter(v => v.level === 'error');
+    if (errors.length) return { ok: false, reason: 'adoption candidate validation errors', errors };
+    const manifest = compileManifest(kitRoot, { entries, version: pkg.version, noWrite: true });
+    const effects = [
+      snapshotEffect(kitRoot, srcRel, content),
+      snapshotEffect(kitRoot, 'package.json', jsonBytes(pkg)),
+      snapshotEffect(kitRoot, 'CHANGELOG.md', changelog),
+      snapshotEffect(kitRoot, 'manifest.json', jsonBytes(manifest)),
+    ];
+    const result = { ok: true, srcRel, isNew, newVersion: pkg.version, note: 'review the kit change; consumer sync remains a separate explicit operation' };
+    const applied = applyOperation(kitRoot, effects, { kind: 'adoption', inputs: [
+      ...kitInputs,
+      { root: KIT_ROOT, rel: 'adapters.mjs', hash: rawHash(fileBytes(KIT_ROOT, 'adapters.mjs')) },
+      { root: path.resolve(projectRoot), rel: relNorm, hash: rawHash(input) },
+      { root: path.resolve(projectRoot), rel: '.agentkit.json', hash: rawHash(fileBytes(projectRoot, '.agentkit.json')) },
+    ], result }, opts);
+    return applied.ok ? result : applied;
+  } catch (e) { return { ok: false, reason: e.message }; }
 }
 
 // ---------- inventory (mechanical variant matrix — decision 37: recency from git, never mtime) ----------
@@ -1535,29 +2087,36 @@ export function taxonomyLint(projectRoot, opts = {}) {
   const waiverGlobs = waiverEntries.filter((w) => w.includes('*'));
   const waiverUsed = new Set();
   const docsRoot = path.join(projectRoot, 'docs');
+  const kbRoot = kbRootFor(projectRoot, cfg);
   const hasPrefix = (name) => TAXONOMY_PREFIXES.some((p) => name.startsWith(p));
+  // Published kit standards have stable inbound citations. This is prefix-only, not a taxonomy waiver.
+  const kitStandards = new Set(['audit-rubric.md', 'best-practices.md', 'canonical-manifest.md',
+    'docs-standard.md', 'migration-checklist.md', 'mirror-contract.md', 'overlay-contract.md',
+    'vendor-capability-matrix.md', 'verification-profiles.md']);
+  const mappedKit = kbRoot === 'governance' && readJson(containedPath(projectRoot, 'package.json'), {}).name === 'agentkit';
   const isWaived = (abs, r) => {
     if (waiverExact.has(r)) { waiverUsed.add(r); return true; }
     const g = waiverGlobs.find((w) => matchesGlobs([w], r));
     if (g) { waiverUsed.add(g); return true; }
     if (TAXONOMY_EXEMPT_NAME.test(path.basename(abs))) return true;
+    if (LOCAL_DOCS_INDEXES.includes(r)) return true; // naming only; links and coverage still checked
     if (/(^|\/)_templates\//.test(r)) return true;
     try { const { fm } = parseFrontmatter(readText(abs)); if (fm && fm['taxonomy-waiver'] != null) return true; } catch { /* not md/frontmatter */ }
     return false;
   };
   const findings = [];
   // 1. prefix presence + kebab tail in prefix-required areas
-  for (const area of TAXONOMY_PREFIX_AREAS) {
-    for (const p of walk(path.join(docsRoot, area), (f) => f.endsWith('.md'))) {
+  for (const area of [...new Set(TAXONOMY_PREFIX_AREAS.map(a => a === 'knowledge-base' ? kbRoot : 'docs/' + a))]) {
+    for (const p of walk(path.join(projectRoot, area), (f) => f.endsWith('.md'))) {
       const r = rel(projectRoot, p);
       if (isWaived(p, r)) continue;
       const name = path.basename(p);
-      if (!hasPrefix(name)) findings.push({ file: r, kind: 'missing-prefix', detail: 'durable/lifecycle doc has no sanctioned type prefix' });
+      if (!hasPrefix(name) && !(mappedKit && r === 'governance/' + name && kitStandards.has(name))) findings.push({ file: r, kind: 'missing-prefix', detail: 'durable/lifecycle doc has no sanctioned type prefix' });
       else if (/[A-Z][a-z]/.test(name.replace(/^[A-Z]+-/, ''))) findings.push({ file: r, kind: 'title-case-tail', detail: 'tail should be lowercase-kebab, not Title-Case' });
       // D1: store-aware — the prefix's expected store must match the store the file's PATH resolves to
       // (skip archive). Path-resolved, not area-resolved, so the KB's own research/ ledger reads as the
       // research store rather than inheriting kb from its parent area.
-      const areaStore = storeForPath(area, r);
+      const areaStore = area === kbRoot ? (r.startsWith(kbRoot + '/research/') ? 'research' : 'kb') : storeForPath(area.replace(/^docs\//, ''), r);
       const expected = areaStore && PREFIX_STORE[TAXONOMY_PREFIXES.find((p) => name.startsWith(p))];
       if (expected && areaStore && expected !== areaStore) {
         findings.push({ file: r, kind: 'wrong-store', detail: `a ${name.match(/^[A-Z]+-/)[0]} doc belongs in the ${expected} store, not docs/${area}/ (§a/§f)` });
@@ -1575,6 +2134,7 @@ export function taxonomyLint(projectRoot, opts = {}) {
   // README.md, CHANGELOG.md) count for the same reason.
   const allDocNames = new Set([
     ...walk(docsRoot, (f) => f.endsWith('.md')),
+    ...walk(path.join(projectRoot, kbRoot), (f) => f.endsWith('.md')),
     ...walk(path.join(projectRoot, '.agent'), (f) => f.endsWith('.md')),
     ...['AGENTS.md', 'README.md', 'CHANGELOG.md'].map((f) => path.join(projectRoot, f)).filter((f) => fs.existsSync(f)),
   ].map((f) => path.basename(f)));
@@ -1583,7 +2143,7 @@ export function taxonomyLint(projectRoot, opts = {}) {
   // placeholder-shaped stem (`RESULT-N.md`, `RESULT-XX.md`) — an example token, not a real filename.
   const TAXONOMY_IGNORE_LINE = '<!-- taxonomy-ignore-line -->';
   const PLACEHOLDER_STEM_RE = /-(N|NN|X|XX|n)\.md$/;
-  for (const p of walk(docsRoot, (f) => path.basename(f) === 'README.md')) {
+  for (const p of new Set([...walk(docsRoot, (f) => isDocsIndex(rel(projectRoot, f))), ...walk(path.join(projectRoot, kbRoot), (f) => isDocsIndex(rel(projectRoot, f)))])) {
     const r = rel(projectRoot, p);
     if (waiverExact.has(r) || matchesGlobs(waiverGlobs, r) || EVIDENCE_STORE_RE.test(r)) continue; // not isWaived() (README is an exempt *name*, but we scan it); evidence store is exempt
     for (const line of readText(p).split('\n')) {
@@ -1591,21 +2151,24 @@ export function taxonomyLint(projectRoot, opts = {}) {
       for (const m of line.matchAll(/`([\w][\w.-]*\.md)`/g)) {
         const name = m[1];
         if (name === 'README.md' || TAXONOMY_EXEMPT_NAME.test(name)) continue;
+        // The bare companion name is an optional routing convention in these two queues only.
+        // A concrete Markdown link still has to resolve through the content checker.
+        if (name === 'README.local.md' && localDocsIndexFor(r)) continue;
         if (PLACEHOLDER_STEM_RE.test(name)) continue;
         if (!allDocNames.has(name)) findings.push({ file: r, kind: 'dead-index-entry', detail: `README lists \`${name}\` but no such doc exists (renamed away?)` });
       }
     }
   }
   // 2. universal across all of docs/: no spaces, no suffix dialects
-  for (const p of walk(docsRoot, (f) => f.endsWith('.md'))) {
+  for (const p of new Set([...walk(docsRoot, (f) => f.endsWith('.md')), ...walk(path.join(projectRoot, kbRoot), (f) => f.endsWith('.md'))])) {
     const r = rel(projectRoot, p);
     const name = path.basename(p);
-    if (/\s/.test(name)) findings.push({ file: r, kind: 'space-in-name', detail: 'filename contains a space' });
+    if (!EVIDENCE_STORE_RE.test(r) && /\s/.test(name)) findings.push({ file: r, kind: 'space-in-name', detail: 'filename contains a space' });
     const underResearch = EVIDENCE_STORE_RE.test(r); // evidence: arbitrary corpus names allowed
     if (!underResearch && !isWaived(p, r) && SUFFIX_DIALECT_RE.test(name) && !hasPrefix(name)) findings.push({ file: r, kind: 'suffix-dialect', detail: 'type marker is a suffix; use the prefix form' });
   }
   // 3. DECISION- docs carry `status:` frontmatter (scan docs/ + governance/ so the kit's own count)
-  for (const root of [docsRoot, path.join(projectRoot, 'governance')]) {
+  for (const root of new Set([docsRoot, path.join(projectRoot, 'governance'), path.join(projectRoot, kbRoot)])) {
     for (const p of walk(root, (f) => path.basename(f).startsWith('DECISION-') && f.endsWith('.md'))) {
       const r = rel(projectRoot, p);
       if (isWaived(p, r)) continue;
@@ -1619,16 +2182,23 @@ export function taxonomyLint(projectRoot, opts = {}) {
   // denominator from the index — a bulk status pass over "all 19" tickets missed the 20th, which had
   // never been indexed, and it still read `ready` long after it merged (governance/docs-standard §(i),
   // "Index completeness"). Enumerated from the FILESYSTEM, never from the index (§(i), D2 rule).
-  for (const area of ['working', 'backlog']) {
-    const areaDir = path.join(docsRoot, area);
-    const readme = path.join(areaDir, 'README.md');
-    if (!fs.existsSync(readme)) continue;          // no index ⇒ nothing to be missing from
-    const indexText = readText(readme);
+  for (const area of ['docs/working', 'docs/backlog', kbRootFor(projectRoot, cfg)]) {
+    const areaDir = path.join(projectRoot, area);
+    const indexes = new Map(walk(areaDir, f => path.basename(f) === 'README.md').map(p => {
+      const local = localDocsIndexFor(rel(projectRoot, p));
+      const companion = local && path.join(projectRoot, local);
+      const paths = companion && fs.existsSync(companion) ? [p, companion] : [p];
+      return [path.dirname(p), { paths, text: paths.map(file => readText(file)).join('\n') }];
+    }));
     for (const p of walk(areaDir, (f) => f.endsWith('.md'))) {
       const r = rel(projectRoot, p);
       const name = path.basename(p);
       if (name === 'README.md' || isWaived(p, r)) continue;
-      if (!indexText.includes(name)) findings.push({ file: r, kind: 'unindexed-doc', detail: `exists but is not named in docs/${area}/README.md — invisible to the next agent and to any index-driven sweep` });
+      // A nested index owns its subtree; do not require duplicate root entries for a documented corpus.
+      let ownerDir = path.dirname(p);
+      while (!indexes.has(ownerDir) && ownerDir !== areaDir) ownerDir = path.dirname(ownerDir);
+      const index = indexes.get(ownerDir);
+      if (index && !index.text.includes(name)) findings.push({ file: r, kind: 'unindexed-doc', detail: `exists but is not named in ${index.paths.map(p => rel(projectRoot, p)).join(' or ')} — invisible to the next agent and to any index-driven sweep` });
     }
   }
   // 5. WAIVER HYGIENE (TICKET-29 / C2 + D5). Runs last: isWaived() has now been called for every
@@ -1640,7 +2210,8 @@ export function taxonomyLint(projectRoot, opts = {}) {
   }
   const seen = new Set();
   const unique = findings.filter((x) => { const k = `${x.file}|${x.kind}|${x.detail || ''}`; if (seen.has(k)) return false; seen.add(k); return true; });
-  return { project: projectRoot, findings: unique, enforce, baseline, clean: unique.length === 0 };
+  return { project: projectRoot, findings: unique, enforce, baseline, clean: unique.length === 0,
+    coverage: { kbRoot, roots: ['docs', kbRoot], excluded: ['evidence filenames and indexes'], scope: 'naming, stores, declared decision status, supported index references and coverage when an index exists; no semantic truth check' } };
 }
 
 // ---------- hygiene check (git-based, deterministic — decisions A + D from batch-3 feedback) ----------
@@ -1730,7 +2301,7 @@ export function checkHygiene(projectRoot, opts = {}) {
         for (const sha of uniqueShas) {
           const r = checkMergeBase(projectRoot, sha, mainBranch);
           if (r === 'ancestor') {
-            findings.push({ kind: 'merged-but-open', file: relFile, severity: 'fail', detail: `cites SHA ${sha.slice(0, 12)} which is an ancestor of ${mainBranch} but status is "${status}"` });
+            findings.push({ kind: 'integrated-commit-open-acceptance', file: relFile, severity: 'flag', detail: `cites SHA ${sha.slice(0, 12)} which is an ancestor of ${mainBranch} but status is "${status}"` });
             break;
           } else if (r === 'error') {
             errors.push({ kind: 'could-not-determine', file: relFile, severity: 'error', detail: `could not check if SHA ${sha.slice(0, 12)} is an ancestor of ${mainBranch}` });
@@ -1756,6 +2327,7 @@ export function checkHygiene(projectRoot, opts = {}) {
         const r = checkMergeBase(projectRoot, String(sha).trim(), mainBranch);
         if (r === 'not-ancestor') findings.push({ kind: 'landed-not-ancestor', file: relFile, severity: 'fail', detail: `frontmatter landed: ${sha} is not an ancestor of ${mainBranch}` });
         else if (r === 'foreign') findings.push({ kind: 'landed-not-ancestor', file: relFile, severity: 'fail', detail: `frontmatter landed: ${sha} names no commit in this repo` });
+        else if (r === 'error') errors.push({ kind: 'could-not-determine', file: relFile, severity: 'error', detail: 'cannot resolve ancestry of ' + sha + ' against ' + mainBranch });
       }
 
       // (c) stale ticket: open/needs-human-verify ticket unchanged longer than threshold
@@ -1810,7 +2382,7 @@ export function checkHygiene(projectRoot, opts = {}) {
   // project), and a trustedDirectories naming another repo. Report-only (severity 'flag').
   findings.push(...scanSettingsHygiene(projectRoot, opts).findings);
 
-  return { project: projectRoot, findings, errors, humanGates: humanGates(projectRoot), clean: findings.filter(f => f.severity === 'fail').length === 0 };
+  return { project: projectRoot, findings, errors, humanGates: humanGates(projectRoot), clean: errors.length === 0 && findings.filter(f => f.severity === 'fail').length === 0 };
 }
 
 // TICKET-30 / C6: the human-gate view is GENERATED, never hand-consolidated. Every artifact whose
@@ -1875,40 +2447,90 @@ export function scanSettingsHygiene(projectRoot, opts = {}) {
 // them from every ACTIVE rule (kit-selected core + project overlay) and runs them against the
 // project's `sourceRoots`. This kills the dual-maintenance where the verify-rules skill restated
 // (and `src/`-hardcoded) checks the rules already own. Each check: { id, pattern, globs[],
-// severity, message, exclude?[], flags? }.
+// severity, message, exclude?[], flags? }. Explicit N/A: { id, notApplicable: "reason" }.
+// Coverage describes these declarations only; prose rules remain listed as unautomated.
 
-const CHECKS_FENCE_RE = /```agentkit-checks\s*\n([\s\S]*?)```/g;
+const CHECKS_FENCE_RE = /^[ \t]*```agentkit-checks\b[^\n]*\n([\s\S]*?)(?:^[ \t]*```[ \t]*\r?$|(?![\s\S]))/gm;
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+const nonemptyString = value => typeof value === 'string' && value.trim().length > 0;
+const stringList = value => Array.isArray(value) && value.every(nonemptyString);
+
+function checkSchemaError(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c) || !nonemptyString(c.id)) return 'check requires a nonempty string id';
+  const allowed = 'notApplicable' in c ? ['id', 'notApplicable'] : ['id', 'pattern', 'globs', 'exclude', 'severity', 'message', 'flags'];
+  if (Object.keys(c).some(key => !allowed.includes(key))) return 'unknown or incompatible check field';
+  if ('notApplicable' in c) return nonemptyString(c.notApplicable) ? null : 'notApplicable requires a nonempty reason';
+  if (!nonemptyString(c.pattern)) return 'check requires a nonempty string pattern';
+  for (const key of ['globs', 'exclude']) if (c[key] !== undefined && !stringList(c[key])) return `${key} must be an array of nonempty strings`;
+  if (c.severity !== undefined && (typeof c.severity !== 'string' || !Object.hasOwn(SEVERITY_ORDER, c.severity))) return 'severity must be critical, high, medium or low';
+  if (c.message !== undefined && typeof c.message !== 'string') return 'message must be a string';
+  if (c.flags !== undefined && typeof c.flags !== 'string') return 'flags must be a string';
+  try { new RegExp(c.pattern, c.flags || ''); } catch (e) { return `invalid RegExp: ${e.message}`; }
+  return null;
+}
 
 export function harvestChecks(projectRoot, opts = {}) {
   const kitRoot = opts.kitRoot || KIT_ROOT;
-  const cfg = opts.cfg || loadConfig(projectRoot) || {};
+  const checks = [], errors = [], unautomatedRules = [];
+  let cfg, ruleEntries = [];
+  try { cfg = opts.cfg || loadConfig(projectRoot) || {}; }
+  catch (e) { errors.push({ rule: '.agentkit.json', why: `configuration unreadable: ${e.message}` }); cfg = {}; }
+  const sourceRoots = sourceRootsFor(cfg);
+  const exclude = cfg.verify?.exclude ?? [];
+  if (!stringList(sourceRoots) || !sourceRoots.length) errors.push({ rule: '.agentkit.json', why: 'sourceRoots must be a nonempty array of nonempty strings' });
+  if (!stringList(exclude)) errors.push({ rule: '.agentkit.json', why: 'verify.exclude must be an array of nonempty strings' });
   const selfSync = path.resolve(projectRoot) === path.resolve(kitRoot);
-  const kitEntries = opts.kitEntries || scanKitAgent(kitRoot);
-  let ruleEntries;
-  if (selfSync) {
-    ruleEntries = kitEntries.filter((e) => e.type === 'rule');
-  } else {
-    const selected = selectEntries(kitEntries, cfg);
-    const overlay = scanProjectOverlay(projectRoot, selected.map((e) => e.subPath), loadLock(projectRoot));
-    ruleEntries = [...selected, ...overlay].filter((e) => e.type === 'rule');
+  const scanOptions = root => ({ onError: (e, source, operation) => errors.push({
+    rule: rel(root, source), source, why: `rule ${operation} failed: ${e.code || 'ERROR'}: ${e.message}`,
+  }) });
+  let kitEntries = opts.kitEntries || [];
+  try {
+    if (!opts.kitEntries) {
+      if (!fs.statSync(path.join(kitRoot, '.agent')).isDirectory()) throw new Error('kit .agent source is not a directory');
+      kitEntries = scanKitAgent(kitRoot, scanOptions(kitRoot));
+    }
+  } catch (e) {
+    scanOptions(kitRoot).onError(e, path.join(kitRoot, '.agent'), 'discovery');
   }
-  const checks = [];
-  const errors = [];
+  if (selfSync) ruleEntries = kitEntries.filter(e => e.type === 'rule');
+  else {
+    try {
+      const selected = selectEntries(kitEntries, cfg);
+      // Commit core selection before attempting overlay discovery or its ownership-record read.
+      ruleEntries = selected.filter(e => e.type === 'rule');
+      const overlay = scanProjectOverlay(projectRoot, selected.map(e => e.subPath), loadLock(projectRoot), scanOptions(projectRoot));
+      ruleEntries.push(...overlay.filter(e => e.type === 'rule'));
+    } catch (e) {
+      scanOptions(projectRoot).onError(e, path.join(projectRoot, '.agent'), 'discovery');
+    }
+  }
   for (const e of ruleEntries) {
-    const text = e.raw || '';
-    let m;
+    if (typeof e.raw !== 'string') { errors.push({ rule: e.srcRel, why: 'rule source unavailable' }); continue; }
+    const text = e.raw;
+    let m, fences = 0;
+    const ids = new Set();
     CHECKS_FENCE_RE.lastIndex = 0;
     while ((m = CHECKS_FENCE_RE.exec(text))) {
+      fences++;
+      if (!/^[ \t]*```agentkit-checks[ \t]*\r?\n/.test(m[0])) { errors.push({ rule: e.srcRel, why: 'invalid agentkit-checks fence header' }); continue; }
+      if (!/\n[ \t]*```[ \t]*\r?$/.test(m[0])) { errors.push({ rule: e.srcRel, why: 'unterminated agentkit-checks fence' }); continue; }
       let parsed;
       try { parsed = JSON.parse(m[1]); } catch (err) { errors.push({ rule: e.srcRel, why: `invalid agentkit-checks JSON: ${err.message}` }); continue; }
+      if (Array.isArray(parsed) && !parsed.length) errors.push({ rule: e.srcRel, why: 'empty agentkit-checks declaration; provide checks or explicit notApplicable reasons' });
       for (const c of (Array.isArray(parsed) ? parsed : [parsed])) {
-        if (!c || !c.id || !c.pattern) { errors.push({ rule: e.srcRel, why: `check missing id/pattern` }); continue; }
+        const why = checkSchemaError(c);
+        if (why) { errors.push({ rule: e.srcRel, id: c?.id, why }); continue; }
+        if (ids.has(c.id)) { errors.push({ rule: e.srcRel, id: c.id, why: 'duplicate check id in rule' }); continue; }
+        ids.add(c.id);
         checks.push({ ...c, rule: e.srcRel });
       }
     }
+    if ((text.match(/^[ \t]*```agentkit-checks\b/gm) || []).length > fences) errors.push({ rule: e.srcRel, why: 'unparsed agentkit-checks fence header' });
+    if (!fences) unautomatedRules.push(e.srcRel);
   }
-  return { checks, errors, sourceRoots: sourceRootsFor(cfg), exclude: (cfg.verify && cfg.verify.exclude) || [] };
+  return { checks, errors, sourceRoots: stringList(sourceRoots) ? sourceRoots : [],
+    requiredRoots: cfg.sourceRoots !== undefined, exclude: stringList(exclude) ? exclude : [],
+    activeRuleCount: ruleEntries.length, unautomatedRules };
 }
 
 // §6: blank comment spans so a value inside a comment isn't a violation (e.g. a hex in `/* #fff */`
@@ -1923,57 +2545,115 @@ export function blankComments(text) {
 export function runVerify(projectRoot, opts = {}) {
   const kitRoot = opts.kitRoot || KIT_ROOT;
   const h = harvestChecks(projectRoot, { ...opts, kitRoot });
-  const findings = [];
+  const findings = [], executionErrors = [], roots = [];
+  const files = new Set();
   const SKIP_SEG = new Set(['.claude', '.gemini', '.opencode', '.codex', '.agents', '.agent', 'dist', 'build', 'coverage']);
+  // Unlike the generic walker, retain partial discovery and identify inaccessible subtrees.
+  function discover(base) {
+    let entries;
+    try { entries = fs.readdirSync(base, { withFileTypes: true }); }
+    catch (e) { executionErrors.push({ source: rel(projectRoot, base), why: `source discovery failed: ${e.message}` }); return; }
+    for (const entry of entries) {
+      const p = path.join(base, entry.name);
+      if (entry.isDirectory()) {
+        if (!SKIP_SEG.has(entry.name) && !['node_modules', '.git'].includes(entry.name)) discover(p);
+      } else if (CODE_EXT.test(p)) files.add(p);
+    }
+  }
   for (const root of h.sourceRoots) {
     const base = path.join(projectRoot, ...root.split('/'));
-    for (const p of walk(base, (f) => CODE_EXT.test(f))) {
+    try {
+      const stat = fs.statSync(base);
+      if (!stat.isDirectory()) throw new Error('source root is not a directory');
+      if (rel(projectRoot, base).split('/').some(s => SKIP_SEG.has(s) || ['node_modules', '.git'].includes(s))) {
+        roots.push({ root, status: 'excluded' });
+        if (h.requiredRoots) executionErrors.push({ source: root, why: 'required source root is excluded by the verifier' });
+        continue;
+      }
+      roots.push({ root, status: 'available' });
+      discover(base);
+    } catch (e) {
+      roots.push({ root, status: e.code === 'ENOENT' ? 'absent' : 'unavailable' });
+      if (h.requiredRoots || e.code !== 'ENOENT') executionErrors.push({ source: root, why: `source root unavailable: ${e.message}` });
+    }
+  }
+  const linesByFile = new Map();
+  const checkCoverage = [];
+  for (const c of h.checks) {
+    const assessed = { id: c.id, rule: c.rule, status: 'unassessed', matchedFiles: 0, scannedFiles: 0,
+      excludedFiles: 0, globs: c.globs || [], exclude: c.exclude || [] };
+    checkCoverage.push(assessed);
+    if (c.notApplicable) { assessed.status = 'not-applicable'; assessed.reason = c.notApplicable; continue; }
+    const re = new RegExp(c.pattern, c.flags || ''); // harvest has already validated this expression
+    for (const p of files) {
       const relp = rel(projectRoot, p);
-      if (relp.split('/').some((s) => SKIP_SEG.has(s))) continue;
-      if (h.exclude.length && matchesGlobs(h.exclude, relp)) continue;
-      let lines = null;
-      for (const c of h.checks) {
-        if (Array.isArray(c.globs) && c.globs.length && !matchesGlobs(c.globs, relp)) continue;
-        if (Array.isArray(c.exclude) && matchesGlobs(c.exclude, relp)) continue;
-        let re;
-        try { re = new RegExp(c.pattern, (c.flags || '').replace('g', '')); } catch { continue; }
-        if (lines === null) lines = blankComments(readText(p)).split('\n');
+      if (c.globs?.length && !matchesGlobs(c.globs, relp)) continue;
+      assessed.matchedFiles++;
+      if (matchesGlobs(h.exclude, relp) || matchesGlobs(c.exclude, relp)) { assessed.excludedFiles++; continue; }
+      if (!linesByFile.has(p)) {
+        try { linesByFile.set(p, blankComments(readText(p)).split('\n')); }
+        catch (e) { linesByFile.set(p, null); executionErrors.push({ source: relp, why: `source read failed: ${e.message}` }); }
+      }
+      const lines = linesByFile.get(p);
+      if (lines) {
+        assessed.scannedFiles++;
         for (let i = 0; i < lines.length; i++) {
+          re.lastIndex = 0; // each line is a separate match, including g/y expressions
           if (re.test(lines[i])) findings.push({ severity: c.severity || 'medium', id: c.id, rule: c.rule, file: relp, line: i + 1, message: c.message || '', text: lines[i].trim().slice(0, 120) });
         }
       }
     }
+    if (assessed.scannedFiles) assessed.status = 'checked';
+    else if (!assessed.matchedFiles && c.globs?.length && files.size && !executionErrors.length) {
+      assessed.status = 'not-applicable'; assessed.reason = 'No discovered source files match the declared globs.';
+    } else assessed.reason = assessed.excludedFiles ? 'All matching files were excluded or unreadable.' : 'No eligible source files were assessed.';
   }
   findings.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9) || a.file.localeCompare(b.file) || a.line - b.line);
   const counts = {};
   for (const f of findings) counts[f.severity] = (counts[f.severity] || 0) + 1;
   const ruleSet = new Set(h.checks.map((c) => c.rule));
-  return { project: projectRoot, sourceRoots: h.sourceRoots, checkCount: h.checks.length, ruleCount: ruleSet.size, harvestErrors: h.errors, findings, counts, clean: findings.length === 0 };
+  const checked = checkCoverage.filter(c => c.status === 'checked').length;
+  const incomplete = !!(h.errors.length || executionErrors.length || !h.checks.length || checkCoverage.some(c => c.status === 'unassessed'));
+  const status = incomplete ? (checked ? 'partial' : 'failed') : checked ? 'complete' : 'not-applicable';
+  const coverage = { status, scope: 'declared automated checks only', activeRuleCount: h.activeRuleCount,
+    unautomatedRules: h.unautomatedRules, discoveredFiles: files.size, scannedFiles: [...linesByFile.values()].filter(Boolean).length,
+    roots, exclude: h.exclude, checks: checkCoverage, filePattern: CODE_EXT.source,
+    excludedDirectories: [...SKIP_SEG, 'node_modules', '.git'],
+    ...(!h.checks.length ? { reason: 'No valid checks were harvested; zero checks cannot establish a pass.' } : {}) };
+  return { project: projectRoot, sourceRoots: h.sourceRoots, checkCount: h.checks.length, ruleCount: ruleSet.size,
+    harvestErrors: h.errors, executionErrors, coverage, findings, counts, clean: status === 'complete' && findings.length === 0 };
 }
 
 // ---------- changelog-roll (R13): assemble changelog.d/ fragments into CHANGELOG.md ----------
 // Parallel lanes each drop a fragment `changelog.d/<slug>.md` (own file → no merge conflict); the
-// merge-train rolls them into one dated section in a single commit, then deletes the fragments. Makes
-// a multi-lane train's CHANGELOG conflict-free.
+// The coordinator supplies a meaningful title and reviews the combined verification scope.
+// Assembly retains the source fragments; later authorized cleanup is a separate operation.
 export function changelogRoll(projectRoot, opts = {}) {
-  const dir = path.join(projectRoot, 'changelog.d');
-  if (!fs.existsSync(dir)) return { ok: true, rolled: 0, note: 'no changelog.d/ — nothing to assemble' };
-  const frags = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f.toLowerCase() !== 'readme.md').sort();
-  if (!frags.length) return { ok: true, rolled: 0, note: 'changelog.d/ has no fragments' };
-  const date = opts.date || new Date().toISOString().slice(0, 10);
-  const heading = `## [${date}]${opts.version ? ` — ${opts.version}` : ''}`;
-  const body = frags.map((f) => readText(path.join(dir, f)).trim()).filter(Boolean).join('\n\n');
-  const section = `${heading}\n\n${body}\n`;
-  const clPath = path.join(projectRoot, 'CHANGELOG.md');
-  const existing = fs.existsSync(clPath) ? normalizeEol(readText(clPath)) : '# Changelog\n';
-  const header = existing.match(/^# Changelog\s*\n+/);
-  const out = header ? existing.slice(0, header[0].length) + section + '\n' + existing.slice(header[0].length)
-    : `# Changelog\n\n${section}\n${existing}`;
-  if (!opts.dryRun) {
-    writeText(clPath, out);
-    for (const f of frags) fs.rmSync(path.join(dir, f));
-  }
-  return { ok: true, rolled: frags.length, fragments: frags, section, dryRun: !!opts.dryRun };
+  try {
+    requireNoPending(projectRoot);
+    const dir = containedPath(projectRoot, 'changelog.d', { directory: true });
+    if (!fs.existsSync(dir)) return { ok: true, rolled: 0, note: 'no changelog.d/ — nothing to assemble' };
+    const frags = fs.readdirSync(dir).filter(f => f.endsWith('.md') && f.toLowerCase() !== 'readme.md').sort();
+    if (!frags.length) return { ok: true, rolled: 0, note: 'changelog.d/ has no fragments' };
+    if (typeof opts.title !== 'string' || !opts.title.trim() || /[\r\n]/.test(opts.title)) return { ok: false, rolled: 0, reason: 'changelog assembly requires --title; fragments retained' };
+    const date = opts.date || new Date().toISOString().slice(0, 10);
+    const heading = '## [' + date + '] — ' + (opts.version ? opts.version + ' ' : '') + opts.title.trim();
+    const inputs = frags.map(f => ({ root: path.resolve(projectRoot), rel: 'changelog.d/' + f,
+      hash: rawHash(fileBytes(projectRoot, 'changelog.d/' + f)) }));
+    const body = frags.map(f => fileBytes(projectRoot, 'changelog.d/' + f).toString('utf8').trim()).filter(Boolean).join('\n\n');
+    const verification = '### Verification\n\nFragment claims above retain their original scope. Combined-candidate verification remains pending with the assembly owner.';
+    const kb = 'KB consulted: retained in the fragments where supplied; no additional KB verification is claimed by assembly.';
+    const section = heading + '\n\n' + body + '\n\n' + verification + '\n\n' + kb + '\n';
+    const existing = fileBytes(projectRoot, 'CHANGELOG.md')?.toString('utf8') ?? '# Changelog\n';
+    if (existing.includes(heading + '\n')) return { ok: false, rolled: 0, reason: 'entry heading already exists; review the retained fragments before another assembly' };
+    const at = existing.search(/^## /m);
+    const out = at < 0 ? existing.trimEnd() + '\n\n' + section : existing.slice(0, at) + section + '\n' + existing.slice(at);
+    const result = { ok: true, rolled: frags.length, fragments: frags, section, dryRun: !!opts.dryRun,
+      retained: true, note: 'fragments retained; coordinator verifies the assembled record and owns any later scoped removal' };
+    if (opts.dryRun) return result;
+    const applied = applyOperation(projectRoot, [snapshotEffect(projectRoot, 'CHANGELOG.md', out)], { kind: 'changelog-assembly', inputs, result }, opts);
+    return applied.ok ? result : applied;
+  } catch (e) { return { ok: false, rolled: 0, reason: e.message }; }
 }
 
 // ---------- doctor (fleet-wide rollup — self-scheduling via session-start hook, decision 39) ----------
@@ -1982,7 +2662,7 @@ const CONFLICT_COPY_RE = /-(DESKTOP|LAPTOP)-\w+|\s\(\d+\)\.|conflicted copy/i;
 
 export function runDoctor(opts = {}) {
   const kitRoot = opts.kitRoot || KIT_ROOT;
-  let fleet = loadFleet(kitRoot);
+  let fleet = loadFleet(kitRoot).filter(m => m.status !== 'out');
   let only = opts.only || null;
   let note = null;
   if (opts.only) {
@@ -2014,7 +2694,8 @@ export function runDoctor(opts = {}) {
 
   for (const m of fleet) {
     if (!fs.existsSync(m.abs)) { report.members[m.name] = { status: 'path missing' }; continue; }
-    const cfg = loadConfig(m.abs);
+    let cfg;
+    try { cfg = loadConfig(m.abs); } catch (error) { report.members[m.name] = { status: 'configuration requires reconciliation', error: error.message }; continue; }
     if (!cfg) { report.members[m.name] = { status: m.status === 'managed' ? 'pre-migration (no .agentkit.json)' : m.status }; continue; }
     try {
       const c = checkProject(m.abs, { kitRoot, noWrite: true });
@@ -2058,7 +2739,10 @@ export function runDoctor(opts = {}) {
 
   // ONE staleness machinery for every governed doc (decision 35): anything with last-verified: frontmatter
   const governedRoots = [path.join(kitRoot, 'governance'), path.join(kitRoot, 'integrations')];
-  for (const m of fleet) governedRoots.push(path.join(m.abs, 'docs', 'knowledge-base'));
+  for (const m of fleet) if (fs.existsSync(m.abs)) {
+    try { governedRoots.push(path.join(m.abs, kbRootFor(m.abs))); }
+    catch { /* the per-member configuration diagnostic above preserves this missing coverage */ }
+  }
   const thresholdDays = opts.staleDays || 60;
   for (const root of governedRoots) {
     for (const p of walk(root, (f) => f.endsWith('.md'))) {
@@ -2104,10 +2788,10 @@ export function runDoctor(opts = {}) {
 // test/build the project already defines, plus an aggregate `gate`. Never overwrites an existing
 // key. Effect: agents run the graduated gate as ONE allowlisted `npm run gate*` command instead of
 // an unmatchable compound (`pattern-command-shape.md`); the script owns the true exit code.
-export function scaffoldGateScripts(projectRoot) {
+export function scaffoldGateScripts(projectRoot, opts = {}) {
   const pkgPath = path.join(projectRoot, 'package.json');
   if (!fs.existsSync(pkgPath)) return { scaffolded: false, reason: 'no package.json' };
-  const pkg = readJson(pkgPath, {});
+  const pkg = readJson(containedPath(projectRoot, 'package.json'), {});
   pkg.scripts = pkg.scripts || {};
   const map = [['gate:lint', 'lint'], ['gate:types', 'typecheck'], ['gate:test', 'test'], ['gate:build', 'build']];
   const added = [];
@@ -2117,8 +2801,8 @@ export function scaffoldGateScripts(projectRoot) {
     if (pkg.scripts[srcScript] !== undefined) { pkg.scripts[gateName] = `npm run ${srcScript}`; added.push(gateName); tiers.push(gateName); }
   }
   if (pkg.scripts.gate === undefined && tiers.length) { pkg.scripts.gate = tiers.map((t) => `npm run ${t}`).join(' && '); added.push('gate'); }
-  if (added.length) writeJson(pkgPath, pkg);
-  return { scaffolded: added.length > 0, added, pkg: rel(projectRoot, pkgPath) };
+  if (added.length && !opts.noWrite) writeJson(pkgPath, pkg);
+  return { scaffolded: added.length > 0, added, pkg: rel(projectRoot, pkgPath), ...(opts.noWrite && added.length ? { content: jsonBytes(pkg) } : {}) };
 }
 
 // TICKET-22: seed a starter fallow config so a new adopter never hits the false-clean →
@@ -2145,117 +2829,179 @@ const FALLOWRC_SCAFFOLD = `{
   // before/after (integrations/fallow.md — Noise suppression) — the proof no signal was hidden.
 }
 `;
-function scaffoldFallowrc(projectRoot, tools) {
-  if (!(tools || []).includes('fallow')) return { written: false, reason: 'fallow not in tools' };
-  const existing = fs.readdirSync(projectRoot).filter((f) => f.toLowerCase().startsWith('.fallowrc'));
-  if (existing.length) return { written: false, reason: `existing ${existing[0]} untouched` };
-  writeText(path.join(projectRoot, '.fallowrc.jsonc'), FALLOWRC_SCAFFOLD);
-  return { written: true, file: '.fallowrc.jsonc' };
-}
-
-// F-init-no-root-contract: a greenfield repo joined the fleet with 82 assets and NO project contract.
-// `init` correctly skips the JS gate for a non-app kind, but nothing wrote a root AGENTS.md — and
-// sync's K3 workflow-map is opt-in via markers ("an authored AGENTS.md without them is never touched"),
-// so a repo with NO AGENTS.md at all got nothing from either side. Scaffold the kit skeleton (it already
-// carries the two K3 markers, so the first sync fills the command map) plus a CLAUDE.md import.
-// Import form (`@AGENTS.md`), NOT a symlink: Anthropic's docs recommend the import specifically on
-// Windows, where symlinks require Administrator or Developer Mode — so it is the right fleet-wide
-// default. Never overwrites either file: an authored constitution is the project's, not the kit's.
-function scaffoldRootContract(projectRoot, kitRoot, vendors) {
-  const out = { agents: false, claude: false };
-  const agentsPath = path.join(projectRoot, 'AGENTS.md');
-  if (fs.existsSync(agentsPath)) { out.reason = 'existing AGENTS.md untouched'; return out; }
-  const tpl = path.join(kitRoot, 'templates', 'project-AGENTS.md');
-  if (!fs.existsSync(tpl)) { out.reason = 'kit has no templates/project-AGENTS.md'; return out; }
-  writeText(agentsPath, readText(tpl));
-  out.agents = true;
-  // Only Claude consumes the `@` import; another vendor's root file is that adapter's business.
-  const claudePath = path.join(projectRoot, 'CLAUDE.md');
-  if ((vendors || []).includes('claude') && !fs.existsSync(claudePath)) {
-    writeText(claudePath, '@AGENTS.md\n');
-    out.claude = true;
-  }
-  return out;
-}
-
 export function initProject(projectRoot, opts = {}) {
-  const cfgPath = path.join(projectRoot, '.agentkit.json');
-  const existing = fs.existsSync(cfgPath);
-  if (existing && !opts.cloneRebind) {
-    return { ok: false, reason: '.agentkit.json already exists — use --clone-rebind for the clone path' };
-  }
-  if (opts.cloneRebind) {
-    // clone-rebind (decision 10): reset shipped state, triage inherited overlays, re-sync
-    const lockPath = path.join(projectRoot, '.agentkit.lock');
-    if (fs.existsSync(lockPath)) fs.rmSync(lockPath);
-    const cfg = loadConfig(projectRoot) || {};
-    const kitEntries = scanKitAgent(opts.kitRoot || KIT_ROOT);
-    const selected = selectEntries(kitEntries, cfg);
-    const overlay = scanProjectOverlay(projectRoot, selected.map((e) => e.subPath));
-    return {
-      ok: true, mode: 'clone-rebind',
-      triage: overlay.filter((o) => o.subPath.endsWith('SKILL.md') || o.type !== 'skill').map((o) => o.srcRel),
-      next: "review the triage list (keep / delete / genericize each inherited overlay), reset CHANGELOG.md + docs/working/, then run 'agentkit sync . --force' (clone content predates the lockfile)",
+  try {
+    requireNoPending(projectRoot);
+    const kitRoot = opts.kitRoot || KIT_ROOT;
+    const existing = fileBytes(projectRoot, '.agentkit.json') !== null;
+    if (existing && !opts.cloneRebind) return { ok: false, reason: '.agentkit.json already exists — use --clone-rebind for the clone path' };
+    if (opts.cloneRebind) {
+      const cfg = loadConfig(projectRoot);
+      if (!cfg) throw new Error('clone-rebind requires inherited .agentkit.json');
+      const lock = loadLock(projectRoot);
+      const selected = selectEntries(scanKitAgent(kitRoot), cfg);
+      const overlay = scanProjectOverlay(projectRoot, selected.map(e => e.subPath), lock);
+      return { ok: true, mode: 'clone-rebind', ownershipPreserved: true,
+        triage: overlay.filter(o => o.subPath.endsWith('SKILL.md') || o.type !== 'skill').map(o => o.srcRel),
+        next: 'review inherited project guidance and selection, then preview agentkit sync . --dry-run; retain the inherited lock for safe reconciliation' };
+    }
+    const kindsProvided = Array.isArray(opts.kinds) && opts.kinds.length > 0;
+    const resolvedKinds = kindsProvided ? opts.kinds : ['app'], isApp = resolvedKinds.includes('app');
+    const cfg = {
+      vendors: opts.vendors || ['claude'], stack: opts.stack || [],
+      ...(kindsProvided ? { kinds: resolvedKinds } : {}),
+      tools: opts.tools || (isApp ? ['codebase-mcp', 'fallow'] : []),
+      overlay: { rules: ['domain-*', 'project-*'], skills: ['domain-*', 'project-*'], workflows: [] },
+      ...(opts.exclude ? { exclude: opts.exclude } : {}), ...(opts.docs ? { docs: opts.docs } : {}),
+      ...(Object.hasOwn(opts, 'pins') ? { pins: opts.pins } : {}),
     };
-  }
-  // repo-kind axis (wave U3, kind-aware init): resolve BEFORE building cfg so app-only defaults —
-  // the live codebase-memory-mcp exe + fallow wiring, and the JS/fallow scaffold steps below — are
-  // opt-in for a non-app kind, never assumed. `--kinds` unset (kindsProvided false) leaves `cfg`
-  // exactly as before (no `kinds` key written) and every downstream default identical to today —
-  // zero change for the app-repo path. Mirrors selectEntries' own `cfg.kinds || ['app']` default.
-  const kindsProvided = Array.isArray(opts.kinds) && opts.kinds.length > 0;
-  const resolvedKinds = kindsProvided ? opts.kinds : ['app'];
-  const isApp = resolvedKinds.includes('app');
-  const cfg = {
-    vendors: opts.vendors || ['claude'],
-    stack: opts.stack || [],
-    ...(kindsProvided ? { kinds: resolvedKinds } : {}),
-    tools: opts.tools || (isApp ? ['codebase-mcp', 'fallow'] : []),
-    overlay: { rules: ['domain-*', 'project-*'], skills: ['domain-*', 'project-*'], workflows: [] },
-    pins: {},
-  };
-  writeJson(cfgPath, cfg);
-  const gate = isApp ? scaffoldGateScripts(projectRoot) : { scaffolded: false, reason: 'kinds excludes app — JS gate scaffold skipped' };
-  const fallowrc = isApp ? scaffoldFallowrc(projectRoot, cfg.tools) : { written: false, reason: 'kinds excludes app — fallow scaffold skipped' };
-  // Kind-neutral: EVERY greenfield repo needs a root contract, not just a non-app one. Must run before
-  // the first sync so K3 finds the markers and fills the workflow map in the same pass.
-  const rootContract = scaffoldRootContract(projectRoot, opts.kitRoot || KIT_ROOT, cfg.vendors);
-  const sync = opts.noSync ? null : syncProject(projectRoot, { kitRoot: opts.kitRoot || KIT_ROOT });
-  return { ok: true, mode: 'greenfield', cfg, gate, fallowrc, rootContract, sync };
+    validateConfig(cfg); kbRootFor(projectRoot, cfg);
+    const plan = planSync(projectRoot, { ...opts, kitRoot, cfg });
+    if (plan.validations.some(v => v.level === 'error')) return { ok: false, reason: 'validation errors', errors: plan.validations };
+    const effects = [snapshotEffect(projectRoot, '.agentkit.json', jsonBytes(cfg))];
+    const gate = isApp ? scaffoldGateScripts(projectRoot, { noWrite: true }) : { scaffolded: false, reason: 'kinds excludes app — JS gate scaffold skipped' };
+    if (gate.content) effects.push(snapshotEffect(projectRoot, 'package.json', gate.content));
+    delete gate.content;
+    const fallowrc = { written: false, reason: isApp ? 'fallow absent or configuration exists' : 'kinds excludes app — fallow scaffold skipped' };
+    if (isApp && cfg.tools.includes('fallow') && !fs.readdirSync(projectRoot).some(f => f.toLowerCase().startsWith('.fallowrc'))) {
+      effects.push(snapshotEffect(projectRoot, '.fallowrc.jsonc', FALLOWRC_SCAFFOLD));
+      Object.assign(fallowrc, { written: true, file: '.fallowrc.jsonc' });
+    }
+    const rootContract = { agents: false, claude: false };
+    const template = fileBytes(kitRoot, 'templates/project-AGENTS.md');
+    if (fileBytes(projectRoot, 'AGENTS.md') === null && template !== null) {
+      effects.push(snapshotEffect(projectRoot, 'AGENTS.md', template));
+      rootContract.agents = true;
+      if (cfg.vendors.includes('claude') && fileBytes(projectRoot, 'CLAUDE.md') === null) {
+        effects.push(snapshotEffect(projectRoot, 'CLAUDE.md', '@AGENTS.md\n')); rootContract.claude = true;
+      }
+    } else rootContract.reason = 'existing AGENTS.md untouched or kit has no template';
+    // Even --no-sync validates malformed settings and conflicting ownership before scaffolding.
+    const preview = syncProject(projectRoot, { ...opts, kitRoot, cfg, initialEffects: effects, dryRun: true });
+    if (!preview.ok) return { ...preview, initialized: false };
+    if (opts.noSync) {
+      const ignore = recoveryIgnoreEffect(projectRoot); if (ignore) effects.unshift(ignore);
+      const applied = applyOperation(projectRoot, effects, { kind: 'init', result: { initialized: true } }, opts);
+      return { ...applied, mode: 'greenfield', cfg, gate, fallowrc, rootContract, initialized: applied.ok, sync: null, enrolled: false };
+    }
+    const sync = syncProject(projectRoot, { ...opts, kitRoot, cfg, initialEffects: effects });
+    return { ok: sync.ok, initialized: sync.ok, mode: 'greenfield', cfg, gate, fallowrc, rootContract, sync, enrolled: false };
+  } catch (e) { return { ok: false, initialized: false, reason: e.message, ...(e.settingsConflict ? { settingsConflicts: [e.settingsConflict] } : {}) }; }
+}
+
+export function setupLauncher(binDir, opts = {}) {
+  try {
+    if (!binDir || !path.isAbsolute(binDir)) throw new Error('setup requires an absolute --bin-dir for this computer');
+    const kitRoot = path.resolve(opts.kitRoot || KIT_ROOT);
+    const cli = containedPath(kitRoot, 'agentkit.mjs');
+    if (!fs.existsSync(cli)) throw new Error('selected kit CLI is missing');
+    const root = path.resolve(binDir);
+    if (!fs.existsSync(root)) throw new Error('create the machine-local bin directory before setup');
+    const name = process.platform === 'win32' ? 'agentkit.cmd' : 'agentkit';
+    const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+    if (/[\r\n"%!]/.test(cli + process.execPath) && process.platform === 'win32') throw new Error('unsupported launcher path characters');
+    const content = process.platform === 'win32'
+      ? '@echo off\r\nsetlocal DisableDelayedExpansion\r\n"' + process.execPath + '" "' + cli + '" %*\r\nexit /b %errorlevel%\r\n'
+      : '#!/bin/sh\nexec ' + quote(process.execPath) + ' ' + quote(cli) + ' "$@"\n';
+    const before = fileBytes(root, name);
+    if (before !== null && before.toString('utf8') !== content) throw new Error('launcher already exists; reconcile its selected checkout before setup');
+    const result = applyOperation(root, [snapshotEffect(root, name, content, 0o755)], { kind: 'setup' }, opts);
+    return { ...result, launcher: path.join(root, name), kitRoot, next: 'put this bin directory on PATH; agentkit --version verifies the selected checkout' };
+  } catch (e) { return { ok: false, reason: e.message }; }
 }
 
 // ---------- orchestrator lock (A4) ----------
-// Prompt-free replacement for the shell `test -f .orchestrator.lock || echo "$id/$pid" > …` idiom.
-// Routed through the already-allowlisted `node "<kit>"`, so acquiring/releasing the wave lock never
-// prompts, and the write-if-absent is atomic (openSync 'wx') instead of a racy test-then-write —
-// and cross-platform (the shell form is bash-only; broke on Windows/PowerShell).
+// Local, cooperating CLI processes only. The exclusive operation guard serializes BOTH acquire
+// and release: checking an ID then unlinking without this guard can delete a newer acquisition.
+// A crash leaves state for explicit recovery; neither PID nor timestamps authorize stealing.
+const validLockId = id => typeof id === 'string' && id.length > 0 && id.length <= 256 && !/[\s\x00-\x1f\x7f]/.test(id);
+const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino;
+
+function lockSnapshot(lockPath) {
+  let stat;
+  try { stat = fs.lstatSync(lockPath, { bigint: true }); }
+  catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+  if (!stat.isFile() || stat.nlink !== 1n) return { stat, raw: null, record: null };
+  const raw = readText(lockPath);
+  let record = null;
+  try {
+    const parsed = JSON.parse(raw);
+    // Only our unambiguous wire format is releasable. In particular JSON.parse alone accepts
+    // duplicate keys; legacy labels, partial writes and edited/unknown records require recovery.
+    if (parsed?.version === 1 && validLockId(parsed.id) && Number.isSafeInteger(parsed.pid) && parsed.pid > 0
+      && typeof parsed.acquiredAt === 'string' && Number.isFinite(Date.parse(parsed.acquiredAt))) {
+      const canonical = { version: 1, id: parsed.id, pid: parsed.pid, acquiredAt: parsed.acquiredAt };
+      if (raw === JSON.stringify(canonical) + '\n') record = canonical;
+    }
+  } catch { /* preserve unknown content */ }
+  return { stat, raw, record };
+}
+
+function lockHolder(snapshot) {
+  const r = snapshot?.record;
+  return r ? `${r.id}/${r.pid} @ ${r.acquiredAt}` : snapshot?.raw?.trim() || '(unidentifiable lock)';
+}
+
 export function orchestratorLock(projectRoot, action, opts = {}) {
   const lockPath = path.join(projectRoot, '.orchestrator.lock');
-  if (action === 'acquire') {
-    const holder = `${opts.id || 'orchestrator'}/${opts.pid ?? process.pid} @ ${new Date().toISOString()}`;
-    try {
-      const fd = fs.openSync(lockPath, 'wx'); // atomic write-if-absent — fails if the file exists
-      fs.writeSync(fd, holder + '\n');
-      fs.closeSync(fd);
-      return { ok: true, action, holder };
-    } catch (e) {
-      if (e.code === 'EEXIST') {
-        // Fail closed (pattern-external-mutation §4): a held lock refuses, it never steals.
-        const held = fs.existsSync(lockPath) ? readText(lockPath).trim() : '(unreadable)';
-        return { ok: false, action, reason: 'held', held };
-      }
+  const guardPath = lockPath + '.guard';
+  if (!['acquire', 'release', 'status'].includes(action)) return { ok: false, action, reason: `unknown lock action: ${action}` };
+  let guardFd, guardStat, guardRaw, operationResult;
+  try {
+    if (action === 'status') {
+      const snapshot = lockSnapshot(lockPath);
+      return { ok: !snapshot || !!snapshot.record, action, held: !!snapshot,
+        holder: snapshot ? lockHolder(snapshot) : null, id: snapshot?.record?.id ?? null,
+        busy: fs.existsSync(guardPath), ...(snapshot && !snapshot.record ? { reason: 'unidentifiable-lock' } : {}) };
+    }
+    try { guardFd = fs.openSync(guardPath, 'wx'); }
+    catch (e) {
+      if (e.code === 'EEXIST') return { ok: false, action, reason: 'busy', detail: 'Lock operation guard exists; retry after the active operation or reconcile interrupted state before authorized recovery.' };
       throw e;
     }
+    guardStat = fs.fstatSync(guardFd, { bigint: true });
+    guardRaw = JSON.stringify({ operation: action, pid: process.pid, token: crypto.randomUUID() }) + '\n';
+    fs.writeFileSync(guardFd, guardRaw);
+    const snapshot = lockSnapshot(lockPath);
+    if (action === 'acquire') {
+      if (snapshot) return { ok: false, action, reason: 'held', held: lockHolder(snapshot), id: snapshot.record?.id ?? null };
+      const id = opts.id === undefined ? crypto.randomUUID() : opts.id;
+      if (!validLockId(id)) return { ok: false, action, reason: 'invalid-id', detail: 'Use a fresh nonempty acquisition ID of at most 256 characters without whitespace or control characters.' };
+      const pid = opts.pid ?? process.pid;
+      if (!Number.isSafeInteger(pid) || pid <= 0) return { ok: false, action, reason: 'invalid-pid' };
+      const record = { version: 1, id, pid, acquiredAt: new Date().toISOString() };
+      const fd = fs.openSync(lockPath, 'wx');
+      try { fs.writeFileSync(fd, JSON.stringify(record) + '\n'); }
+      finally { fs.closeSync(fd); }
+      return operationResult = { ok: true, action, id, holder: lockHolder({ record }) };
+    }
+    if (!snapshot) return operationResult = { ok: true, action, released: false };
+    if (!snapshot.record) return { ok: false, action, released: false, reason: 'unidentifiable-lock', detail: 'Legacy, malformed or unexpected lock; preserve it and reconcile ownership before authorized recovery.' };
+    if (!validLockId(opts.id)) return { ok: false, action, released: false, reason: 'id-required' };
+    if (opts.id !== snapshot.record.id) return { ok: false, action, released: false, reason: 'foreign-owner' };
+    const current = lockSnapshot(lockPath);
+    if (!current || !sameFile(snapshot.stat, current.stat) || snapshot.raw !== current.raw) {
+      return { ok: false, action, released: false, reason: 'lock-changed' };
+    }
+    fs.unlinkSync(lockPath);
+    return operationResult = { ok: true, action, released: true, id: opts.id };
+  } catch (e) {
+    return { ok: false, action, reason: 'io-error', detail: `${e.code || 'ERROR'}: ${e.message}` };
+  } finally {
+    if (guardFd !== undefined) {
+      try {
+        fs.closeSync(guardFd);
+        // Never remove a replacement guard. External writers/recovery must also be fenced;
+        // this local protocol is not a distributed lock or a defense against arbitrary FS writes.
+        const current = fs.lstatSync(guardPath, { bigint: true, throwIfNoEntry: false });
+        if (guardStat && current && sameFile(guardStat, current) && readText(guardPath) === guardRaw) fs.unlinkSync(guardPath);
+        else throw new Error('Operation guard changed; preserve it and reconcile ownership before recovery.');
+      } catch (e) {
+        return { ok: false, action, reason: 'guard-cleanup-failed', operationResult: operationResult ?? null,
+          detail: `${e.code || 'ERROR'}: ${e.message}` };
+      }
+    }
   }
-  if (action === 'release') {
-    if (fs.existsSync(lockPath)) { fs.rmSync(lockPath); return { ok: true, action, released: true }; }
-    return { ok: true, action, released: false }; // idempotent — releasing an absent lock is a no-op
-  }
-  if (action === 'status') {
-    const held = fs.existsSync(lockPath);
-    return { ok: true, action, held, holder: held ? readText(lockPath).trim() : null };
-  }
-  return { ok: false, action, reason: `unknown lock action: ${action}` };
 }
 
 // ---------- surface overlap (A5) ----------
@@ -2292,7 +3038,7 @@ function parseArgs(argv) {
       else if (key === 'project') flags.project = argv[++i] || '';
       else if (key === 'version' || key === 'date' || key === 'id' || key === 'base' || key === 'fail-on'
         || key === 'lane' || key === 'command' || key === 'status' || key === 'exit-code' || key === 'notes'
-        || key === 'out' || key === 'check') flags[key] = argv[++i] || '';
+        || key === 'out' || key === 'check' || key === 'bin-dir' || key === 'title') flags[key] = argv[++i] || '';
       else if (key === 'kb') { flags.kb = argv.slice(i + 1); i = argv.length; }
       else if (key === 'waive') {
         const pathVal = argv[++i] || '';
@@ -2316,7 +3062,7 @@ export function printCheck(c, json) {
   }
   console.log(`  kit ${c.kitVersion} | lock ${c.lockKitVersion ?? '(never synced)'}${nudge}`);
   if (!c.results.length) console.log('  all tracked files in sync');
-  for (const r of c.results) console.log(`  [${r.verdict}] ${r.rel}`);
+  for (const r of c.results) console.log(`  [${r.verdict}] ${r.rel}${r.settingsConflict ? ' — ' + r.detail + ' [value SHA-256: ' + r.settingsConflict.hash + ']' : ''}`);
   // gitDirty is informational only (Decision D) — never affects `clean` or the process exit code.
   for (const g of c.gitDirty || []) console.log(`  [git-dirty] ${g} — uncommitted git changes (informational; does not affect clean)`);
   for (const v of c.validations) console.log(`  [lint:${v.level}] ${v.msg}`);
@@ -2330,14 +3076,16 @@ export function printCheck(c, json) {
 }
 
 function printGeneralUsage() {
-  console.log('usage: agentkit <init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version> [project-path] [flags]');
+  console.log('usage: agentkit <setup|recover|init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version> [project-path] [flags]');
   console.log('  init      [--vendors a,b] [--stack x,y] [--kinds k,l] [--tools t] [--clone-rebind] [--no-sync]');
   console.log('  sync      [--dry-run] [--force] [--json] [--allow-branch]');
   console.log('  check     [--quick] [--all] [--json] [--kb <paths…>] [--content] [--taxonomy] [--waive <path> <reason>] [--hygiene] [--count-only] [--allow-branch]');
   console.log('  verify    [--json] [--warn-only] [--fail-on <severity>]   (runs invariant checks harvested from active rules)');
+  console.log('  setup     --bin-dir <absolute-existing-machine-local-directory>');
+  console.log('  recover   [project-path] — finish retained pending bytes; ordinary sync refuses pending state');
   console.log('  receipt   [--lane <lane>] [--command <command>] [--status <status>] [--exit-code <n>] [--out <file>] | [--check <file>]');
   console.log('  adopt     <project> <file-rel> [--defer] [--force]');
-  console.log('  lock      <acquire|release|status> [project-path] [--id <label>]   (prompt-free wave lock)');
+  console.log('  lock      <acquire|release|status> [project-path] [--id <acquisition-id>]   (release requires the acquired ID)');
   console.log('  surfaces  --base <ref> <branchA> <branchB> [...]   (branch surface-disjointness)');
   console.log('  inventory');
   console.log('  doctor    [project-path] [--quick] [--json] [--project <name>] [--all]');
@@ -2352,6 +3100,18 @@ export function main(argv = process.argv.slice(2)) {
   const showHelp = !!(flags.help || flags.h || pos.includes('-h') || pos.includes('--help'));
   try {
     switch (verb) {
+      case 'setup': {
+        if (showHelp) { console.log('usage: agentkit setup --bin-dir <absolute-existing-machine-local-directory>'); return 0; }
+        const result = setupLauncher(flags['bin-dir']);
+        console.log(JSON.stringify(result, null, 2));
+        return result.ok ? 0 : 1;
+      }
+      case 'recover': {
+        if (showHelp) { console.log('usage: agentkit recover [project-path]'); return 0; }
+        const result = recoverOperation(projectRoot);
+        console.log(JSON.stringify(result, null, 2));
+        return result.ok ? 0 : 1;
+      }
       case 'init': {
         if (showHelp) {
           console.log('usage: agentkit init [project-path] [--vendors a,b] [--stack x,y] [--kinds k,l] [--tools t] [--clone-rebind] [--no-sync]');
@@ -2369,7 +3129,7 @@ export function main(argv = process.argv.slice(2)) {
         const r = syncProject(projectRoot, { dryRun: flags['dry-run'], force: flags.force, allowBranch: flags['allow-branch'] });
         if (flags.json) console.log(JSON.stringify(r, null, 2));
         else {
-          if (!r.ok) { console.log(`sync REFUSED: ${r.reason}`); (r.dirty || []).forEach((d) => console.log('  ' + d)); (r.errors || []).forEach((e) => console.log('  ' + e.msg)); (r.reparse || []).forEach((x) => console.log(`  [junction] ${x.dir} -> ${x.target ?? '(unreadable target)'}`)); return 1; }
+          if (!r.ok) { console.log(`sync REFUSED: ${r.reason}`); (r.settingsConflicts || []).forEach(c => console.log('  value SHA-256: ' + c.hash + '; prior: ' + (c.priorHash || '(unowned)'))); (r.dirty || []).forEach((d) => console.log('  ' + d)); (r.errors || []).forEach((e) => console.log('  ' + e.msg)); (r.reparse || []).forEach((x) => console.log(`  [junction] ${x.dir} -> ${x.target ?? '(unreadable target)'}`)); return 1; }
           if (r.dryRun) {
             console.log(`sync --dry-run: ${r.wouldWrite.length} writes, ${r.wouldPrune.length} prunes, ${r.refusals.length} refusals`);
             r.wouldWrite.forEach((w) => console.log('  write  ' + w));
@@ -2437,7 +3197,8 @@ export function main(argv = process.argv.slice(2)) {
           if (flags.json) console.log(JSON.stringify(ci, null, 2));
           else {
             console.log(`agentkit check --content — ${ci.project}`);
-            if (ci.clean) console.log('  all cited paths/scripts/asset-names/tokens resolve');
+            if (ci.clean) console.log('  no unresolved supported citations in assessed roots; working/backlog bodies and archive/evidence bodies are excluded');
+            console.log('  KB root: ' + ci.coverage.kbRoot);
             for (const f of ci.findings) console.log(`  [${f.severity === 'warn' ? 'warn' : 'phantom'}:${f.kind}] ${f.file}${f.line ? ':' + f.line : ''} → ${f.token}`);
           }
           // warn-severity findings (token drift) are advisory — they never fail CI (TICKET-17)
@@ -2484,12 +3245,12 @@ export function main(argv = process.argv.slice(2)) {
       case 'verify': {
         if (showHelp) {
           console.log('usage: agentkit verify [project-path] [--json] [--warn-only] [--fail-on <severity>]');
+          console.log('Exit 2: incomplete declared-check coverage (including with --warn-only). Exit 1: finding threshold met (default critical). Exit 0: complete or justified N/A coverage without a failing threshold; prose rules are not assessed.');
+          console.log('Checks may declare {"id":"name","notApplicable":"reason"}. Exclusions remain visible; an empty or fully excluded scan is incomplete.');
           return 0;
         }
-        // additive gate controls (default stays critical-only, unchanged below): --warn-only always
-        // exits 0; --fail-on <severity> fails on that severity or worse. Validate before running so a
-        // typo'd severity errors fast instead of burning a verify pass first.
-        if (typeof flags['fail-on'] === 'string' && !(flags['fail-on'] in SEVERITY_ORDER)) {
+        // Finding thresholds do not suppress operational/coverage errors.
+        if (typeof flags['fail-on'] === 'string' && !Object.hasOwn(SEVERITY_ORDER, flags['fail-on'])) {
           console.error(`agentkit verify: invalid --fail-on value '${flags['fail-on']}' — valid values: ${Object.keys(SEVERITY_ORDER).join(', ')}`);
           return 1;
         }
@@ -2497,12 +3258,22 @@ export function main(argv = process.argv.slice(2)) {
         if (flags.json) console.log(JSON.stringify(r, null, 2));
         else {
           console.log(`agentkit verify — ${r.project}`);
-          console.log(`  ${r.checkCount} check(s) harvested from ${r.ruleCount} active rule(s); scanned: ${r.sourceRoots.join(', ')}`);
+          console.log(`  ${r.checkCount} check(s) harvested from ${r.ruleCount} rule(s); source roots: ${r.sourceRoots.join(', ')}`);
+          console.log(`  coverage: ${r.coverage.status} — ${r.coverage.scope}; ${r.coverage.scannedFiles} file(s) assessed`);
+          if (r.coverage.reason) console.log(`  ${r.coverage.reason}`);
+          if (r.coverage.exclude.length) console.log(`  global exclusions: ${r.coverage.exclude.join(', ')}`);
+          for (const root of r.coverage.roots) console.log(`  [source-${root.status}] ${root.root}`);
+          for (const rule of r.coverage.unautomatedRules) console.log(`  [not-automated] ${rule}`);
           for (const e of r.harvestErrors) console.log(`  [harvest-error] ${e.rule} — ${e.why}`);
-          if (r.clean) console.log('  no invariant violations');
+          for (const e of r.executionErrors) console.log(`  [execution-error] ${e.source} — ${e.why}`);
+          for (const c of r.coverage.checks) {
+            if (c.status !== 'checked' || c.excludedFiles) console.log(`  [${c.status}] ${c.id} (${c.rule}) — ${c.scannedFiles} scanned, ${c.excludedFiles} excluded${c.reason ? `; ${c.reason}` : ''}`);
+          }
+          if (r.clean) console.log('  no violations in assessed automated checks; unautomated rules require separate review');
           for (const f of r.findings) console.log(`  [${f.severity}] ${f.file}:${f.line} — ${f.id} (${f.rule.replace('.agent/rules/', '')}) — ${f.message}`);
-          if (!r.clean) console.log(`  ${JSON.stringify(r.counts)}`);
+          if (r.findings.length) console.log(`  ${JSON.stringify(r.counts)}`);
         }
+        if (['partial', 'failed'].includes(r.coverage.status)) return 2;
         if (flags['warn-only']) return 0;
         if (typeof flags['fail-on'] === 'string') {
           const threshold = SEVERITY_ORDER[flags['fail-on']];
@@ -2542,13 +3313,13 @@ export function main(argv = process.argv.slice(2)) {
       }
       case 'changelog-roll': {
         if (showHelp) {
-          console.log('usage: agentkit changelog-roll [project-path] [--version v] [--date d] [--dry-run]');
+          console.log('usage: agentkit changelog-roll [project-path] [--version v] --title <title> [--date d] [--dry-run]');
           return 0;
         }
-        const r = changelogRoll(projectRoot, { version: flags.version, date: flags.date, dryRun: flags['dry-run'] });
+        const r = changelogRoll(projectRoot, { version: flags.version, title: flags.title, date: flags.date, dryRun: flags['dry-run'] });
         if (flags.json) console.log(JSON.stringify(r, null, 2));
-        else console.log(r.rolled ? `changelog-roll: assembled ${r.rolled} fragment(s)${r.dryRun ? ' (dry-run)' : ''} → CHANGELOG.md${r.dryRun ? '' : ' (fragments removed)'}` : `changelog-roll: ${r.note}`);
-        return 0;
+        else console.log(r.rolled ? `changelog-roll: assembled ${r.rolled} fragment(s)${r.dryRun ? ' (dry-run)' : ''} → CHANGELOG.md${r.dryRun ? '' : ' (fragments retained)'}` : `changelog-roll: ${r.reason || r.note}`);
+        return r.ok ? 0 : 1;
       }
       case 'adopt': {
         if (showHelp) {
@@ -2565,20 +3336,22 @@ export function main(argv = process.argv.slice(2)) {
       }
       case 'lock': {
         if (showHelp) {
-          console.log('usage: agentkit lock <acquire|release|status> [project-path] [--id <label>] [--json]');
+          console.log('usage: agentkit lock <acquire|release|status> [project-path] [--id <acquisition-id>] [--json]');
+          console.log('Acquire generates an ID when omitted. Retain it across composed calls; release requires that same ID. Never reuse IDs. Legacy locks/abandoned guards require explicit ownership recovery; no automatic stealing.');
           return 0;
         }
         const action = pos[0];
         const proj = pos[1] ? path.resolve(pos[1]) : path.resolve('.');
         if (!['acquire', 'release', 'status'].includes(action)) {
-          console.log('usage: agentkit lock <acquire|release|status> [project-path] [--id <label>] [--json]');
+          console.log('usage: agentkit lock <acquire|release|status> [project-path] [--id <acquisition-id>] [--json]');
           return 1;
         }
         const r = orchestratorLock(proj, action, { id: typeof flags.id === 'string' ? flags.id : undefined });
         if (flags.json) console.log(JSON.stringify(r, null, 2));
-        else if (action === 'acquire') console.log(r.ok ? `lock acquired: ${r.holder}` : `lock REFUSED — held by ${r.held}`);
+        else if (!r.ok) console.log(`lock REFUSED — ${r.reason}${r.held ? `: ${r.held}` : ''}${r.detail ? ` — ${r.detail}` : ''}${r.operationResult ? `; operation completed: ${JSON.stringify(r.operationResult)}` : ''}`);
+        else if (action === 'acquire') console.log(`lock acquired: ${r.holder}; release with --id ${r.id}`);
         else if (action === 'release') console.log(r.released ? 'lock released' : 'no lock to release');
-        else console.log(r.held ? `lock held: ${r.holder}` : 'no lock');
+        else console.log(`${r.held ? `lock held: ${r.holder}` : 'no lock'}${r.busy ? '; operation guard present (snapshot only)' : ''}`);
         return r.ok ? 0 : 1;
       }
       case 'surfaces': {
