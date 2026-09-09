@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.1.0] — 2026-09-09 — Reconcile project upgrades and writing styles
+
+### Added
+- Add a project migration kickoff covering preservation, selected kit identity, launcher readiness,
+  exact legacy hook retirement, canonical reference resolution and scoped verification.
+- Add content, interface-copy and direct-response skills, a writing-quality rule, and project-local
+  style management. Retain the public `write-clear` entry point and its ticket/handoff method.
+- Add explicit style status, reviewed-context resolution and rollback recovery. New profiles start
+  as drafts. Project and style locks cover mutations; private preimages preserve recovery after
+  interruption, and intervening edits refuse automatic restoration.
+
+### Fixed
+- Show unresolved settings ownership in human sync and dry-run output without exposing settings values.
+  Successful file application does not imply completed ownership reconciliation.
+- Preserve script shebangs during generation and strip only the generated header during adoption.
+- Resolve documentation governance from the selected kit when consumer projects lack that directory.
+- Repair writing initialization, rollback, excluded/purged exemplars, alias collisions, CLI sample
+  fidelity and false review status. Keep private writing data separate from shipped guidance.
+- Retain approved exemplars against every eligible chunk instead of the capped candidate view, so a
+  large corpus no longer deletes approvals from still-included sources. The 50-row cap still bounds
+  the presented `exemplar-candidates.jsonl`, and approval selects from that presented list. Refuse
+  recovery when style-lock ownership changed, before restoring any data, and journal a style lock only
+  after acquiring it. Select the journal and lock identity inside the recovery guard so a stale
+  operation cannot reverse a later committed mutation. Report operation identity, pending lock cleanup
+  and committed-versus-restored disposition when project-lock release fails.
+- Clarify nested delegation authority, uncertain wait results and inherited PRD reconciliation.
+
+### Evidence and provenance
+- Need: reported project upgrades left duplicate/unavailable hooks, mismatched local source versions
+  and dead governance references. A synthetic legacy-hook migration reproduces preservation and exact
+  retirement without changing unrelated policy; this is not a real-project migration result.
+- Provenance: home-branch writing work, reviewed and adapted on 1.0.1 by the coordinator with independent
+  staff Astra/high review. Seven collected writing regression assertions fail on the incoming code;
+  repaired-code checks cover those boundaries plus interruption, concurrency and filesystem links.
+- Preserve the existing Windows/Linux Node 20/22/24 CI matrix and all four prior suites. New fixture
+  routing labels are evaluation inputs, not measured model-routing behavior. Native-client and real
+  project rollout results remain separately owned; no fleet migration is claimed by this release note.
+
+What we deliberately did NOT do: replace main with the older branch, change the portable-hook policy,
+copy private project settings, remove legacy public skills, or claim external backups are securely erased.
+
 ## [1.0.1] — 2026-09-09 — Preserve legacy rule trigger compatibility
 
 ### Fixed

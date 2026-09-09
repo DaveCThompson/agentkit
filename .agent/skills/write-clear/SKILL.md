@@ -1,11 +1,15 @@
 ---
 name: write-clear
-description: Draft, rewrite, or review clear and concise session messages, tickets, handoffs, reports, technical prose, and product UI copy. Use when wording is confusing, verbose, inconsistent, or missing an actionable next step.
+description: Use for ticket and handoff writing, meaning-preserving copy edits, or an explicit write-clear request. Prefer respond-clearly for direct agent responses, write-content for sustained prose, and write-ui-copy for short interface text.
 tier: core
 triggers: [clear writing, concise writing, rewrite, copy edit, session communication, ticket writing, UI copy]
 ---
 
 # Write clearly
+
+This public entry point remains available for existing callers. Route sustained content and short UI
+work to `write-content` and `write-ui-copy`; use `respond-clearly` for direct responses. Preserve the
+ticket, handoff and meaning-inventory method below when an existing invocation includes those jobs.
 
 Turn the user's intent into text the intended reader can understand and act on without losing
 meaning. [Flat communication](../../../.agent/rules/foundation-communication.md) owns shared prose

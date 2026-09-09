@@ -93,7 +93,7 @@ export function headerFor(srcRel, ext) {
   return null; // json etc: no header (would break parsers); lockfile hash still guards it
 }
 
-// Insert header AFTER frontmatter for md (Claude/Codex require frontmatter at byte 0), at top otherwise.
+// Keep native frontmatter and executable shebangs at byte zero.
 export function injectHeader(content, srcRel, ext) {
   const h = headerFor(srcRel, ext);
   if (!h) return content;
@@ -105,6 +105,11 @@ export function injectHeader(content, srcRel, ext) {
       return text.slice(0, nl + 1) + h + '\n' + text.slice(nl + 1);
     }
   }
+  if (text.startsWith('#!')) {
+    const nl = text.indexOf('\n');
+    if (nl === -1) return text + '\n' + h + '\n';
+    return text.slice(0, nl + 1) + h + '\n' + text.slice(nl + 1);
+  }
   return h + '\n' + text;
 }
 
@@ -112,7 +117,8 @@ export function injectHeader(content, srcRel, ext) {
 export function stripHeader(content) {
   const text = normalizeEol(content);
   const frontmatter = text.startsWith('---\n') ? text.match(/^---\n[\s\S]*?\n---\n/) : null;
-  const start = frontmatter ? frontmatter[0].length : 0;
+  const shebang = text.startsWith('#!') ? text.indexOf('\n') + 1 : 0;
+  const start = frontmatter ? frontmatter[0].length : shebang;
   const end = text.indexOf('\n', start);
   const line = text.slice(start, end === -1 ? text.length : end);
   if (!/^(?:<!-- |# |\/\/ )AGENTKIT GENERATED from /.test(line)) return text;

@@ -32,6 +32,11 @@ Reconcile current user intent with prior exploration, explicit decisions, and re
 assumptions. Describe the problem, affected actors, current behavior, desired outcome, and
 non-goals. User stories can clarify motivation but do not replace observable requirements.
 
+For an inherited PRD, compare proposed work with current code, landed history and later accepted
+decisions before creating new tasks. Classify already delivered work, accepted changes of direction,
+remaining obligations and unresolved conflicts. Shipped behavior is evidence of what exists; it does
+not automatically supersede a requirement or prove that a divergence is correct.
+
 Identify material unknowns. Treat inferred preferences as assumptions until accepted; do not turn
 rejection of one option into a broader prohibition. Resolve only consequential missing choices.
 

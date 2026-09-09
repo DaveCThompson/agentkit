@@ -1,13 +1,14 @@
 {
   "name": "agentkit",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Canonical vendor-agnostic agent kit: one .agent/ source of truth, generated vendor surfaces, drift checking, flowback.",
   "type": "module",
   "bin": {
     "agentkit": "./agentkit.mjs"
   },
   "scripts": {
-    "test": "node --test agentkit.test.mjs agentkit.platform.test.mjs agentkit.adapters.test.mjs agentkit.acceptance.test.mjs"
+    "test": "node --test agentkit.test.mjs agentkit.platform.test.mjs agentkit.adapters.test.mjs agentkit.acceptance.test.mjs agentkit.rollout.test.mjs writing-style.test.mjs writing-style-recovery.test.mjs writing-style-routing.test.mjs",
+    "test:writing-style": "node --test writing-style.test.mjs writing-style-recovery.test.mjs writing-style-routing.test.mjs"
   },
   "engines": {
     "node": ">=20"

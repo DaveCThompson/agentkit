@@ -37,6 +37,10 @@ Use the canonical writing guidance for sessions, tickets, reports, handoffs, and
 - `.agent/rules/foundation-communication.md` — clear, concise session and technical prose.
 - `.agent/rules/pattern-ui-copy.md` — sparse, contextual UI copy.
 - `.agent/skills/write-clear/SKILL.md` — drafting, rewriting, and review workflow.
+- `.agent/skills/respond-clearly/SKILL.md` — direct agent responses.
+- `.agent/skills/write-content/SKILL.md` — sustained reader-facing prose.
+- `.agent/skills/write-ui-copy/SKILL.md` — short interface text.
+- `.agent/skills/manage-writing-style/SKILL.md` — explicit project-local style data operations.
 
 Defaults:
 
@@ -79,4 +83,5 @@ Defaults:
 | `/verify-pre-deploy` | Assess release readiness on the exact candidate with applicable proof and explicit pending gates. |
 | `/walk` | Walk through the selected explanation one point per user-controlled turn. |
 | `/wrap-up` | Close out scoped local work with reusable proof and honest remaining state. |
+| `/writing-style` | Manage a project-local writing-style profile by initializing, adding samples, updating diagnostics, inspecting evidence, and approving or excluding sources. |
 <!-- <<< AGENTKIT WORKFLOWS <<< -->

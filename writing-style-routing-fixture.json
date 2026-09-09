@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "fixture_name": "writing-style-routing",
+  "purpose": "Bounded routing cases for the four canonical writing skills.",
+  "evaluation_boundary": {
+    "deterministic_surface_assertions": "The kit can verify names, descriptions, command mappings, and that hard-negative cases have no style mutation operation.",
+    "model_routing_observations": "Live model discovery and invocation results are recorded separately when a host-specific evaluator is available.",
+    "model_observations_status": "not-run"
+  },
+  "cases": [
+    {
+      "id": "management-add-default-chat",
+      "class": "management-positive",
+      "utterance": "Add this sample to my writing style.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "add",
+      "style_resolution": "default-or-only",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-add-attachment",
+      "class": "management-positive",
+      "utterance": "Include the attached report as a Humaira voice sample.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "add",
+      "style_resolution": "humaira",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-learn-from-excerpt",
+      "class": "management-positive",
+      "utterance": "Learn from this excerpt and add it to the house voice.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "add",
+      "style_resolution": "configured-default",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-include-example",
+      "class": "management-positive",
+      "utterance": "Use this as another example of my writing style.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "add",
+      "style_resolution": "default-or-only",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-update-default",
+      "class": "management-positive",
+      "utterance": "Update my writing style from its included samples.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "update",
+      "style_resolution": "default-or-only",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-refresh-named",
+      "class": "management-positive",
+      "utterance": "Refresh the Humaira voice profile after the latest samples.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "update",
+      "style_resolution": "humaira",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-reanalyze",
+      "class": "management-positive",
+      "utterance": "Reanalyze the samples for the house style.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "update",
+      "style_resolution": "configured-default",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-inspect",
+      "class": "management-positive",
+      "utterance": "Show me the evidence and coverage for Humaira's style.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "inspect",
+      "style_resolution": "humaira",
+      "mutation_expected": false
+    },
+    {
+      "id": "management-audit",
+      "class": "management-positive",
+      "utterance": "Audit the current writing-style profile for problems.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "audit",
+      "style_resolution": "default-or-only",
+      "mutation_expected": false
+    },
+    {
+      "id": "management-approve-exemplar",
+      "class": "management-positive",
+      "utterance": "Approve this candidate as an exemplar for Humaira.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "approve-exemplar",
+      "style_resolution": "humaira",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-exclude-source",
+      "class": "management-positive",
+      "utterance": "Exclude that source from future style builds but keep it stored.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "exclude-source",
+      "style_resolution": "default-or-only",
+      "mutation_expected": true
+    },
+    {
+      "id": "management-purge-confirmed",
+      "class": "management-positive",
+      "utterance": "Permanently purge this style sample; I confirm the deletion.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "purge-source",
+      "style_resolution": "default-or-only",
+      "mutation_expected": true
+    },
+    {
+      "id": "style-content-report",
+      "class": "named-style-generation-positive",
+      "utterance": "Write this report in the style of Humaira.",
+      "expected_routes": ["write-content"],
+      "style_context": "humaira",
+      "content_mode": "report",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-content-help",
+      "class": "named-style-generation-positive",
+      "utterance": "Draft a technical help article using Humaira's voice.",
+      "expected_routes": ["write-content"],
+      "style_context": "humaira",
+      "content_mode": "technical-help",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-content-website",
+      "class": "named-style-generation-positive",
+      "utterance": "Rewrite the landing-page copy like our approved Humaira style.",
+      "expected_routes": ["write-content"],
+      "style_context": "humaira",
+      "content_mode": "website",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-content-rewrite",
+      "class": "named-style-generation-positive",
+      "utterance": "Make this long-form explanation sound like Humaira without changing its facts.",
+      "expected_routes": ["write-content"],
+      "style_context": "humaira",
+      "content_mode": "explanation",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-content-generic-profile",
+      "class": "named-style-generation-positive",
+      "utterance": "Write the quarterly findings with the approved house voice.",
+      "expected_routes": ["write-content"],
+      "style_context": "configured-default",
+      "content_mode": "report",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-ui-button",
+      "class": "named-style-generation-positive",
+      "utterance": "Write a shorter Save button label in Humaira's style.",
+      "expected_routes": ["write-ui-copy"],
+      "style_context": "humaira",
+      "content_mode": "button-label",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-ui-error",
+      "class": "named-style-generation-positive",
+      "utterance": "Rewrite this error message using Humaira's voice, keeping the recovery action clear.",
+      "expected_routes": ["write-ui-copy"],
+      "style_context": "humaira",
+      "content_mode": "error-message",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-ui-tooltip",
+      "class": "named-style-generation-positive",
+      "utterance": "Suggest a Humaira-style tooltip for this control.",
+      "expected_routes": ["write-ui-copy"],
+      "style_context": "humaira",
+      "content_mode": "tooltip",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-ui-empty-state",
+      "class": "named-style-generation-positive",
+      "utterance": "Draft an empty-state message in our approved house style.",
+      "expected_routes": ["write-ui-copy"],
+      "style_context": "configured-default",
+      "content_mode": "empty-state",
+      "mutation_expected": false
+    },
+    {
+      "id": "style-content-voice",
+      "class": "named-style-generation-positive",
+      "utterance": "Use Humaira's voice when you draft this customer-facing explanation.",
+      "expected_routes": ["write-content"],
+      "style_context": "humaira",
+      "content_mode": "customer-explanation",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-new-help-article",
+      "class": "hard-negative",
+      "utterance": "Update the installation help article with the new command.",
+      "expected_routes": ["write-content"],
+      "content_mode": "technical-help",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-report-review",
+      "class": "hard-negative",
+      "utterance": "Review this report for unsupported claims and unclear evidence.",
+      "expected_routes": ["write-content"],
+      "content_mode": "report",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-website-draft",
+      "class": "hard-negative",
+      "utterance": "Draft website copy for the new data-import feature.",
+      "expected_routes": ["write-content"],
+      "content_mode": "website",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-button-label",
+      "class": "hard-negative",
+      "utterance": "Make this button label clearer without changing its action.",
+      "expected_routes": ["write-ui-copy"],
+      "content_mode": "button-label",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-error-copy",
+      "class": "hard-negative",
+      "utterance": "Improve this error message and include the recovery step.",
+      "expected_routes": ["write-ui-copy"],
+      "content_mode": "error-message",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-empty-state",
+      "class": "hard-negative",
+      "utterance": "Write empty-state copy for a project with no results.",
+      "expected_routes": ["write-ui-copy"],
+      "content_mode": "empty-state",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-answer-question",
+      "class": "hard-negative",
+      "utterance": "Explain why the build failed and tell me what to do next.",
+      "expected_routes": ["respond-clearly"],
+      "content_mode": "agent-response",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-status-update",
+      "class": "hard-negative",
+      "utterance": "Give me a concise status update on the writing-system work.",
+      "expected_routes": ["respond-clearly"],
+      "content_mode": "agent-response",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-next-step",
+      "class": "hard-negative",
+      "utterance": "What is the next step after the review is complete?",
+      "expected_routes": ["respond-clearly"],
+      "content_mode": "agent-response",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-explain-decision",
+      "class": "hard-negative",
+      "utterance": "Explain the decision in plain language for me.",
+      "expected_routes": ["respond-clearly"],
+      "content_mode": "agent-response",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-general-rewrite",
+      "class": "hard-negative",
+      "utterance": "Rewrite this paragraph to be clearer while preserving the meaning.",
+      "expected_routes": ["write-content"],
+      "content_mode": "editorial-rewrite",
+      "mutation_expected": false
+    },
+    {
+      "id": "negative-style-definition",
+      "class": "hard-negative",
+      "utterance": "What makes the house style effective for technical readers?",
+      "expected_routes": ["write-content"],
+      "content_mode": "style-review",
+      "mutation_expected": false
+    },
+    {
+      "id": "mixed-add-then-help",
+      "class": "mixed-or-multi-label",
+      "utterance": "Add the attached sample to Humaira, then draft a help article in that voice.",
+      "expected_routes": ["manage-writing-style", "write-content"],
+      "expected_operation": "add",
+      "style_context": "humaira",
+      "content_mode": "technical-help",
+      "mutation_expected": true
+    },
+    {
+      "id": "mixed-update-then-ui",
+      "class": "mixed-or-multi-label",
+      "utterance": "Refresh Humaira first, then write the new confirmation dialog copy.",
+      "expected_routes": ["manage-writing-style", "write-ui-copy"],
+      "expected_operation": "update",
+      "style_context": "humaira",
+      "content_mode": "confirmation",
+      "mutation_expected": true
+    },
+    {
+      "id": "mixed-add-and-report",
+      "class": "mixed-or-multi-label",
+      "utterance": "Learn from this approved sample and use the result in the quarterly report.",
+      "expected_routes": ["manage-writing-style", "write-content"],
+      "expected_operation": "add",
+      "style_context": "configured-default",
+      "content_mode": "report",
+      "mutation_expected": true
+    },
+    {
+      "id": "mixed-ui-style-preserve-action",
+      "class": "mixed-or-multi-label",
+      "utterance": "Write this error message in Humaira's style, but keep the recovery action unchanged.",
+      "expected_routes": ["write-ui-copy"],
+      "style_context": "humaira",
+      "content_mode": "error-message",
+      "mutation_expected": false
+    },
+    {
+      "id": "mixed-report-explain",
+      "class": "mixed-or-multi-label",
+      "utterance": "Draft the report in Humaira's style and explain the key finding to me afterward.",
+      "expected_routes": ["write-content", "respond-clearly"],
+      "style_context": "humaira",
+      "content_mode": "report",
+      "mutation_expected": false
+    },
+    {
+      "id": "mixed-add-and-inspect",
+      "class": "mixed-or-multi-label",
+      "utterance": "Add this sample to my style and show me what changed in the diagnostics.",
+      "expected_routes": ["manage-writing-style"],
+      "expected_operation": "add",
+      "style_resolution": "default-or-only",
+      "mutation_expected": true
+    }
+  ]
+}

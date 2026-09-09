@@ -613,8 +613,11 @@ test('platform DEP-F6: a machine-local launcher executes its selected checkout t
   const beforeProject = snapshot(f.project);
   const result = setupLauncher(bin, { kitRoot: selected });
   assert.equal(result.ok, true, JSON.stringify(result));
+  // Invoke the installed launcher by absolute path on both platforms. Relying on the current
+  // directory would resolve a real machine-local agentkit on PATH wherever Windows disables
+  // current-directory search (NoDefaultCurrentDirectoryInExePath), testing a foreign binary.
   const output = process.platform === 'win32'
-    ? execFileSync('cmd.exe', ['/d', '/c', 'agentkit.cmd --version'], { cwd: bin, encoding: 'utf8' })
+    ? execFileSync('cmd.exe', ['/d', '/c', path.join(bin, 'agentkit.cmd'), '--version'], { cwd: f.project, encoding: 'utf8' })
     : execFileSync(path.join(bin, 'agentkit'), ['--version'], { cwd: f.project, encoding: 'utf8' });
   assert.match(output, /8\.7\.6/);
   assert.deepEqual(snapshot(f.project), beforeProject, 'computer setup cannot sync or modify a project');
