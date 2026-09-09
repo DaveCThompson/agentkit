@@ -12,8 +12,9 @@ scale. Scores are re-normalized by the synthesis pass — grade against the anch
 calibration.
 
 **Evidence tiers** (cite one per claim): **T1** = measured (file exists, count, hash, git date) ·
-**T2** = observed behavior (a skill demonstrably fired/failed) · **T3** = judgment call (flag it as
-such). Pure-hypothesis claims are rejected in the canonical kit.
+**T2** = observed evidence (name whether instruction text or runtime behavior) · **T3** = engineering
+judgment. A textual contradiction is not an observed model failure. Report evidence kind and limits
+alongside the tier; do not retroactively claim stronger evidence from an old score.
 
 ## 1. Wiring integrity (the #1 risk)
 Junction vs materialized copy vs real files; vendor↔`.agent` drift.
@@ -38,16 +39,17 @@ Valid prefixes (`foundation- / tech- / pattern- / project- / domain-`), activati
   present and project-accurate.
 
 ## 4. Workflows
-True orchestration vs single-skill passthrough; not empty.
-- **1:** workflows are one-liners that restate a skill ("run the plan skill").
-- **3:** workflows sequence 2+ skills with decision points, inputs required, and exit criteria.
+Correct routing/composition without duplicated implementation policy.
+- **1:** a workflow misroutes intent, loses inputs/authority, or repeats a conflicting skill recipe.
+- **3:** a workflow selects the right capability and preserves inputs and exits. A legitimate
+  one-to-one command mapping is sufficient; extra stages do not earn a higher score.
 
 ## 5. Docs governance
 Four-dir model (`docs/{knowledge-base,working,backlog,archive/YYYY-MM}`), per-subdir README indexes,
 KB purity, taxonomy prefixes.
 - **1:** KB mixes raw research corpora with contracts; no README indexes; loose files at docs root.
 - **3:** four dirs enforced, every subdir has an index README, KB holds only durable truth with
-  `SPEC-/PRD-/STRATEGY-/RUNBOOK-` prefixes.
+  `SPEC-/STRATEGY-/RUNBOOK-/DECISION-` prefixes; PRDs remain lifecycle artifacts until dissolved.
 
 ## 6. CHANGELOG hygiene
 Rolled/archived, single dialect, size.
@@ -66,12 +68,11 @@ claude/codex/gemini/opencode exposure consistent + natively correct.
 - **3:** every enabled vendor sees the same current skill set through its documented native surface.
 
 ## 9. Self-maintenance & tool-leverage
-`health-agent`/`pattern-codify` present; skills actually lean on Codebase MCP for comprehension +
-Fallow for duplicate-checks; declared tools provisioned.
+Useful diagnostics/codification, scoped tool discovery and honest fallback evidence.
 - **1:** no health/codify machinery; `use-codegraph` exists but nothing references it; Fallow
   installed but never cited by a skill.
-- **3:** session-end codify path exists; plan/implement skills name the tools they use and those
-  tools are provisioned and callable.
+- **3:** health/flowback has an owned path; skills use applicable available tools and preserve
+  evidence limits when degraded. Tool installation or forced invocation is not the quality goal.
 
 ## 10. Structural simplicity (scored INVERSELY)
 Needless folders, deep nesting, grab-bag directories LOWER the score. Many well-scoped skills do NOT.
@@ -83,3 +84,5 @@ Needless folders, deep nesting, grab-bag directories LOWER the score. Many well-
 - Every "add" proposed by an audit must cite ≥1 concrete project need + an evidence tier.
 - Every proposed folder/nesting level must justify why a flat file with a prefix wouldn't do.
 - Every audit artifact ends with a **"What we deliberately did NOT do"** section.
+- Incomplete and not-applicable dimensions stay explicit. Zero findings is valid; no quota of
+  defects or a weighted average can hide a material authority, preservation or false-proof failure.

@@ -1,111 +1,132 @@
 ---
 name: sweep-codebase
-description: Periodic detection sweep across 4 scopes (code, docs, hygiene, agent) that files backlog tickets for findings. Use for scheduled maintenance scans, not targeted audits.
+description: Periodic detection sweep across code, docs, hygiene, or agent guidance that records actionable maintenance findings. Use for requested or scheduled maintenance scans, not targeted audits or repairs.
 tier: core
-required-tools: [fallow]
+required-tools: [fallow, agentkit]
 ---
 
-# Sweep Codebase Skill
+# Sweep Codebase
 
-Logic for analyzing the codebase and generating maintenance tickets.
+Detect corroborated maintenance issues in the requested scopes. Write findings and authorized
+ticket/index records only. Code, configuration, documentation repair, tool installation and
+archival are separate actions.
 
-## Instructions
+## When to Use
 
-When performing a sweep, follow the logic for the requested scope(s):
+- The user requests a broad or periodic maintenance scan.
+- A scheduled task names code, docs, hygiene or agent-guidance coverage.
+- Use the relevant audit skill for a targeted question, or `maintain-docs` for requested cleanup.
+
+## Approach
+
+### Scope and evidence
+
+Choose the requested scopes and actual project roots before scanning. Honor an explicit schedule;
+a lifecycle caller supplies its own scope. Reuse current relevant evidence and bound exploration
+by the question, available tools and useful leads. Do not repeatedly widen discovery to produce
+a minimum number of findings. Zero corroborated findings is valid.
+
+Enumerate scoped files from the filesystem. Use explicit roots and `rg --no-ignore` when checking
+ignored documentation or evidence stores. Keep tracked history, current source, accepted contracts
+and tool coverage distinct. Git history or earned verification metadata may support age; never
+use filesystem mtime. Missing history or usage telemetry is unknown, not evidence of neglect.
+
+For each selected scope, report checked, partial or unavailable, with exclusions and material
+limits. A successful invocation, empty output or accessible search tool does not establish
+complete coverage.
 
 ### 1. Code Evolution (`scope: code`)
 
-#### Reuse Before You Add (Duplicate / Dead-Code Check)
-Before introducing a new utility, hook, component, or dependency, prove it does not already exist
-(see `integrations/fallow.md`):
-1. **Duplication scan** — `npx --no-install fallow dupes --skip-local` (cross-directory clones);
-   raise signal with `--min-tokens <n>` or `--mode semantic` when noisy.
-2. **Don't delete on a hunch** — before removing an "unused" export/dep, confirm reachability with
-   `fallow dead-code --trace <file>:<export>` or `--trace-dependency <name>`.
-3. **Orient before editing** — `fallow inspect --file <path>` (or `--symbol <FILE:EXPORT>`) bundles
-   the evidence for a target.
-4. **Fallback** — if fallow is unavailable, search for existing implementations via the code graph
-   (`search_graph` / `search_code`) or Grep, and state in the plan that the duplicate check was manual.
-- **Git Hotspots**: Scan git history (7 days). If a file has >3 commits, flag for refactor review.
-- **Pattern Repetition**: Look for similar logic across files (e.g., UI hooks, data mapping).
-- **Tech Debt**: Search for `// TODO`, `// FIXME`, or large files (>500 lines).
-- **Action**: Create `TICKET-SCAN{##}-{slug}.md` tickets for refactoring or consolidation.
+For applicable code projects, read the kit's `integrations/fallow.md` for installed scanner
+mechanics and confirm supported options from its local help before use. Use diagnostic modes
+for complexity/churn, duplication and reachability; do not execute auto-fix or alter suppressions.
+The metadata dependency applies to this scope, not a docs-only scan.
+
+When Fallow is unavailable or the language is unsupported, use applicable source searches and,
+if available, [use-codegraph](../use-codegraph/SKILL.md). State the manual coverage and blind
+spots; do not install a tool or invent a graph endpoint.
+
+Use churn, large files, TODOs and repeated shapes to rank inspection. Corroborate each candidate:
+
+- Duplication needs shared semantics and a concrete cost of divergence. Similar text, fixtures,
+  vendored copies or intentional separation do not alone justify consolidation.
+- A dead-code candidate needs reachability evidence that accounts for entrypoints, dynamic use,
+  test consumers and configuration. Missing search hits are not proof an export is unused.
+- Hotspots need a demonstrated maintenance problem, complexity risk or violated boundary.
+  Commit/file/directory counts alone do not justify refactoring.
+
+Record the location, behavior or contract affected, evidence and an observable outcome for any
+proposed follow-up. This detector does not introduce utilities, remove dependencies or fix code.
 
 ### 2. Documentation Drift (`scope: docs`)
 
-**Trigger**: `land` Phase 2 (the session's docs deep-clean). There is **no calendar** — a hygiene
-sweep with its own schedule is a schedule nobody keeps, while one attached to a step already in the
-operator's habit actually runs.
+Prioritize docs with uncertain ownership or changed dependencies as leads: imported docs, runbooks,
+strategy and inactive surfaces may merit attention. Do not treat an anecdotal drift rate or lack
+of a live ticket as a verdict.
 
-**Order by ownership, not by recency.** Drift concentrates where **no program owns the docs**. In a
-full-tree review, 100% of runbooks and every doc ported in from another repo needed correction,
-while actively-worked specs were half-maintained — the work itself partly maintains what it touches,
-and nothing maintains the rest. So partition by directory and take the un-owned surfaces first:
+Use available agentkit content/taxonomy diagnostics or project equivalents for mechanical leads.
+Retain exits, exclusions and incomplete coverage; corroborate semantic findings against current
+sources. An index is the claim under test, never the enumeration source.
 
-1. Docs ported in from another repo, runbooks, strategy docs — anything with **no live ticket
-   pointing at it**.
-2. Everything else.
-
-- **Mechanical first**: run `agentkit check --content` and `agentkit check --taxonomy` and start from
-  their output. Both index directions and every citation class are already covered there; do not
-  hand-roll what the checker owns.
-- **Stale PRDs**: Check `docs/working/*.md`. If a doc hasn't been touched in 14 days but references files changed this week, flag as "Stale".
-- **Orphaned Docs**: Find PRDs marked "Implemented" in `./CHANGELOG.md` that are still in `docs/working/`.
-- **Rule Drift**: Identify new UI patterns in the feature tree not yet present in `.agent/rules/`.
-- **Enumerate from the filesystem.** Glob each directory; the index is the claim under test, never
-  the enumerator.
-- **Action**: Create `TICKET-SCAN{##}-{slug}.md` tickets to update or archive documentation.
+Check claimed paths/symbols, current versus proposed behavior, `applies-to` coverage, and
+`last-verified` claims. Compare relevant source history with the last evidenced verification
+where available; age alone is not staleness. A changelog mention of implementation does not
+complete all acceptance or authorize archival. Keep unresolved proof and current truth visible.
+Route proposed corrections to the authored owner, never generated mirrors.
 
 ### 3. Hygiene Sentinel (`scope: hygiene`)
-- **Changelog**: If `./CHANGELOG.md` > 500 lines, trigger archival.
-- **Working Files**: If `docs/working/` > 6 files, trigger cleanup.
-- **Feature Sprawl**: If the feature tree exceeds 15 directories, flag for domain grouping.
-- **Action**: Create `TICKET-SCAN{##}-{slug}.md` tickets for housekeeping tasks.
+
+Read [Artifacts Rule](../../../.agent/rules/pattern-docs-artifacts.md), especially **Changelog** and
+**Status-of-Record Contract**, and the kit's `governance/docs-standard.md` for retention,
+thresholds and sanctioned layout exceptions. Do not maintain a second numerical policy here.
+
+Check archive navigation, current truth retained before rolls, live-store index completeness,
+and discoverable pending work. Size/sprawl can guide review; file or directory counts without
+a violated contract or concrete navigation cost are not findings. This scan proposes maintenance;
+it does not roll, move, prune or close artifacts.
 
 ### 4. Agent Knowledge (`scope: agent`)
-- **Rule Conflicts**: Scan `.agent/rules/*.md` for contradictory instructions (e.g., CSS naming).
-- **Cross-Refs**: Verify that all `SKILL.md` files correctly link to their relevant rules or workflows.
-- **Skill Usage**: Identify if a custom skill (like `audit-typography`) hasn't been used despite relevant changes.
-- **Action**: Create `TICKET-SCAN{##}-{slug}.md` tickets to tune the agent's guidance.
 
-## Output Structure
+Inspect relevant canonical rules, skills and workflow routes for contradictory instructions,
+missing targets or ambiguous activation. Show the conflicting conditions and their practical
+effect; disagreement in wording alone is not a defect.
 
-### Ticket Template (`docs/backlog/TICKET-SCAN{##}-{slug}.md`)
-```markdown
-# TICKET-SCAN{##}-{slug}: [Concise Title]
+Resolve vendor hits back to canonical owners. Use [health-agent](../health-agent/SKILL.md) for
+shipped-state diagnostics. Skill non-use is assessable only with relevant session telemetry;
+without it, report usage unknown. Do not delete or merge a skill on a guessed usage count.
 
-**Status**: Backlog
-**Priority**: [high|med|low]
-**Area**: [code|docs|hygiene|agent]
-**Source**: sweep-[scope]
+## Output and filing
 
----
+Deduplicate by underlying issue and affected behavior across the actual live working and backlog
+stores, including sanctioned distributed layouts. Search existing accepted tickets and proposals;
+reuse the work identity when a finding belongs there. Repeated scans update owned evidence or
+return it to that record's writer, rather than minting duplicates.
 
-## Context
-[Why this ticket was generated]
+Use the kit's `templates/TICKET-TEMPLATE.md` and
+[Parallel-Agent Orchestration — Shared Contracts](../../../.agent/rules/pattern-agent-orchestration.md),
+§2 **Ticket metadata contract**, for accepted work. Preserve frontmatter status, updated date and
+`landed` semantics; use P0–P3 priorities and applicable proof lanes. A scan is not
+acceptance of its own proposed implementation: keep uncommitted proposals in the existing
+`IDEA-*` feedback record or the scan's `REVIEW-*` until triaged. Use `ready` only when the actual
+work contract is ready, not as a synonym for “scanner found something.”
 
-## Recommended Action
-[Specific steps to resolve]
+Respect the project store and filename convention. Use its single allocator for stable IDs or
+a unique slug with the required tier suffix; never allocate competing scan ordinals. Record
+evidence, impact, confidence, exclusions and observable acceptance without copying a second
+ticket template into this skill.
 
-## Files Affected
-- [Paths]
-```
+Update navigation only when an index exists and its write belongs to this task. An ephemeral
+`backlog-status` view does not imply the backlog directory is absent; discover actual storage.
+Leave scheduling/status-board writes to their single owner. Do not create a second backlog.
 
-### Ticket Naming Convention
-- **Format**: `TICKET-SCAN{##}-{slug}.md`
-- **SCAN{##}**: Sequential scan number (e.g., SCAN01, SCAN02)
-- **slug**: Short kebab-case description (e.g., `audit-deps-no-cve`)
-- See `.agent/rules/pattern-docs-artifacts.md` for the canonical prefix table.
+## Definition of Done
 
-**Examples**:
-- `TICKET-SCAN01-audit-security-coverage.md`
-- `TICKET-SCAN02-docs-drift.md`
+Selected scopes have explicit coverage results. Each filed finding has corroboration, a concrete
+maintenance outcome and a duplicate check. Candidates remain distinguished from accepted work.
+The requested scan ends when its scoped leads are assessed or the exact evidence limits are
+reported. Return needed follow-ups without performing their repairs.
 
-### Backlog Index
-After creating tickets, update the backlog index if the project keeps a `docs/backlog/` directory
-(one line per new ticket). Repos using the ephemeral `backlog-status` view have no backlog dir — the
-`backlog-status` workflow regenerates the view on demand, so there is nothing to update.
+## What we deliberately did NOT do
 
-## Constraints
-- **Idempotency**: Do not create duplicate tickets for the same issue. Search `docs/backlog/` before generating.
-- **High Signal**: Only create tickets for actionable items. Avoid noise.
+Do not manufacture findings from counts or age, infer skill usage without telemetry, or turn
+detection into installation, repair, archival or implementation.

@@ -2,7 +2,7 @@
 
 Load canonical truth from:
 
-- `.agent/rules/tech-react.md`
+- `.agent/rules/tech-react.md` only for React targets
 - `.agent/rules/pattern-code-standards.md`
 
 Use this bridge only to focus the audit:

@@ -19,6 +19,7 @@ the only conditions under which it reopens.
 | `overlay-contract.md` | deciding whether a file is kit-owned (core/tech) or project-owned (overlay), or moving one between tiers |
 | `migration-checklist.md` | running a per-project Phase-E migration — preconditions, steps, verification, rollback |
 | `vendor-capability-matrix.md` | adding/adjusting a vendor adapter, or re-verifying a vendor's native surfaces against its live docs |
+| `verification-profiles.md` | selecting applicable proof lanes, checking evidence reuse or reporting unsupported environments |
 
 ## Decisions (settled — don't re-litigate)
 
@@ -31,6 +32,8 @@ the only conditions under which it reopens.
 | `DECISION-lockfile-state-model.md` | before touching `.agentkit.lock`, `check`'s verdicts, or any date/staleness/recency logic (mtime is banned here) |
 | `DECISION-compiled-manifest.md` | before hand-editing `manifest.json` (don't) or changing how a manifest field is derived |
 | `DECISION-settings-key-merge-scope.md` | before making `sync` write anything to a vendor settings file beyond hook + MCP keys + the `permissions.allow` baseline (it must not touch `defaultMode` / `deny` / `trustedDirectories` / memory) |
-| `DECISION-always-latest-upgrades.md` | before adding version-pinning behavior or a deliberate-upgrade flow — sync always converges on HEAD; pins are the exception |
+| `DECISION-always-latest-upgrades.md` | historical always-latest rationale; its pin exception is superseded by `DECISION-coherent-kit-updates.md` |
+| `DECISION-coherent-kit-updates.md` | before changing explicit sync, no-pin migration, local source identity or portable ownership; current update policy |
 | `DECISION-cloud-sync-stay-mitigated.md` | before proposing to move the fleet off cloud-synced, or when a cloud-synced residual (conflict copies, hydration) bites |
 | `DECISION-canonical-agent-dir.md` | when the `.agent/` vs `.agents/` (Codex) distinction confuses you, or before renaming the canonical source dir |
+| `DECISION-default-tool-baseline.md` | understanding the historical app tool recommendation; current project-kind defaults and prerequisite checks live in the migration checklist |

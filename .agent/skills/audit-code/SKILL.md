@@ -17,13 +17,21 @@ This skill *diagnoses* code quality — it reports, it does not change code. Rou
 - The goal is to review another agent's branch **and raise it to repo standard** (ending in repaired work) → `review-raise-bar`.
 
 ## Step 1: Project Invariants
-**Before auditing**, check `.agent/rules/`:
-- `AGENTS.md` — code patterns and prohibitions
-- `*.md` — behavioral rules
+**Before auditing**, read the project entrypoint and applicable rules:
+- Root `AGENTS.md` — code patterns and prohibitions
+- Relevant `.agent/rules/` files — behavioral rules
 - the project's architecture-and-stack overview (under `docs/knowledge-base/overview/`) — project boundaries, feature isolation, core-kernel dependency direction.
-- Flag invariant violations as **Critical**.
+- Record applicable invariant violations and their blocking policy separately from impact severity.
 
 ## Step 2: Technical Review (Architect)
+
+Identify the base/target state and reviewed diff, separating concurrent edits. Trace the changed
+behavior through affected callers, the main success path and a material failure path. Compare
+actual behavior with the accepted outcome and exclusions. Inspect whether tests exercise that
+contract, including boundary conditions and material fixture/oracle changes; use
+`foundation-testing.md` for evidence validity and conditional proof. A green suite alone does not
+establish that the changed behavior was tested.
+
 - [ ] Architectural soundness
 - [ ] Dependency hygiene
 - [ ] Type safety (`as any`, missing guards)
@@ -34,16 +42,19 @@ This skill *diagnoses* code quality — it reports, it does not change code. Rou
 ## Step 3: QA Review
 - [ ] Edge cases: loading, empty, error states
 - [ ] Error handling coverage
-- [ ] Accessibility: keyboard, screen reader
+- [ ] Accessibility: keyboard, screen reader when the target has a user interface
 - [ ] Testability
 
 ## Step 4: Prioritize
 
 **Priority Levels**:
-- **Critical (9-10)** — Crashes, data loss, security vulnerabilities.
-- **High (7-8)** — Breaks primary functionality or violates core invariants.
-- **Medium (4-6)** — Inconsistent UI, minor tech debt, or non-blocking bugs.
-- **Low (1-3)** — Stylistic issues, typos, or cosmetic improvements.
+- **Critical** — Severe reachable security impact, data loss or widespread task failure.
+- **High** — Broken primary functionality or a major failure with limited workaround.
+- **Medium** — Bounded defects or material maintenance risk.
+- **Low** — Minor consistency or clarity issue with a concrete consequence.
+
+Explain impact rather than assigning a numeric score. Preserve mandatory gates even when impact
+is small; record any explicit waiver separately.
 
 ## Step 5: Meta-Analysis
 If multiple low-priority findings cluster → identify systemic issue.
@@ -51,14 +62,15 @@ If multiple low-priority findings cluster → identify systemic issue.
 ## Constraints
 - Cite evidence: "@filename:line"
 - Reference rules: "Violates AGENTS.md line X"
-- Do not auto-fix — report and await decision
-- Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
+- Do not auto-fix. Return findings; continue repair only when the caller has authorized that scope.
+- Keep necessary redacted evidence in the caller's approved location and cite its identity.
 
 ## Output
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
+Each selected lens is `finding | checked-clean | not-applicable | not-verified`, with scope and
+reason. Name the missing check and owner for incomplete proof. Zero findings is valid.
 ```markdown
-## Critical
-- [Finding] @file:line — Violates [Rule]
-## Systemic Issues
-- [Pattern across findings]
+## Findings
+- [Impact severity] [Finding] @file:line — [behavior/evidence, applicable rule and blocking policy]
+## Coverage
+- [Checked scope, actual result, limitations and next owner]
 ```

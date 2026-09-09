@@ -1,80 +1,92 @@
 ---
 name: audit-accessibility
-description: WCAG 2.2 AA accessibility audit. Use to ensure the application is accessible to all users.
+description: Use to audit selected web flows against WCAG 2.2 AA and project accessibility requirements, with measured evidence and explicit coverage limits.
 tier: kind:app
 ---
 
 # Audit Accessibility
 
-Measurement-first WCAG 2.2 AA audit. Every finding is backed by a tool result, a keyboard
-traversal, a screen-reader announcement, or a measured contrast ratio — never "this looks
-inaccessible." Diagnose only; no code changes.
-
-> **Standards:** `foundation-accessibility.md` defines the project's a11y contract (landmarks,
-> heading hierarchy, focus-ring token, reduced motion). This skill verifies it; it does not
-> restate it.
+Audit the requested surfaces against WCAG 2.2 AA and the project's accessibility contract.
+Diagnose only; do not change application code. Route authorized remediation to
+`implement-quick-fix` or `plan-feature` according to scope.
 
 ## When to Use
-- Before releases; after adding interactive components
-- Compliance check against WCAG 2.2 AA
 
-## When NOT to Use
-- You want violations fixed in the same pass → `implement-quick-fix` (small) or `plan-feature`
-  (structural), fed by this report
-- Visual-consistency concerns without an a11y dimension → `audit-layout` / `audit-design-system`
+Use for accessibility review of interactive changes, reported barriers, or a release's selected
+flows. A bounded audit is not a conformance claim for an entire application.
 
 ## Approach
 
 ### Step 0: Load Context
-Read `foundation-accessibility.md` and any project-specific a11y requirements referenced from
-`project-invariants.md`. A violation of a documented invariant is automatically **Critical**.
 
-### Step 1: Gather Evidence (the gate — no findings before this)
-Runtime checks are browser-driven: follow `foundation-browser-usage.md` for capability, profile,
-lane ownership, and evidence selection.
+Identify the target pages, states, complete processes, supported input modes and themes.
+Read `foundation-accessibility.md` and applicable project requirements. Record project policy
+separately from WCAG criteria: a heading convention or named focus token is not itself a WCAG rule.
+Use `foundation-testing.md` for evidence validity and `foundation-browser-usage.md` for runtime
+capability and missing proof. Static review can identify risks while runtime confirmation is pending.
 
-1. **Automated scan — axe** (via DevTools extension, Lighthouse a11y category, or axe-core CLI).
-   Pass criterion: **zero violations** at WCAG 2.2 AA rule level. Record ruleset version and
-   per-rule counts; axe catches ~30–40% of issues, so a clean scan is necessary, never sufficient.
-2. **Keyboard traversal** — one full Tab pass per audited surface. Pass criteria: every
-   interactive control reachable; focus order matches visual order; focus indicator visible on
-   every stop; `Escape` closes overlays; no traps (can Tab out of every widget); skip link lands
-   on main content.
-3. **Screen reader spot-check** — name the tool (NVDA/Firefox, VoiceOver/Safari). Pass criteria:
-   controls announce role + name + state; form errors are announced (live region or focus move);
-   landmarks and one-h1 heading outline navigable.
-4. **Contrast measurement** — measured ratios via DevTools contrast checker or axe, in **both
-   themes** if the project ships light/dark. Pass: ≥4.5:1 normal text, ≥3:1 large text and UI
-   component boundaries (WCAG 1.4.11).
+### Step 1: Gather Evidence
 
-### Step 2: WCAG 2.2 Delta Checks (beyond the 2.1 baseline)
-- **Focus Appearance (2.4.11):** indicator ≥2 px, encloses the component, contrasts with both
-  focused/unfocused states; uses the project's standard focus-ring token (see
-  `foundation-accessibility.md`).
-- **Focus Not Obscured (2.4.12):** focused element not hidden behind sticky headers/overlays —
-  verify by scrolling while tabbing, not by reading CSS.
-- **Dragging Movements (2.5.7):** every drag has a single-pointer alternative.
-- **Target Size (2.5.8):** pointer targets ≥24×24 px (inline links and user-agent controls exempt).
+- Run an available accessibility scanner for the selected scope. Record tool/version, rule tags,
+  exclusions, violations and incomplete checks. Lighthouse accessibility and axe are distinct
+  tools; a clean automated scan establishes only its tested rules, not full accessibility.
+- Traverse each selected flow with keyboard controls. Check logical focus order, visible focus,
+  activation, dismissal and focus return. Composite widgets may use arrows within a single Tab
+  stop. A modal may contain focus while open if keyboard users have a working exit.
+- Spot-check accessible names, roles, values, states, landmarks, error association and announcements
+  with a named screen reader/browser combination. Include dynamic status and validation states.
+- Measure contrast in applicable themes and states. Under
+  [1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), normal text needs
+  4.5:1 and large text 3:1; large means at least 18 pt or 14 pt bold, with equivalent sizing for
+  relevant scripts. Check incidental and logotype exceptions. Under 1.4.11, necessary control or
+  graphic information needs 3:1 against adjacent colors, subject to that criterion's exceptions;
+  this is not a blanket border requirement.
+
+### Step 2: WCAG 2.2 Delta Checks
+
+Use the [WCAG 2.2 normative criteria](https://www.w3.org/TR/WCAG22/) for exact conditions and
+exceptions before recording a violation.
+
+- **2.4.11 Focus Not Obscured (Minimum, AA):** check that author-created content does not entirely
+  hide a focused control. Consult the criterion's notes for user-positioned and user-opened content.
+  **2.4.12 Enhanced** and **2.4.13 Focus Appearance** are AAA; assess them only if in scope.
+  For 2.4.12 check that no part is obscured. For
+  [2.4.13](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html), measure qualifying
+  indicator area against a 2 CSS-pixel perimeter and 3:1 contrast between the same pixels in
+  focused/unfocused states. Check the user-agent exceptions; a literal enclosing border is not required.
+- **2.5.7 Dragging Movements (AA):** test a non-drag single-pointer alternative; assess essential
+  and unmodified user-agent exceptions.
+- **2.5.8 Target Size (Minimum, AA):** measure 24×24 CSS-pixel targets; check spacing, equivalent
+  control, inline, user-agent and essential exceptions before failing a smaller target.
+- **3.2.6 Consistent Help (A):** compare repeated help mechanisms across the page set.
+- **3.3.7 Redundant Entry (A):** inspect repeated information within a process, including reuse
+  mechanisms and applicable exceptions.
+- **3.3.8 Accessible Authentication (Minimum, AA):** inspect cognitive tests, alternatives and
+  assistance such as password-manager and paste support. Evaluate the alternative, assistance,
+  object-recognition and personal-content provisions in the
+  [criterion guidance](https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html).
 
 ### Step 3: Systemic Checks
-- `prefers-reduced-motion` honored (toggle it and re-check moving elements); no auto-playing
-  animation >5 s without pause.
-- Semantic structure: landmarks, list validity, heading hierarchy — per
-  `foundation-accessibility.md`.
+
+Check semantic relationships, text alternatives, form instructions, zoom/reflow and text spacing
+where they affect the selected flows. Toggle reduced-motion preferences for moving surfaces.
+Apply 2.2.2's pause/stop/hide conditions and essential exception to automatically moving content.
+Select other applicable A/AA criteria from the standard; this checklist is not the entire standard.
 
 ## Findings Model
-Per finding: **Severity** (Critical = blocks a user group from completing a task; High = major
-friction with workaround; Medium = degrades experience; Low = best-practice gap), **WCAG
-criterion** (e.g., "1.4.3 Contrast", "2.4.11 Focus Appearance"), **evidence** (tool output,
-measured ratio, or traversal step), and a **concrete failure scenario** ("keyboard user cannot
-dismiss the modal; focus is trapped behind the overlay"). No style nits without a criterion.
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
+
+For each finding, record the affected task/user, criterion and level or project rule, exact state,
+evidence method/result, source location, impact severity and remediation pointer. Name exceptions
+considered. Separate policy blocking from impact severity.
+
+For each selected lens return `finding | checked-clean | not-applicable | not-verified`, with scope
+and reason. Missing runtime evidence needs the exact remaining check and owner. Follow the shared
+evidence policy; keep only necessary, redacted artifacts in the caller's approved evidence location.
 
 ## Definition of Done
-- [ ] axe scan run and recorded (ruleset, counts) — zero-violation baseline or each violation filed
-- [ ] Full keyboard pass performed per surface; traps and order breaks filed
-- [ ] Screen reader named and spot-check results recorded
-- [ ] Contrast measured (both themes where applicable), not eyeballed
-- [ ] Every finding cites a WCAG criterion + severity + failure scenario
-- [ ] Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
-- [ ] Remediation handed to `implement-quick-fix` / `plan-feature` — zero code changed
+
+- The selected flows and applicable criteria have evidence or explicit coverage limits.
+- Scanner, keyboard, screen-reader and contrast results name the method actually used; unrun
+  checks remain unverified.
+- Findings distinguish measured barriers, static risks and project-policy violations.
+- Remediation preserves finding identity and remaining proof. No application code changed.

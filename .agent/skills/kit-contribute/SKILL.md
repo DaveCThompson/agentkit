@@ -4,82 +4,128 @@ description: Judge and route local agent-system changes at session end — flow 
 tier: core
 triggers: [wrap-up, flowback, contribute, codify, locally-edited]
 conflicts-with: [pattern-codify]
+required-tools: [agentkit]
 ---
 
 # Kit Contribute — the flowback brain
 
-One decision point for everything the session changed about the AGENT SYSTEM itself (skills, rules,
-workflows). Improvements made here must land in the kit or become overlay **within one session** —
-improvements that stay local are how consolidation attempts die.
-
-The agentkit CLI's path is embedded in the SessionStart hook command inside `.claude/settings.json`
-(look for `agentkit.mjs`). Below, `agentkit <verb>` means `node "<that path>" <verb>`.
-
-**CLI-absent degraded path (deterministic, not improvised).** If `agentkit` isn't installed in this
-environment (no `agentkit.mjs` resolvable), do NOT skip flowback and do NOT hand-edit vendor copies
-to fake a sync. Instead:
-1. Detect drift by hand — `git status`/`git diff` over `.agent/` (and any new local skill/rule) —
-   the same items Phase 1's `check` would surface.
-2. Edit the `.agent/` **source** only; leave the vendor copies (`.claude/`, `.agents/`, `.gemini/`,
-   `.opencode/`) stale.
-3. Record each item's disposition **plus a `sync pending` note** in the session changelog, and flag
-   to the user that `agentkit sync` must run to regenerate vendor surfaces and the lockfile.
-A stale vendor copy with a logged "sync pending" is honest; a hand-edited vendor copy that simulates
-a sync is drift that the next real sync will fight.
+Give each session-owned agent-system change an evidenced disposition. Adoption, overlay promotion,
+discard, deferral, candidate review, and sync-pending work are legitimate outcomes. Completion
+means no unexplained owned remainder; it does not require every change to land in this session.
 
 ## When to Use
-- During `/wrap-up` (this skill is its codify/flowback gate).
-- When session-start `check --quick` reports LOCALLY-EDITED files or a >7-day flowback nag.
-- Immediately after deliberately editing any kit-owned file.
+
+- A caller requests codification or flowback during wrap-up.
+- A diagnostic reports locally edited core content.
+- An authorized change to kit-owned guidance needs a destination or provenance record.
 
 ## Approach
 
 ### Phase 1: Detect
-- [ ] Run `agentkit check . --json`. Collect: LOCALLY-EDITED / CONFLICT core files, plus any NEW
-      local skills/rules/workflows the kit doesn't ship (they appear as untracked overlay).
-- [ ] Also ask the pattern-codify question: did this session establish a new pattern, convention,
-      or architectural decision that is NOT yet written anywhere? (If yes, it enters Phase 2 as a
-      candidate rule/skill even though no file is drifted.)
 
-### Phase 2: Judge each item (the three-way routing)
+Required local capability for shipped-state comparison and managed transfer: the agentkit CLI
+and its Node runtime. Resolve the known kit checkout or documented installation first. Vendor
+hook configuration is an optional path hint, not the only discovery method. Here `agentkit`
+means that verified executable, or `node "<kit-root>/agentkit.mjs"`. Resolve both the current
+project and kit target before any write.
 
-**Step 0 — Codification gate (provenance check, `pattern-agent-orchestration.md` §1):** before
-routing anything, determine each learning's producer — the completion report's `producer` field, or
-this session's own tier/model if the learning is session-local. **Junior-produced or
-provenance-absent learnings are `candidate`s, not adoptable items**: file them in the live feedback
-pool (for example, `docs/backlog/IDEA-<feedback-pool>.md`) with a `**Provenance**:` line and route them no
-further. Adopt/codify a candidate only after a senior/staff role re-verifies the evidence (prefer
-re-running the claim to T1/T2 strength; cite the re-verification in the changelog entry).
+Run `agentkit check . --json` and inspect owned LOCALLY-EDITED/CONFLICT content plus new local
+assets. Reconcile the assignment's initial state and changed paths; a global dirty tree does not
+make another author's work yours. Also identify unwritten patterns this session actually
+established. Absence of new durable truth is a valid result.
 
-For every drifted core file, new local asset, or un-codified pattern that passes the gate, decide:
+If the CLI is unavailable, use relevant source files and available Git diffs/history to identify
+local changes. These cannot establish equivalence to the lock's shipped state, especially for
+committed drift. Mark shipped-state comparison unavailable. Authorized canonical edits may
+proceed; generation and managed transfer remain pending. Never simulate either by patching
+vendor files or machine-written metadata. Do not install tools merely to clear this gate.
 
-1. **General improvement** → the fleet should have it.
-   - Generalize FIRST: strip project paths, domain nouns, project-specific tool names (the kit's
-     `governance/best-practices.md` defines the bar). One concern per file.
-   - `agentkit adopt <file>` — if it refuses because the kit moved ahead, read the 3-way base it
-     prints, merge deliberately, retry. Never `--force` without reading the diff.
-   - Not sure it generalizes? `agentkit adopt <file> --defer` parks it in the flowback queue
-     (doctor surfaces it later) — deferring beats deciding badly.
-2. **Project-specific** → promote to overlay.
-   - Rename to a `domain-*`/`project-*` name (routing names must stay unique — check reports
-     collisions), ensure `.agentkit.json` overlay globs claim it, and revert the kit-owned original
-     with `agentkit sync` if the edit lived on a core file.
-3. **Noise** → discard.
-   - Revert via `agentkit sync --force` on that file (after confirming with the diff) and note the
-     discard + reason in the session log.
+### Phase 2: Judge each item
 
-### Phase 3: Verify
-- [ ] Re-run `agentkit check .` → zero LOCALLY-EDITED core files remain (overlay files are fine).
-- [ ] If anything was adopted: note in the project CHANGELOG entry ("adopted to kit: <files>") —
-      the kit CHANGELOG got its provenance entry automatically.
+Apply the codification gate in
+[Parallel-Agent Orchestration — Shared Contracts](../../../.agent/rules/pattern-agent-orchestration.md),
+§1. Preserve the learning's producer and evidence provenance. Candidate or provenance-absent
+claims need the required re-verification before adoption; a senior/staff label alone is not
+verification. A retrieved assertion and an observed behavior are different evidence kinds.
+
+Resolve the action, target and writer under
+[external mutation](../../../.agent/rules/pattern-external-mutation.md). Existing grants survive delegation.
+Permission to record a project session does not necessarily cover edits in the kit repository.
+Shared-tree authors return cross-owner work to the coordinator; they do not run Git, generation,
+or metadata-writing commands.
+
+Choose the destination by generality and evidence:
+
+1. **General improvement.** Generalize project paths, domain terms and tool assumptions while
+   preserving the demonstrated method and compatibility constraints. Use the kit's
+   `governance/best-practices.md` and `governance/overlay-contract.md`.
+   When the resolved project-to-kit transfer is authorized, `agentkit adopt . <file-rel>`
+   performs adoption. It also writes kit version, changelog and compiled manifest content;
+   these shared effects must belong to the executing owner. When authoring directly in the kit,
+   edit the canonical source within the assignment and leave shared release/generation work
+   with its owner; do not self-adopt just to manufacture a transfer.
+   If the reverse-clobber guard refuses because the kit advanced, preserve both versions and
+   inspect the printed base. Reconcile deliberately within authority; do not force away another
+   contributor's work. Classify any contract/version change through the release owner.
+   Adoption requires explicit source/transform provenance. A body citation cannot identify its target.
+   Supported single-source body edits retain canonical metadata; composite/lossy outputs require
+   editing the named canonical owner. An ambiguous legacy lock or missing hash-matched base leaves
+   managed transfer pending. Follow `governance/mirror-contract.md` for recovery; never retry an
+   incomplete adoption as if no kit-side changes occurred.
+2. **Project-specific improvement.** Preserve the useful content under a unique `domain-*` or
+   `project-*` routing name and arrange the overlay claim through the project's config owner.
+   Treat renames as consumer migrations: update authorized callers and check routing collisions.
+   The lock is machine-written. Never remove a lock entry by hand to make the old path appear
+   project-owned. Have the generation owner preview the old core restoration/pruning and new
+   overlay outputs through supported tooling. If the ownership transition cannot be completed
+   safely, retain both the content and a pending owner/action; do not report promotion complete.
+3. **Noise or rejected change.** Name the exact change and why it should be discarded. Preserve
+   useful content first and apply only an authorized, scoped restoration through its owner.
+   `sync --force` has project-wide writes and prunes; there is no per-file force-sync selector.
+   An authorized forced sync requires reviewing the entire
+   `agentkit sync . --dry-run --force --json` plan, reconciling settings/managed-key effects with
+   the current lock, and preserving every affected item. A one-file grant cannot cover that
+   operation. If no supported scoped action fits, retain a discard-pending
+   disposition with its next owner rather than broadening the command.
+4. **Deferred or candidate.** Record why the decision or proof is pending, the retained content,
+   its evidence/provenance, and next owner/action. `agentkit adopt . <file-rel> --defer` writes a
+   queue in the kit checkout; use it only when that write is authorized. Otherwise use the
+   caller's existing permitted record. Distinguish a confirmed queue entry from a proposed
+   deferral; do not claim the queue exists without observing the result.
+
+Do not publish private source evidence, machine paths, or ignored reports inside a generalized
+asset. Preserve evidence locally and use ship-safe provenance where required. Source promotion
+does not approve a separate project decision.
+The kit advances coherently on explicit sync. Use exclusions or a distinct project overlay for
+capability/project choices; per-file pins are unsupported. An ownership transition keeps the old
+machine record until tooling reconciles it. No pin workaround or lock reset makes that transition safe.
+
+### Phase 3: Verify and return
+
+When available and within the caller's assigned checks, repeat `agentkit check . --json` after
+applied changes. Reconcile each owned item's before/after state with its disposition. An explained
+deferred, candidate, or sync-pending item may still show drift. Do not clear unrelated changes or
+equate a clean Git diff with clean shipped state.
+
+Return each applied or retained item's location, evidence, actual command effect, and pending
+owner/action. Reuse the caller's report or session record; do not require a separate log for a
+small pass. Actual source changes need the canonical changelog entry through its owner. Record
+an adoption result as observed; integration, release and remote publication require their own
+evidence. Return to the caller without invoking wrap-up or land.
 
 ## Definition of Done
-Every item from Phase 1 has exactly one disposition (adopted / deferred-with-queue-entry /
-overlay-promoted / discarded-with-reason / filed-as-candidate-with-provenance), `check` is clean of
-unexplained core drift, and **no junior-produced or provenance-absent learning was adopted without a
-cited re-verification**.
+
+Every identified session-owned item has a disposition and enough preserved context to act on any
+remainder. Adoption claims have the required provenance and re-verification. Applied transfers
+have observed results; unavailable checks and residual drift are explicit. No change is valid.
+Do not force adoption, discard, publication, or another owner's cleanup to make a status green.
 
 ## What this skill replaces
-`pattern-codify` (its codify-at-session-end question is Phase 1's last bullet; rule-writing
-guidance lives in `governance/best-practices.md`) and the old `health-agent` remediation ("sync by
-copying" — the materialized-copy engine; never do that).
+
+`pattern-codify` is the legacy name for the unwritten-pattern question in Phase 1. This skill owns
+disposition; the shared rules and kit governance own provenance, authority and asset shape.
+
+## What we deliberately did NOT do
+
+Do not edit generated vendor copies or machine metadata, invent file-scoped sync, or require
+same-session landing when an explained remainder preserves the work.

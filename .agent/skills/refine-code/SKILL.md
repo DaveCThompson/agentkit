@@ -5,50 +5,60 @@ tier: core
 conflicts-with: [implement-refactor]
 ---
 
-# Code Refinement & Simplicity 💎
+# Refine Code
 
-Expert system architecture and development with an unwavering commitment to code simplicity. Identify and eliminate unnecessary complexity, transforming convoluted solutions into elegant, maintainable code.
+## When to Use
 
-## When NOT to Use
-This skill *edits* code for small, in-place clarity and simplicity wins. Route elsewhere when:
-- The change follows a plan or moves modules/boundaries → `implement-refactor` (already in this skill's `conflicts-with`).
-- You want a diagnosis without touching code → `audit-code` (quality review) or `audit-refactor-opportunities` (smell/debt inventory).
-- The change alters behavior rather than preserving it → `implement-feature` / `implement-quick-fix`.
+Use for a concrete local clarity improvement in code the task authorizes editing. No change is a
+valid result when the code is already clear.
 
-## Core Principles
+- Boundary moves or structural plans: [implement-refactor](../implement-refactor/SKILL.md).
+- Read-only review: [audit-code](../audit-code/SKILL.md) or
+  [audit-refactor-opportunities](../audit-refactor-opportunities/SKILL.md).
+- Behavior change: [implement-feature](../implement-feature/SKILL.md) or
+  [implement-quick-fix](../implement-quick-fix/SKILL.md).
 
-1.  **Simplicity First**: Every line of code should have a clear purpose. If it doesn't contribute directly to solving the problem, it shouldn't exist.
-2.  **Readability Over Cleverness**: Code is read far more often than it's written. Optimize for human understanding, not for showing off technical prowess.
-3.  **Minimal Abstractions**: Only introduce abstractions when they are truly necessary to manage complexity. A "simple" duplicate is often better than a "complex" DRY abstraction.
+## Approach
 
-## Refinement Tactics
+### Identify the Clarity Problem
 
-### 1. Guard Clauses & Early Returns
-Eliminate deep nesting and `else` blocks by handling edge cases and errors early.
-- **Bad**: `if (doc) { if (doc.valid) { ... } else { return null; } } else { return null; }`
-- **Good**: `if (!doc || !doc.valid) return null; ...`
+Read the surrounding code and actual consumers. Name what a reader currently has to reconstruct:
+a hidden condition, unnecessary indirection, mutable temporary state, or mixed responsibilities.
+Size, repeated text, prop depth, and state-variable counts are signals to inspect, not findings.
 
-### 2. Variable Reduction (SSA - Single Static Assignment)
-Minimize mutable state. Prefer `const` and direct initialization. If a variable is only used once to pass to a function, consider inlining it.
+Choose a local change that reduces that burden. Keep documented compatibility and fragile
+exceptions; follow applicable [pattern-refactoring](../../../.agent/rules/pattern-refactoring.md).
 
-### 3. Boolean Predicates
-Extract complex logic into well-named boolean variables or helper functions to make the intent clear.
-- **Example**: `const isEligibleForBonus = user.yearsActive > 2 && user.performanceRating > 4;`
+### Apply a Suitable Tactic
 
-### 4. Function Splitting (Single Responsibility)
-If a function does more than one thing, split it. Aim for high cohesion and low coupling.
+- Guard clauses can expose the main path. Preserve short-circuit behavior, cleanup, and which
+  operations execute before returning.
+- Direct initialization or immutable locals can simplify state. Inline an expression only when
+  doing so preserves evaluation count, order, exceptions, and useful naming.
+- Named predicates can expose intent. Keep them near use when extraction would hide dependencies
+  or change when a side effect runs.
+- Split a function or local component at a meaningful responsibility boundary when the result
+  reads more clearly. Do not split solely because it performs several steps.
+- Remove an abstraction when its indirection exceeds its benefit. Similar code may correctly
+  remain separate when ownership or future changes differ.
 
-## Hotspot Identification
+For React code, consider identity, hooks, subscriptions, and render timing before replacing prop
+passing with composition or context. That is a design choice, not an automatic simplification.
 
-Look for these signals that code needs refinement:
-- **Over-engineering**: Generic solutions for specific problems.
-- **Redundant Patterns**: Repeating the same boilerplate when a utility could simplify.
-- **Prop Drilling**: Passing state through too many layers (consider Composition or Context).
-- **Multi-responsibility Hooks**: Hooks that manage 5+ independent states.
+### Review Preservation
 
-## Verification
+Inspect the semantic risks the edit actually touches: external contract, evaluation order,
+identity, mutation, exceptions, timing, side effects, and resource ownership. Shorter code alone
+does not establish improvement.
 
-Before finalizing a refinement:
-1.  Does it pass all existing tests?
-2.  Is the code *objectively* shorter or easier to read?
-3.  Did I preserve the exact original behavior?
+Apply [foundation-testing](../../../.agent/rules/foundation-testing.md), Lifecycle-Aware Verification Gate
+and Evidence identity and cite-or-run, using existing evidence where valid. Add focused
+characterization only for a meaningful uncovered risk. Explain evidence limits rather than
+claiming universal preservation from green tests.
+
+## Definition of Done
+
+The report can state the concrete readability benefit, preserved contract, actual applicable
+proof, and any remaining check. Stay within the owned surface; route structural or behavioral
+growth appropriately while preserving existing authority. No finding quota, new abstraction, or
+cleanup outside the requested code is required.

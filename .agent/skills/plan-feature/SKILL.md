@@ -1,100 +1,103 @@
 ---
 name: plan-feature
-description: Creates lightweight implementation plan for medium features (1-5 files). Use when requirements are clear and no UX exploration needed.
+description: Create a lightweight implementation plan when requirements are clear and the change has bounded dependencies. Accept a feature brief, approved ticket, or diagnosed repair.
 tier: core
 required-tools: [codebase-mcp, fallow]
 ---
 
 # Plan Feature
 
-Pattern-driven planning: Understand → Explore Options → Debate → Plan Atomically.
+Kit references below are relative to the configured kit checkout, located from the existing
+agentkit CLI/setup or a configured vendor hook. Read only references needed for the current
+phase. If the checkout or a reference is unavailable, use the stated fallback and report any
+required guidance as unresolved.
+
+## When to Use
+
+Use for a bounded change needing an implementation plan. Cross-cutting contracts or consequential
+migration design may need [plan-architecture](../plan-architecture/SKILL.md). Unclear product
+behavior may need [plan-prd](../plan-prd/SKILL.md); a clear brief does not.
+
+## Output Contract
+
+Reuse the supplied work item or plan, including an embedded plan. Preserve its path, outcomes,
+exclusions, decisions, and authority. For a new artifact, use
+[pattern-docs-artifacts](../../../.agent/rules/pattern-docs-artifacts.md), Work Items and Status-of-Record
+Contract. No additional PLAN file or filename migration is required.
 
 ## Approach
 
 ### Phase 0: Knowledge Base Recon
-- [ ] **KB routing (mechanical)**: run `agentkit check --kb <files-about-to-touch>` and read the
-      1–3 matching KB docs — `applies-to` globs decide relevance, never memory.
-From the project's KB index under `docs/knowledge-base/` (the map), read **only** the 1-3 specs/strategy docs that
-govern the affected area — not none, not all. Treat any existing spec as the contract to extend,
-not reinvent.
+
+Find the project's declared knowledge-base index and route by the provisional area when exact
+files are not yet known. Once likely paths are known, use the available mechanical KB router to
+match them to governing contracts; see `governance/docs-standard.md`,
+The KB routing contract.
+
+Read the relevant contracts without a count target. Distinguish a successful no-match result
+from unavailable routing or a missing index. In the latter cases, use bounded source and document
+search and name any consequential coverage gap. New files may be governed by their intended
+location even before they exist.
 
 ### Phase 1: Discovery
 
-#### Comprehension: Code Graph First
-Build understanding from the code graph before proposing or making changes (see
-`integrations/codebase-mcp.md`):
-1. **Confirm availability + freshness** — `list_projects`; if this repo is absent, `index_repository`
-   on its root; check `index_status` when freshness matters, and re-index if relevant files are
-   dirty/untracked.
-2. **Locate + disambiguate** — `search_graph` (symbols / feature language) or `search_code` (imports,
-   exact call syntax); pick the exact `qualified_name`; `trace_path` on that full name for
-   callers / callees / data flow.
-3. **Read exact source** — `get_code_snippet` on the chosen `qualified_name`; `get_architecture` for
-   module boundaries.
-4. **Reconcile Before Acting** — the current file + `git diff` outrank a stale graph. If a snippet
-   range is stale or a trace contradicts an exact `search_code`, re-index once, then trust the
-   working tree.
-5. **Fallback** — if the MCP server is unreachable, use Grep/Read for targeted discovery and note in
-   the handoff that graph comprehension was degraded. Never block on the graph.
-1. **Proof of Understanding**: One-sentence feature summary
-2. **Impact Analysis**: Related components, shared state, design system implications
+Reconcile the brief, prior decisions, and assumptions against current source. State the desired
+behavior and observable acceptance even when no PRD exists. Identify affected callers, state,
+public contracts, and design-system implications where applicable.
+
+For repair intake or resumed work, preserve the symptom, intended behavior, diagnosis confidence,
+reproduction identity/results, rejected approaches, surviving edits and their owners, and remaining
+acceptance. Check what has changed before reusing proof or repeating a completed step.
+
+Use `integrations/codebase-mcp.md` to trace relevant symbols and boundaries
+when helpful. Current source takes precedence over stale graph results. Bound refresh effort;
+if unavailable or still stale, use targeted search/read and state the limit.
 
 ### Phase 2: Approach Evaluation
-Generate **3-4 strategies** (not variations of one idea).
 
-**Socratic Debate**:
-- Proponent: Argues for the solution, highlighting benefits and pattern consistency.
-- Adversary: Critiques the solution, finding complexity, maintenance burden, and holes.
-- Synthesis: Resolves the debate with a stronger, modified solution and clear rationale.
+Compare viable approaches only where the choice is unsettled. Include extension of an existing
+pattern. Explain the strongest objection, maintenance cost, and reason for the selected approach.
+Record material assumptions with the signal that would change them. Do not manufacture options
+or sign-off questions.
 
-**Approach Comparison**:
-- **Approach A**: Pros — [...], Cons — [...], Effort — Low/Med/High
-- **Approach B**: Pros — [...], Cons — [...], Effort — Low/Med/High
+Before adding an API, helper, component, or dependency, search relevant implementations and name
+the reuse candidate or search scope. Use `integrations/fallow.md` when applicable
+for clone/reachability evidence; fall back to source search when unavailable. A scan does not
+prove an equivalent implementation absent. Dead-code candidates depend on analyzed entry points,
+dynamic consumers, and configuration; planning does not delete them.
 
-### Phase 3: File Changes
+### Phase 3: File Changes and Phases
 
-#### Reuse Before You Add (Duplicate / Dead-Code Check)
-Before introducing a new utility, hook, component, or dependency, prove it does not already exist
-(see `integrations/fallow.md`):
-1. **Duplication scan** — `npx --no-install fallow dupes --skip-local` (cross-directory clones);
-   raise signal with `--min-tokens <n>` or `--mode semantic` when noisy.
-2. **Don't delete on a hunch** — before removing an "unused" export/dep, confirm reachability with
-   `fallow dead-code --trace <file>:<export>` or `--trace-dependency <name>`.
-3. **Orient before editing** — `fallow inspect --file <path>` (or `--symbol <FILE:EXPORT>`) bundles
-   the evidence for a target.
-4. **Fallback** — if fallow is unavailable, search for existing implementations via the code graph
-   (`search_graph` / `search_code`) or Grep, and state in the plan that the duplicate check was manual.
+Name new, modified, removed, and renamed paths with their purpose. Respect contractual assignment
+boundaries. Break work into coherent, verifiable transformations and state execution dependencies.
 
-**File Changes**:
-- [NEW] `path/to/file.tsx` — Description of changes
-- [MODIFY] `path/to/existing.tsx` — Description of changes
+For each consequential acceptance outcome, connect the responsible boundary, implementation
+phase, and proof method/owner. Prose is sufficient for a small plan. For example, a CSV export
+must preserve displayed column order; a passing build alone does not cover that outcome.
 
-Break into atomic, testable steps.
+Include applicable failure behavior: authorization, ownership, retry/cancel semantics, partial
+success, compatibility, and persistence. Describe rollout detection and recovery where a failure
+could affect real users or data. Distinguish reverting code from restoring data.
 
-## Reflexion
-Before finalizing, identify 3 risks:
-1. If requirements change, how many files update?
-2. Can this be tested in isolation?
-3. Will next developer understand why?
+## Plan Review
 
-## Constraints
-- No code generation — plan only
-- No one-off patterns
-- Steps must be atomic and testable
+Lead with decisions costly to change, their alternatives, and consequences. Keep that reading
+order separate from execution order. Review whether the plan introduces unnecessary coupling,
+can be checked at its real seam, and leaves enough rationale for its next owner.
 
-## Output
-`docs/working/PLAN-<topic>.md` with approach comparison, file changes, phased steps.
+Use a Verification section to name actual project methods, required capabilities, proof lanes
+and owners, and what pending proof gates. [foundation-testing](../../../.agent/rules/foundation-testing.md),
+Lifecycle-Aware Verification Gate and Evidence identity and cite-or-run, owns the gate and reuse
+rules. Do not copy its command recipe or assume a dev server is required.
 
-**Order by change-likelihood, not build sequence.** Lead the plan with the decisions most likely to
-change — data models, API shapes, user-facing choices — each with its alternatives and the *cost of
-changing it later*; compress the mechanical work (wiring, refactors, migrations, tests) near the
-bottom. Planning exists to get feedback while changes are still cheap, so the reader hits the
-expensive-to-reverse choices first.
+## Definition of Done
 
-The plan document MUST end with:
-- **Decisions needing sign-off** — 2–4 specific yes/no or pick-one choices the reader must approve
-  before build. Known unknowns get a stated default assumption + the signal that would flip it.
-- **Verification** — the exact commands and ownership lanes that will prove the change works,
-  scaled to `foundation-testing.md`: focused local proof during implementation, one broad gate on
-  the final tree, and release validation only at a release boundary.
-- **Blast radius & rollback** — one line naming what this change can break and the revert path if it does.
+The plan identifies outcomes, exclusions, scope, execution dependencies, applicable acceptance
+proof, material assumptions, and blast radius/recovery limits. The next consumer receives the
+same artifact and existing grants. A pending required acceptance item keeps its owner and the
+transition it blocks. Required acceptance without passing evidence blocks completion and
+integration by default; an explicit release-only policy may defer that gate, never mark it green.
+
+Ask only for a consequential decision requiring new direction. A plan-only request stops at the
+plan; a concrete plan within an implementation grant may proceed without renewed approval.
+End durable reports with "What we deliberately did NOT do."

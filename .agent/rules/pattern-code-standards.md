@@ -6,362 +6,294 @@ domain: code-quality
 
 # DX Code Standards
 
-Standards for component declarations, file structure, comments, module organization, and AI-agent readability. These apply to all TypeScript and TSX files in the project.
+Make component APIs, module ownership and consequential constraints easy to find.
+Use these as defaults where the project has not settled a convention; preserve framework exports,
+existing public contracts and legitimate project overrides.
 
 ## 1. Component Declarations
 
 ### Standard: Named Function Export
 
-All non-`forwardRef` components use `export function`:
-
-```tsx
-interface TaskCardProps {
-  task: TaskCardModel;
-  onLaunch: (task: TaskCardModel) => void;
-}
-
-export function TaskCard({ task, onLaunch }: TaskCardProps) {
-  return (/* ... */);
-}
-```
+Prefer named functions/exports for a discoverable public component API when compatible with
+the project. Named arrows are also valid. Choose types from the actual model and supported
+React/TypeScript versions; do not invent imports or props to fill a template.
 
 ### forwardRef Exception
 
-Shared UI primitives (the project's shared-UI layer — see `project-invariants.md`) wrapping Radix use `const` + `forwardRef` + `displayName`:
-
-```tsx
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', ...props }, ref) => {
-    return <button ref={ref} className={cn(styles.button, className)} data-variant={variant} {...props} />;
-  }
-);
-Button.displayName = 'Button';
-export { Button };
-```
+A wrapper must preserve the underlying primitive's props, handlers and required ref access.
+For React 18 function wrappers, `forwardRef` is a common solution; React 19 supports ref as a prop.
+Follow library compatibility and the installed typing contract. A useful display name improves
+debugging for wrappers that would otherwise appear anonymous.
+See [React forwardRef guidance](https://react.dev/reference/react/forwardRef).
 
 ### Banned Patterns
 
-- `React.FC` — no longer recommended by React team, adds no value in modern TS
-- `export default` — causes rename-on-import inconsistency, breaks find-and-replace
-- Dual export (`export const X` + `export default X`)
-- Anonymous arrow exports
+Apply explicit project bans through their configured scope. This kit does not treat `React.FC`,
+default exports, named arrows or dual exports as inherently invalid TypeScript/React.
+Prefer a clear stable API; avoid redundant exports when they add ambiguity, but preserve public
+compatibility when consumers depend on them. Do not attribute a blanket `React.FC` prohibition
+to the React team.
 
 ### Framework Exception: Next.js App Router special files
 
-Next.js **requires** a default export from its App Router special files. These are the *only* sanctioned `export default` sites; do not "fix" them to named exports and do not let a `grep "export default"` invariant flag them.
+Follow each file convention, not a blanket rule for all framework files. Next.js page/layout and
+several UI boundary files require default component exports. App Router `route.ts` handlers
+instead export named HTTP methods such as `GET` and `POST`; see
+[Next.js route handlers](https://nextjs.org/docs/app/api-reference/file-conventions/route).
 
-- `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `global-error.tsx`, `not-found.tsx`, `template.tsx`, `default.tsx`, and route handlers' conventions.
-- Keep the body thin: when there is real logic, delegate to a named-export component (e.g. `loading.tsx` → `export default function WorkLoading() { return <RouteLoading .../>; }`). Mark the file with `// WHY: Next.js requires a default export for <file>.tsx.`
+Other frameworks, test tools, configuration files and `React.lazy` adapters may also expect default
+exports. Inspect the actual consumer before converting exports. Keep boundary files thin when
+delegation clarifies a real responsibility; do not require a comment explaining every ordinary
+framework convention.
 
 ## 2. Comment Philosophy — "Why Not What"
 
 ### When to Comment
 
-| Marker | Use For |
-|--------|---------|
-| Module header | Complex files where purpose is non-obvious from filename |
-| `// WHY:` | Non-obvious business logic, workarounds, intentional tradeoffs |
-| `// CONSTRAINT:` | Architectural invariants embedded in code |
-| `// CRITICAL:` | Data integrity or crash-risk paths |
-| JSDoc on hooks | All exported custom hooks — preconditions + return shape |
-| Inline comments | When surrounding code would otherwise be misread |
+Explain non-obvious intent, constraints, compatibility workarounds and failure boundaries.
+Use established `// WHY:`, `// CONSTRAINT:` or `// CRITICAL:` markers when they aid discovery.
+Document exported hooks/utilities where preconditions, side effects or result semantics are
+not clear from names and types.
 
 ### When NOT to Comment
 
-- Self-documenting prop interfaces (`label: string` does not need `/** The label */`)
-- Standard React patterns (`useEffect`, `useState`, `useMemo`)
-- Import sections
-- Anything TypeScript types already explain
+Omit restatements of simple props, imports and ordinary syntax. Do not add JSDoc merely because
+a function is exported, or delete an important explanation because the code uses a familiar Hook.
 
 ### Module Header Format
 
-For files where purpose is non-obvious from filename:
-
-```tsx
-/**
- * Sessions View Model
- *
- * Transforms raw coaching session DTOs into the section-based display model.
- * Handles time-based bucketing (next-up, today, upcoming) and status filtering.
- * All date comparisons use the caller's local timezone.
- */
-```
-
-Skip for self-documenting filenames like `Button.tsx` or `TaskCard.tsx`.
+A short header can name a module's transformation, ownership or time/identity assumptions.
+Keep it specific to the implementation. Self-explanatory modules do not need ceremonial headers.
 
 ## 3. File Internal Structure
 
 ### Component Files
 
-```
-1. File header (optional — only if purpose non-obvious)
-2. Imports
-   a. React / framework
-   b. Third-party packages
-   c. @/ aliased imports (app → shared → features → services → utils)
-   d. Relative imports (parent → sibling)
-   e. CSS modules (always last)
-3. Types / Interfaces (props, local types)
-4. Constants (file-scoped)
-5. Helper functions (pure, non-React)
-6. Component declaration
-7. Sub-components (compound pattern, as const)
-8. Named exports (at bottom, grouped)
-```
+A useful default is imports → local types/constants → pure helpers → primary component →
+module-scope subcomponents/exports. Follow project formatter/lint rules and readability.
+Preserve evaluation order and directive prologues such as `'use client'`; CSS and other side-effect
+import ordering can affect behavior. Do not duplicate exports merely to satisfy a bottom section.
 
 ### Hook Files
 
-Imports → types (options + return) → helper functions → hook → export
-
-Exported hooks should declare an explicit return interface when the returned object has multiple fields or is consumed across feature boundaries.
+Keep options/result types, pure helpers and the hook easy to navigate. An explicit public return
+type helps when it stabilizes a boundary; inferred types are valid when they remain clear.
 
 ### Utility Files
 
-Imports → types → constants → functions (low-level to high-level) → exports
+Group related constants, types and functions by responsibility and dependency. Avoid moving every
+helper into a separate file or hiding related code across artificial layers.
 
 ### Section Markers
 
-For files exceeding 150 lines, use region comments:
-
-```tsx
-// --- Types ---
-// --- Helpers ---
-// --- Component ---
-// --- Sub-components ---
-```
+Use section comments in a dense file when they improve navigation. Line count alone does not
+require markers or extraction. Preserve existing meaningful markers consumed by tooling.
 
 ## 4. Module Organization
 
 ### Export Convention
 
-Named exports only. No `export default`.
+Prefer named exports for discoverable APIs; preserve defaults where framework, tooling, package
+compatibility or project convention needs them. Choose a public module boundary deliberately.
 
 ### Barrel Files
 
-- REQUIRED: a barrel `index.ts` in each shared-UI primitive directory
-- REQUIRED: a barrel `index.ts` in each feature directory
-- OPTIONAL: a hooks-directory barrel when 3+ hooks exist
-- NEVER: a nested `components` subdirectory within a feature, `view-model` directories, test directories
-
-The project's exact shared-UI and feature roots live in `project-invariants.md`.
+Use an index/barrel when it defines an intentional public API or existing consumer contract.
+It is not required in every feature or primitive directory. Inspect cycles, server/client
+boundaries, side-effect imports and actual bundle cost before adding or removing one.
+Do not turn a hook/type count into a directory or barrel requirement.
 
 ### React Import
 
-Vite's automatic JSX transform does NOT require `import React from 'react'`. Only import React when using React namespace APIs directly:
-
-- `React.forwardRef` — required for shared UI primitives
-- `React.lazy` — required for lazy loading
-- `React.memo` — required for memoized components
-- `React.createElement` — rare, but needed outside JSX
-
-Files that only use JSX (`<div>`, `<Button>`, etc.) must NOT import React.
-This applies to test files too.
+Use the configured JSX transform. The automatic transform does not need a React value import for
+JSX alone; the classic transform may. Import runtime APIs as named bindings or through a namespace,
+and use type imports where appropriate. Do not remove an import needed by the actual compiler or
+an explicit `React.*` expression.
 
 ### Import Ordering
 
-1. React (always first **if present** — see above)
-2. Third-party packages (alphabetical)
-3. `@/` aliased imports (by layer)
-4. Relative imports (parent first, then sibling)
-5. CSS modules (always last)
+Follow the project's configured groups and aliases. Deterministic grouping aids scanning, but
+reordering side-effect imports or evaluation-sensitive cycles can change behavior. Preserve CSS
+cascade/initialization ordering and validate affected consumers after mechanical rewrites.
 
 ### Feature Module Template
 
-```
-src/features/{feature-name}/
-  index.ts               # barrel (always)
-  {FeatureName}Page.tsx
-  {FeatureName}Page.module.css
-  {FeatureName}Page.test.tsx
-  types.ts               # when 3+ interfaces
-  constants.ts           # when 2+ constants
-  view-model/            # when non-trivial data transforms
-  components/            # when 2+ sub-components
-  hooks/                 # when feature-specific hooks
-  utils/                 # pure business logic/transforms
-  schemas/               # when Zod schemas
-```
+Start with a small existing module that fits the responsibility. A feature might contain an entry
+component, a co-located test and its stylesheet under the established naming scheme. Add a helper,
+hook, schema or public index only when there is actual code and an ownership reason for it.
+
+Flat files are the default. Add a nested directory only when a prefixed flat file cannot serve
+the project's organization or required framework layout. This applies consistently to components,
+view models, tests and schemas; do not scaffold empty folders by a fixed template.
 
 ## 5. Architectural Patterns
 
 ### Standard: Page Conductor Pattern
 
-Major feature pages SHOULD follow the **Conductor** pattern to keep the view layer high-level and readable:
-- **Page Component**: Primary responsibility is layout and wiring (e.g., `DashboardPage.tsx`). It orchestrates a **ViewModel** and passes data to focused sub-components.
-- **ViewModel Hook**: Primary responsibility is state management and data orchestration (e.g., `useDashboardViewModel.ts`). It hides the complexity of TanStack Query, Jotai, and local state from the view.
-- **Pure Helpers**: Complex transformations or filtering logic MUST be extracted to a sibling `utils/` or `services/` layer.
+A page can coordinate data and focused views when that makes its responsibilities easier to
+understand. A view-model hook is useful for a real state/data orchestration boundary; it is not
+required for every page. Keep pure transformations close or shared according to actual consumers.
 
 ### Standard: Internal Sub-component Extraction
 
-When a component exceeds 300 lines due to dense JSX:
-1. Identify logical sub-sections (e.g., a complex Form Field).
-2. Extract into a named function component within the **same file** under the `// --- Sub-components ---` marker.
-3. Only move to a separate file if the sub-component is reused OR the parent file remains over 500 lines after internal extraction.
+Extract dense JSX at a meaningful behavior/layout boundary. Same-file module-scope subcomponents
+are often sufficient; separate files suit independent ownership or reuse. Do not define a new
+component type inside a render merely to shorten it: identity changes can reset state.
+No 300/500-line threshold proves the correct boundary.
 
 ### Standard: Service Layer for AI/API Logic
 
-Complex request building (e.g., structured prompts) and response parsing (e.g., JSON cleaning) MUST be extracted to a dedicated service layer (a sibling `services/` module) rather than living inside Query hooks or ViewModels.
+Separate complex request construction, validation and response parsing when it clarifies trust
+or transport boundaries. Reuse the existing service seam; preserve authentication, cancellation,
+errors and observability. Simple request logic need not acquire another layer.
 
 ### Standard: Transport Layer for Live/Dev Branching
 
-When query hooks support both live API and local preview/dev-mode data, the source-selection logic SHOULD live in a sibling transport module rather than inside every hook.
+Repeated source-selection branches can share an existing transport adapter. Preserve cache keys,
+response contracts and failure behavior across live/mock paths. A new directory is not required.
 
 ### Standard: Overlay Renderer Pattern
 
-When a page owns multiple dialogs, launchers, or modal branches:
-- keep page-level layout/conductor logic in the page
-- extract overlay state to a dedicated hook when it improves clarity
-- extract overlay rendering to a dedicated renderer component when the conditional JSX becomes dense
+Keep page layout readable. Extract overlay state/rendering when dense branches obscure it, while
+retaining focus, dismissal, modal containment and state ownership.
 
 ### Standard: Fail Config Invariants at Registration, Not Render
 
-A config invariant that would otherwise **degrade silently at render time** must throw at
-registration / module-load time in dev. When a registry entry, step config, or option map is
-malformed (a missing index, a duplicate key, an out-of-range value), asserting it where it is
-*registered* surfaces the bug at boot with a clear stack trace; deferring the same check to render
-turns it into a silent visual degradation nobody catches (observed: a `progressSteps` index-switch
-that silently dropped a modal step). Guard the throw behind the project's dev-build flag so
-production fails soft.
+Validate stable configuration early enough to prevent invalid work, preferably at its registration
+or input boundary. Choose failure behavior by consequence: development assertions aid diagnosis,
+but production authorization/data-integrity invariants must remain enforced. Optional presentation
+can use an explicit safe fallback with diagnostics; never turn an invalid privileged operation into
+success. Validate dynamic/untrusted inputs at runtime as well as static configuration at build time.
+Do not universally guard invariant enforcement behind a dev flag.
 
 ## 5. Type Patterns
 
 ### Props Interface
 
-- Declare immediately above the component, in the same file
-- Name: `{ComponentName}Props`
-- Use `interface` (not `type`) — better error messages, extendable
-- Export only when consumers need it
+Keep props near the component or at the actual shared API owner. Names such as
+`ComponentNameProps` are useful conventions. Interfaces and type aliases both describe object
+shapes; choose interfaces for intended extension/declaration merging and aliases for unions or
+other compositions. Neither is universally clearer. Export types consumers need.
+See [TypeScript types and interfaces](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html).
 
 ### When to Extract to types.ts
 
-- 3+ components in the same feature share a type
-- The type represents a domain model used across the feature boundary
-- A discriminated union defines feature states
+Extract when types define shared domain ownership or a stable external contract. A discriminated
+union can clarify valid states while staying local. Three interfaces or consumers are not a
+mandatory extraction threshold.
 
 ### Zod Schema Placement
 
-- Feature-level: a `schemas/` directory inside the feature
-- API response: a top-level `schemas/` module
-- Atom validation: co-located with the atom file
+Use the project's existing validation library and ownership boundary. Colocate schemas with
+the domain/input contract or reuse the established shared module. Do not add Zod or a schemas
+directory solely to follow this example.
 
 ### Type Imports
 
-Use `import type { }` for type-only imports.
+Use `import type` for imports needed only in type positions where supported by the compiler and
+project conventions. Preserve value imports needed at runtime and check module emission settings.
 
 ## 6. Constants & Configuration
 
 ### Naming
 
-- `UPPER_SNAKE_CASE` for primitive constants: `TOAST_DURATION_MS`, `MAX_RETRY_COUNT`
-- `camelCase` for object constants: `sessionsTabValues`, `surveyFieldConfig`
+Follow project casing. `UPPER_SNAKE_CASE` suits many fixed primitive settings; `camelCase` suits
+many configuration objects. Names should convey units, ownership and meaning.
 
 ### New Code: `as const` Objects
 
-```ts
-export const SessionTab = {
-  Current: 'current',
-  Completed: 'completed',
-} as const;
-
-export type SessionTabValue = (typeof SessionTab)[keyof typeof SessionTab];
-```
-
-Do not add new TS enums. Any existing enums are legacy — migrate incrementally.
+An `as const` object with a derived union is a useful alternative to an enum when literal values
+fit the API. It does not impose an automatic migration of existing enums. Preserve runtime value,
+serialization and public typing contracts; follow explicit project policy for new declarations.
 
 ### Scope
 
-- Feature-local (`constants.ts`) when used by a single feature
-- Centralized (a top-level `constants/` module) when used by 2+ features
+Keep constants local unless consumers share the same meaning and change ownership. Two uses do
+not automatically justify a global constants module; similar values may represent different roles.
 
 ## 7. Test Documentation
 
 ### File Naming
 
-- Standard: `{ComponentName}.test.tsx` — co-located with source
-- Adversarial: `{ComponentName}.adversarial.test.tsx` — edge cases, malformed data
+Follow actual test discovery and project naming. Co-located `.test.tsx` files are a useful option;
+a separate adversarial suffix is optional and must be collected by the runner.
 
 ### describe/it Naming
 
-- `describe`: component or function name (no prefix)
-- `it`: verb-first, describes user-visible behavior
-  - Good: `it('groups sessions into next, today, and upcoming sections')`
-  - Bad: `it('should render correctly')`
+Name the subject and observable behavior, such as “groups sessions by the caller's local date.”
+Avoid “renders correctly” when it hides the assertion. Keep names truthful when scope changes.
 
 ### Test Comments
 
-- Mock setup: one-line comment explaining what is replaced and why
-- Adversarial fixtures: JSDoc block at top explaining fixture purpose
+Explain non-obvious fixture assumptions and what mocks omit. A comment is valuable when it prevents
+a false inference about production coverage, not because every mock needs a prescribed format.
 
 ### Refactor Test Expectations
 
-- Prefer role, label, heading, and behavior assertions over placeholder strings that are likely to drift.
-- If a modal or overlay intentionally makes the background inert, tests must reflect that interaction contract.
-- When a refactor changes the implementation shape but not the behavior, update stale tests to assert the real user-visible contract instead of preserving obsolete internal text.
+Prefer behavior, role, name and state assertions when those express the contract. Preserve
+deliberate inert/modal behavior. Change an implementation-coupled assertion only after checking
+the intended invariant; explain material oracle/fixture changes. Do not erase behavioral failures
+by relabeling old expectations obsolete. Follow `foundation-testing.md`.
 
 ## 8. AI-Agent Readability
 
-- One component per file (filename → component 1:1 mapping)
-- Named exports (agents can grep for exact symbol names)
-- `interface` over `type` for object shapes (agents can follow `extends` chains)
-- Co-located tests (agents find `Foo.test.tsx` adjacent to `Foo.tsx`)
-- Structured markers (`// WHY:`, `// CONSTRAINT:`, `// CRITICAL:`) are programmatically searchable
-- JSDoc on module boundaries (exported hooks, complex utilities)
+Stable names, nearby types/tests, clear public exports and explicit constraints help readers
+locate behavior. One component per file is a possible project convention, not a React rule.
+Same-file related helpers/components can be clearer. Optimize for understandable ownership and
+correct navigation rather than file/type counts or assumed agent preferences.
 
 ## 9. Animation State Gates
 
-When a flag controls whether an entry animation has played (to avoid re-triggering on subsequent renders), use `useState`, **not** `useRef`.
+Use state for a value that must affect rendered output. Use refs for imperative controller state
+that is not read to determine JSX. React discourages reading/writing refs during render except
+documented predictable initialization; see [useRef](https://react.dev/reference/react/useRef).
 
-**Why:** The `react-hooks/refs` rule bans reading `ref.current` during render. State is safe to read in JSX.
-
-**Pattern:**
-```tsx
-const [entryPlayed, setEntryPlayed] = useState(false);
-
-// In JSX:
-initial={entryPlayed ? undefined : { opacity: 0, scale: 0.6 }}
-transition={{ delay: entryPlayed ? 0 : ring.entryDelay }}
-onAnimationComplete={() => { if (!entryPlayed) setEntryPlayed(true); }}
-```
-
-The `setEntryPlayed(true)` re-render is harmless — Framer Motion only transitions when `animate` values change, so no animation replays.
-
----
+When an entry-played flag changes animation props, inspect the installed animation library's
+mount, key, variant and effect behavior. Setting state may rerender consumers or reinitialize an
+animation; it is not universally harmless. Define whether “played” survives a remount, navigation
+or preference change, then verify completion, skip, interruption and teardown. Preserve required
+readiness without reviving unmounted controllers; use `pattern-motion.md` where GSAP applies.
 
 ## Verification
 
 ### Invariants (Automated)
 
-- [ ] **No React.FC**: `grep -rn "React.FC" <source-roots> --include="*.tsx"` (Use named function exports)
-- [ ] **No export default**: `grep -rn "export default" <source-roots> --include="*.tsx"` (Use named exports)
-- [ ] **No unnecessary React import**: Files using only JSX must not have `import React from 'react'`
-- [ ] **No ref reads in render**: `grep -rn "\.current" <source-roots> --include="*.tsx"` — verify none are read directly in JSX return
-- [ ] **UI barrels**: Every shared-UI primitive directory contains an `index.ts`
-- [ ] **Feature barrels**: Every feature directory contains an `index.ts`
-
-(`<source-roots>` = the project's `sourceRoots` from `.agentkit.json`; see `project-invariants.md`.)
+Use the actual compiler, configured AST/lint rules and test discovery for declaration, import,
+Hook/ref and API constraints. Search can locate candidates; `.current`, `export default` or
+`React.FC` occurrence alone is not a violation. Scope any project-specific ban to applicable
+files and documented exceptions rather than a global grep.
 
 ### Logic (Manual/Reasoning)
 
-- [ ] Are `// WHY:` comments present for non-obvious business logic?
-- [ ] Are documented fragile exceptions paired with `// CONSTRAINT:` markers?
-- [ ] Do exported hooks have a JSDoc one-liner?
-- [ ] Do extracted hooks expose explicit return interfaces when the return object is non-trivial?
-- [ ] Does the file follow the canonical internal ordering?
-- [ ] Is the exported API understandable without reading the full implementation?
+- Check non-obvious constraints and the public API against actual consumers.
+- Check dependency direction, import effects, module identity and required framework exports.
+- Verify that extraction improves responsibility boundaries while preserving semantics.
+- Check production failure behavior, animation terminal states and relevant evidence gaps.
 
 ## Automated Checks
-Harvested by `agentkit verify` and run against the project's `sourceRoots`.
+
+Harvested by `agentkit verify` against configured `sourceRoots`. This low-severity candidate
+highlights a styling decision; it does not ban inline styles or mandate CSS Modules. Confirm the
+project's policy and retain valid runtime geometry, animation and CSS-variable bridge cases.
+Project exceptions belong in the owning check, not a global source exclusion.
 
 ```agentkit-checks
 [
-  {"id":"inline-style-object","pattern":"style=\\{\\{","globs":["*.tsx"],"severity":"medium","message":"Inline style object — prefer CSS Modules (exceptions: motion, measured layout, gesture/CSS-var bridges)"}
+  {
+    "id": "inline-style-object",
+    "pattern": "style\\s*=\\s*\\{\\s*\\{",
+    "globs": [
+      "*.tsx"
+    ],
+    "severity": "low",
+    "message": "Inline style review candidate — follow project styling; retain runtime, measured and CSS-variable bridges"
+  }
 ]
 ```
 
----
-
 ## See Also
 
-- `tech-react.md` — For hooks, composition, and Jotai patterns.
-- `tech-typescript.md` — For type safety, centralized types, and barrel exports.
-- `foundation-testing.md` — For verification commands and E2E test quality.
+- `tech-react.md` — Hooks, composition, state and build contracts.
+- `tech-typescript.md` — applicable TypeScript policy; framework/public contracts still govern.
+- `pattern-refactoring.md` — semantic preservation and ownership.
+- `foundation-testing.md` — actual evidence, test discovery and gate scope.

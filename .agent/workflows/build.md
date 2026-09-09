@@ -1,37 +1,24 @@
 ---
-description: Implement a feature from an approved plan, with per-phase verification and a hostile-QA gate.
+description: Implement an accepted contract with risk-appropriate proof and truthful remaining acceptance.
 ---
 
 # Build Workflow
 
-Implement a feature from an approved plan: flight-check -> phased build -> hostile QA -> user gate
--> wrap-up.
+Carry the accepted plan or ticket, its revision, decisions, exclusions, remaining acceptance and
+existing authority through `implement-flight-check` into `implement-feature`. PLAN, ARCH, tickets
+and linked specifications are valid contracts; a filename prefix is not an acceptance gate.
+On resume, reconcile the current request, actual tree and prior evidence before continuing.
 
-## Goal
-Feature fully implemented, verified, and documented in `docs/working/` (prefixed with `LOG-`).
+Read and follow both skills without replaying already satisfied readiness work. The implementation
+skill owns the build loop. `foundation-testing.md` owns proof lanes, receipt reuse, red-to-green
+repair evidence and the final gate; actual project commands and relevant risks determine the
+checks. A CLI does not need a browser or development server merely because this router was invoked.
 
-## Inputs required (ask if missing)
-- Approved plan path in `docs/working/` (prefixed with `TICKET-` or `ARCH-`).
-- Running development server (project's `dev` command).
+Preserve accepted behavior and report material discoveries. Resolve implementation details within
+scope; ask only when a consequential decision or expanded authority is genuinely missing.
+Record completed and pending acceptance on the same work item. Required blocked proof remains a
+blocker or an explicitly accepted, owned remainder, never an implicit pass.
 
-## Safety + scope
-- Do NOT deviate from the approved plan without user consent.
-- Only touch files named in the implementation plan.
-
-## Skill routing (explicit)
-- `implement-flight-check` — pre-implementation env/plan verification.
-- `implement-feature` — the actual build.
-
-## Procedure
-1. **Pre-Flight**: Run `implement-flight-check` to confirm env + plan are ready.
-2. **Phase-by-phase execution**: Run `implement-feature`; implement each phase, then run the
-   project's verification commands (lint + build/typecheck) after every phase.
-3. **Code standards check**: Verify the diff conforms to `.agent/rules/pattern-code-standards.md`
-   (export style, file structure, import ordering, `// WHY:` / `// CONSTRAINT:` comments).
-4. **Hostile QA**: Perform an adversarial self-review of your own code before handing off.
-5. **Lifecycle Gate**: Apply `foundation-testing.md` and `foundation-browser-usage.md`; stop only
-   when a declared runtime or human lane requires user/reviewer action.
-6. **Wrap-Up**: Call `/wrap-up` to finalize documentation and cleanup.
-
-## Notes
-- For small tweaks, use `/quick-fix`. To debug a failure, use `/debug`.
+Return the implementation, exact evidence and residual risks. Use `implement-session-wrap-up`
+for applicable local closeout, passing the current receipt so the gate is not repeated needlessly.
+Do not infer permission to push, deploy, land unrelated work or close the app task.

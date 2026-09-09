@@ -1,63 +1,140 @@
 ---
 trigger: model-decision
-description: Consult before adding fonts, images, hero/intro animations, route-level code, or bundle-affecting imports, and before acting on Lighthouse findings — font/image optimization, lazy loading, layout-thrash avoidance, mobile/desktop split, prefetching.
+description: Consult before changing fonts, images, animations, route loading or bundle-affecting imports, and when investigating performance findings — measured delivery, rendering and responsiveness tradeoffs.
 tier: kind:app
 domain: performance
 ---
 
 # Performance Foundations
 
-> **Related Knowledge Base:** the project's performance spec (Lighthouse metrics, mobile platform
-> split, lazy loading) — path in `project-invariants.md`.
+Choose techniques from the measured bottleneck, supported environment and project budgets.
+Preserve behavior, accessibility and recovery; technique adoption alone is not evidence of speed.
+Use `foundation-testing.md` for comparable evidence and `audit-performance`/`performance-fix`
+for the requested analysis or repair.
 
-Standards for maintaining high performance and low latency.
+Read applicable project performance guidance, source/build configuration and runtime versions.
+A design expectation or another project's measurement is a hypothesis for this application.
 
 ## 1. Font Optimization
-*   **Variable Fonts:** NEVER import the full variable font range (e.g., `wght 100..900`).
-*   **Axis Restriction:** Always restrict variable axes to the exact values needed (e.g., `opsz,wght@24,400`).
-*   **Self-Hosting:** All third-party web fonts MUST be self-hosted and preloaded through the project's font pipeline (e.g., in a Next.js app, `next/font`; module path in `project-invariants.md`). Never inject a font provider's CSS at runtime via `<link rel="stylesheet">`. Runtime injection adds a serialized critical-path chain (HTML → boot script → provider CSS host → font-file host) that costs 250–340 ms per font on mobile. Self-hosting collapses that chain to one same-origin request and enables auto-preload.
-*   **Fallback Chain Preservation:** When migrating an existing font into a self-hosting pipeline, keep the manual CSS fallback chain (e.g., `"Iowan Old Style", Georgia, serif`) instead of letting the tool substitute a metric-adjusted system fallback (e.g., in Next.js, `adjustFontFallback: false`). This preserves the existing FOUT silhouette.
-*   **Display:** Check `swap` or `block` strategies to prevent layout shifts (CLS).
+
+- Inspect requested families, glyphs, weights, axes and actual transfer size. Compare variable
+  fonts with the static faces needed by the design. Subset unused ranges when the delivery
+  pipeline supports it; changing a CSS weight descriptor alone may not shrink the font file.
+  Keep required languages and variable typography behavior.
+- Prefer the existing font pipeline. Compare self-hosting and provider delivery using licensing,
+  privacy, caching, connection setup and request discovery. Avoid late runtime stylesheet
+  injection on the critical path when early discovery works. Do not require a particular framework
+  loader or promise a fixed millisecond saving.
+- Preload only fonts likely needed for initial content, using the correct resource/CORS settings.
+  Check that the rendered face reuses the preload; unused preloads can compete with critical work.
+- Choose `font-display` for readable fallback and acceptable font swapping. Neither `swap` nor
+  `block` guarantees zero CLS. Compare fallback metrics, line breaks and layout after loading;
+  preserve a contractual fallback silhouette or use metric adjustment when it improves the result.
+
+See [font loading and rendering](https://web.dev/articles/optimize-webfont-loading).
 
 ## 2. Image Optimization
-*   **CDN Parameters:** Use URL parameters (e.g., Unsplash `w`, `q`, `auto=format`) to request optimized assets.
-*   **Responsive Delivery:** ALWAYS implement `srcset` and `sizes` for grid/listing images to deliver appropriate resolutions for device DPI.
-*   **Fetch Priority:** Use `fetchPriority="high"` (or the lowercase `fetchpriority` attribute where the framework requires it) for LCP images.
+
+- Deliver appropriate dimensions, quality and format through the installed image pipeline/CDN.
+  Use supported parameters, not assumed provider-specific query strings.
+- Use responsive candidates (`srcset`/`sizes` or framework equivalent) when display width/DPI
+  varies. Check selected resources at representative sizes; a small fixed icon need not acquire
+  a redundant responsive pipeline. Reserve dimensions/aspect ratio to limit shifts.
+- Identify likely LCP elements by page/state. Discover their resources early, avoid lazy-loading
+  the LCP image, and consider `fetchpriority="high"` or framework equivalent where it advances the
+  critical request. Avoid indiscriminate preload/priority on below-fold assets.
+
+See [LCP resource discovery and priority](https://web.dev/articles/optimize-lcp).
 
 ## 3. Bundle Size
-*   **Server-Rendered by Default:** In frameworks with a server/client component split, page-level surfaces SHOULD render server-side unless they own client state at the top level. Wrap any required interactive concern (animation orchestration, gesture handling, motion-context hooks) in a thin client island that takes `children: ReactNode` and attaches behavior via refs — the page tree stays server-rendered; only the orchestrator is a client component. WHY: this pattern dramatically reduces mobile hydration cost. (The project's canonical island example is named in `project-invariants.md`.)
-*   **Lazy Loading:** Route-level components MUST be lazy-loaded (e.g., `React.lazy` or the router's dynamic `import()` mechanism).
-*   **Below-Fold Heavy Components:** Deferred-load client components that live below the fold and aren't part of the LCP element, using the framework's dynamic-import mechanism (e.g., `next/dynamic` in Next.js). Keep server rendering ON for the deferred chunk so the HTML still SSRs — preserves SEO and prevents CLS. Precedent components for this pattern are listed in `project-invariants.md`.
-*   **Per-Page Image Preload:** Components shared across routes where the same element is above-fold on one route and below-fold on another MUST gate image `priority`/preload on a per-call prop. Default the prop to `false` (the safer choice) and have routes opt in.
-*   **Import Cost:** Avoid importing entire libraries for single utility functions.
-*   **Workspace `sideEffects`:** In a monorepo, every workspace package MUST declare a `sideEffects` field in its `package.json` so bundlers can tree-shake unused exports. Illustrative shapes:
-    - A UI or theme package whose only side effects are stylesheet imports: `["**/*.css"]`.
-    - A motion package with a plugin-registration file: `["**/*.css", "**/<plugin-registration-file>"]`.
-    - A pure-data package with no CSS: `false`.
-    When adding a new package, set `sideEffects` from the start. When adding top-level side-effect code (e.g., a plugin registration), add the file path to the package's `sideEffects` array.
+
+- Inspect emitted chunks, transfer, parsing/evaluation and hydration costs. Use documented package
+  exports and verify tree shaking; a barrel import is not inherently a defect. Avoid unsupported
+  internal `dist/` imports as an optimization shortcut.
+- In frameworks with server/client boundaries, keep work server-side when it requires no client
+  behavior and the boundary preserves the contract. Thin client islands can reduce shipped JS;
+  respect serialization, context and state ownership. Do not mandate one ref-driven wrapper shape.
+- Use the router/framework's existing splitting before adding `React.lazy` or dynamic imports.
+  Defer expensive optional features when it improves initial loading. A lazy component mounted
+  immediately loads immediately; splitting critical content can introduce a waterfall.
+- Preserve required server HTML and stable fallback dimensions where the framework supports them.
+  Code splitting, server rendering and visibility-triggered loading are distinct behaviors; inspect
+  actual chunk requests. Include loading, disabled, empty, error/retry and stale-result handling.
+  Suspense loading fallback alone is not chunk-error recovery.
+- Shared image components need a per-use priority/loading choice when their placement differs by
+  route. Use conservative defaults and opt into critical loading based on the actual page.
+- Declare `sideEffects` only from a package's real module effects and the bundler's semantics.
+  `false` asserts unused modules can be dropped, including their initialization. Retain stylesheet,
+  polyfill and registration modules in accurate patterns when necessary. Do not mark every package
+  side-effect-free or assume `["**/*.css"]` covers non-CSS effects. Verify a production consumer
+  still loads required styles and initialization after tree shaking.
+
+[Webpack's tree-shaking guide](https://webpack.js.org/guides/tree-shaking/) explains `sideEffects`;
+other bundlers and package formats need their own supported contract.
 
 ## 4. Route Prefetching
-*   **Utility:** a route-prefetch utility module maps route paths to `import()` functions with a `Set` tracking already-prefetched routes.
-*   **Trigger:** Wire it to primary navigation links via `onMouseEnter` + `onFocus` — chunks download during hover dwell time before navigation.
-*   **Combination:** Pair with a transition mechanism that keeps the current page visible during the lazy load (e.g., React's `startTransition`, or the router's equivalent opt-in) and the project's page-transition component.
-*   **Result:** After first hover, subsequent navigation to that route is instant — no skeleton flash.
+
+- Prefer router-native prefetch and caching. Add intent prefetch on pointer hover or keyboard
+  focus when likely navigation justifies bandwidth and memory cost. Consider cache/auth scope,
+  constrained connections and discarded intent; prefetch must not trigger business mutations.
+- If using a custom import map, share it with the actual loader, track in-flight/success states,
+  observe rejections and define retry behavior. A Set of attempted routes must not turn a failed
+  import into permanent apparent success. Prevent stale data from replacing newer navigation.
+- Test cold/warm navigation and failed loads. A prefetched chunk does not guarantee instant
+  navigation: data, evaluation, server work or rendering may remain.
+- Transitions may preserve useful current content during loading. React `startTransition` changes
+  update priority, not the execution cost of synchronous code in its callback. Move or break up
+  measured CPU work through an appropriate strategy; see `react-performance` and its async reference.
 
 ## 5. Avoiding Layout Thrashing (Reflows)
-*   **Properties to Avoid Animating:** NEVER animate properties that trigger a browser layout/reflow if they can be avoided. This includes `fontWeight`, `width`, `height`, `margin`, `padding`, and `stroke-width` in complex SVGs.
-*   **The 16ms Rule:** Any operation triggering a reflow longer than 16ms will cause frame drops. For premium cinematic feels, aim for 0ms reflow by using `transform` (GPU accelerated) and `opacity`.
-*   **Weight Toggling:** When animating text emphasis, use a static CSS toggle or `style` flip for `fontWeight` rather than an animation-library tween, which would trigger layout measurements on every frame.
+
+- Use traces to distinguish scripting, style, layout, paint and compositing. Batch reads before
+  writes where possible; avoid repeated forced layout from interleaved measurement and mutation.
+- Prefer transform/opacity when they express the desired effect with less layout/paint work.
+  Width, height, spacing, font changes and some SVG operations can remain necessary; measure
+  affected layout and visual quality instead of banning the properties.
+- CSS variables compose values; animating a variable consumed by width still changes layout.
+  Transform/opacity are often compositor-friendly, not guaranteed GPU-only or free. Layer memory,
+  rasterization, effects and the rest of the frame still matter.
+- Frame budgets depend on refresh rate and all frame work; 16ms is not a universal pass/fail
+  boundary. A static font-weight change can also relayout text. Choose a toggle versus tween
+  from interaction intent and measured cost, preserving readable text.
+
+See [browser animation performance](https://web.dev/articles/animations-guide).
 
 ## 6. Mobile / Desktop Platform Split
-*   **Principle:** Mobile ships a calmer, statically-rendered experience. Desktop runs the full cinematic intro. Adding a new cinematic animation to any hero surface MUST consider whether it runs on mobile. (The project's exact breakpoint and per-surface split are recorded in `project-invariants.md`.)
-*   **Mobile Short-Circuit:** Hero and header intro sequences early-return on mobile before any JS-driven hide runs, so the server-rendered content stays visible from first paint. Any completion flags the intro would have set (e.g., a "header ready" state) must fire immediately on the mobile path.
-*   **Reveal-Class Safety:** Any element hidden by a JS-driven reveal class on a mobile-visible surface must EITHER have its visibility cleared by a runtime animation call, OR rely on a mobile media-query override that resets it to visible. Do not add new uses of the reveal class to mobile-visible DOM without confirming one of these paths covers it. (The project's reveal-class name and override location are in `project-invariants.md`.)
-*   **WHY:** JS-gated hero visibility is a dominant mobile LCP contributor (observed gating LCP at ~6 s). Keeping server-rendered content visible from first paint typically halves LCP without changing the desktop experience.
+
+- Adapt effects to actual input, viewport, device capacity, preferences and measured cost. A
+  calmer mobile presentation can be a valid project design; device class alone does not mandate
+  a cinematic desktop/static mobile split. Keep required content and controls available.
+- Leave essential server-rendered content visible until a reveal can start, or provide a bounded
+  fallback for delayed/failed startup. Do not make meaningful content depend indefinitely on JS,
+  a font request or a header-ready gate.
+- Skip/reduced-motion paths must reach the intended visible state and settle required readiness
+  signals. Distinguish completion from teardown; stale/unmounted controllers must not signal
+  success or restart loops. Interrupt only owned properties.
+- Check no-JS, gate failure, changed preference, resize and navigation interruption where relevant.
+  A CSS mobile override helps only if it actually covers every hidden target at that breakpoint.
+  See `pattern-motion.md` and the complete lifecycle example in `gsap-css-layout`.
 
 ## 7. What NOT to Optimize
-*   **Hover Transitions on Mobile:** Lighthouse may flag `transition: color`, `transition: background-color`, `transition: border-color` on hover states as "non-composited animations." These don't fire on mobile (no hover). Switching them to composited (transform/opacity) equivalents adds complexity without practical mobile gain. Treat the heuristic as advisory, not a fix list.
-*   **Aggressive `priority` on Below-Fold Images:** On any given page, only the LCP candidate should carry `priority`. Below-fold images compete for preload bandwidth with the LCP element. If a component is shared across routes where the same element is above-fold on one route and below-fold on another, gate `priority` on a per-page prop rather than always passing it (see Section 3).
+
+- Treat audit heuristics as candidates. Corroborate non-composited hover/state transitions in the
+  real interaction before restyling them. Touch devices may also have a mouse/keyboard or trigger
+  focus/active changes; do not assume hover-related styles are universally irrelevant on mobile.
+- Do not move costs off the measured screen while degrading other consumers, cache states,
+  accessibility or failure recovery. Do not add memoization, prefetch, preloads or virtualization
+  when their complexity/resource costs exceed the evidenced gain.
+- Preserve no-change outcomes when performance already meets the actual requirement.
 
 ## 8. Verification
-*   **Payload Check:** Verify font and image payload size in Network tab.
-*   **Prefetch:** Hover navigation links in DevTools Network tab — verify chunk requests fire on hover, not on click.
-*   **Lighthouse Variance:** Mobile Lighthouse score varies up to ±9 points across runs (TBT and SI are especially noisy). Treat any single-run regression as suspect; require an average across multiple runs (or a clear deploy delta in FCP/LCP) before drawing conclusions.
+
+- Compare the same workload, build mode/version, device/throttling and cache state before/after.
+  Record exact candidate identity, method and affected metric; repeat enough to resolve observed
+  variance rather than importing a universal score range or fixed run count.
+- Inspect network requests, selected font/image payloads, emitted chunks and actual initialization.
+  Verify both successful loading and failure/retry/disabled/stale-result paths.
+- Separate field LCP/INP/CLS from supporting lab metrics such as TBT. A Lighthouse score alone
+  does not establish a causal improvement, field conformance or interaction responsiveness.
+- Use browser/React profiling for applicable rendering claims. Record unmeasured source candidates
+  and the missing method/owner when runtime evidence is unavailable.

@@ -1,37 +1,21 @@
 ---
-description: Scale-evaluate a request, then produce an approved implementation plan (feature or architecture).
+description: Produce a right-sized implementation plan while preserving the accepted work contract.
 ---
 
 # Plan Workflow
 
-Turn a feature request into an approved, phased implementation plan — after bouncing anything too
-small to `/quick-fix`.
+Resolve the desired outcome, existing artifact, accepted decisions, exclusions and authority.
+Choose depth by uncertainty, coupling, consequences and reversibility, not line or file counts.
 
-## Goal
-An approved plan in `docs/working/` (e.g. `TICKET-{name}.md`) with phased steps and a verification
-plan.
+- Use `plan-feature` for a well-understood change with bounded dependencies.
+- Use `plan-architecture` for consequential technical boundaries, data models or cross-system design.
+- Use `plan-prd` only when the user problem or interaction/state model still needs definition.
+- Use the relevant `explore-*` skill for an unresolved question before committing to an option.
 
-## Inputs required (ask if missing)
-- Feature request or approved PRD.
-- Affected files/components (identify during recon).
+A small task may need only a brief plan. Do not reject a planning request because it could fit
+`implement-quick-fix`. Reuse the caller's PLAN, ARCH, PRD, ticket or linked contract, including its
+identity and revision. Record assumptions as assumptions and acceptance as observable outcomes.
 
-## Safety + scope
-- **Scale Evaluator**: If the task is clearly ≤30 lines / ≤5 files, **STOP** and suggest `/quick-fix`.
-- Do NOT start implementing before plan approval.
-- Only touch: `docs/working/` (prefixed with `TICKET-`).
-
-## Skill routing (explicit)
-- `plan-feature` — default, for medium-scope features (1–5 files).
-- `plan-architecture` — if the feature needs new data models, complex state, or cross-cutting change.
-  For large epics needing full UX specification, start with `/prd` instead.
-
-## Procedure
-1. **Reconnaissance**: Read the selected skill's `SKILL.md`; locate affected files via search.
-2. **Design-token gate** (if the project ships a design system): map any primitive token to its
-   semantic equivalent per `.agent/rules/foundation-design-tokens.md` before locking the plan.
-3. **Options**: Evaluate 2–3 approaches with brief trade-offs.
-4. **Draft**: Write the plan to `docs/working/TICKET-{name}.md` with phases + a verification plan.
-5. **Review**: Notify the user and request approval.
-
-## Notes
-- After approval, proceed to `/build`.
+Return the plan and consequential unresolved decisions. A planning-only request stops at the plan.
+If implementation was already authorized and no decision expands that grant, continue through the
+appropriate implementation route without demanding redundant approval or an exact sign-off phrase.

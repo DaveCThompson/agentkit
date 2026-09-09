@@ -6,75 +6,75 @@ tier: tech:supabase
 
 # Verify RLS Policies
 
-Audit Row Level Security policies for completeness and correctness.
-
-**Persona: Database Security Auditor**
-> "Every table, every operation, every role — explicitly accounted for."
+Compare effective database access with intended allow and deny behavior. Policy presence is only
+one input. This is a read-only audit; report proposed corrections without granting access.
 
 ## When to Use
-- After creating or modifying RLS policies
-- After adding new tables
-- Before production deployments
-- When investigating silent data loss or access issues
+
+Use after schema, policy, grant or function changes, before a scoped database release check, or
+when investigating filtered results and denied writes. `audit-auth-db` owns broader identity and
+metadata propagation.
 
 ## Approach
 
-### Step 1: Inventory Tables with RLS
-Search all migrations for `ENABLE ROW LEVEL SECURITY`:
-```bash
-rg "ENABLE ROW LEVEL SECURITY" supabase/migrations/
-```
-If `rg` is unavailable, use `grep -r` for the same search.
+### Step 1: Inventory Exposed Data and Final State
 
-### Step 2: Build Policy Matrix
-For each table, search all migrations for `CREATE POLICY ... ON {table}`:
+Discover exposed schemas, tables, views and callable functions from configuration, migrations and
+actual callers. Start with all relevant tables, including those without RLS.
+Reconcile ordered CREATE/ALTER/DROP and grant/revoke changes; historical CREATE POLICY matches
+do not establish final policy state.
 
-| Table | SELECT | INSERT | UPDATE | DELETE | Notes |
-|-------|--------|--------|--------|--------|-------|
+When a permitted database connection is available, inspect the target's catalogs and applied
+migration state. Otherwise report the result as migration-derived, with live drift unverified.
+Record table ownership, RLS enablement and FORCE state, roles/membership, table/schema grants,
+policy definitions and privileged function paths.
 
-Fill each cell with:
-- The policy condition (e.g., `auth.uid() = id`)
-- `USING (false)` if explicitly blocked
-- **MISSING** if no policy exists for that operation
-- `via RPC` if the operation is handled by SECURITY DEFINER functions
+### Step 2: Build an Effective-Access Matrix
 
-### Step 3: Identify Gaps
-Flag as findings:
-- **CRITICAL**: Missing SELECT policy (users can't read their own data)
-- **HIGH**: Missing UPDATE/DELETE policy on tables with admin RPCs (operations silently fail)
-- **MEDIUM**: Missing DELETE policy (blocks future account deletion)
-- **LOW**: Missing documentation for intentionally restrictive policies
+Use one row per meaningful caller/table/operation case:
 
-### Step 4: Verify Admin Access Patterns
-For each table that admins need to access:
-1. Is there an admin-specific policy? (e.g., `profiles.is_admin`)
-2. Or is access exclusively through SECURITY DEFINER RPCs?
-3. Document which pattern is used and why
+| Caller and path | Table/operation | Intended result | Effective grants and policy/function | Evidence/result |
+| --- | --- | --- | --- | --- |
+| <identity, tenant, direct or RPC> | <target and command> | <allow or deny, rows/fields> | <enforcement chain> | <state and proof or gap> |
 
-### Step 5: Cross-Reference with Frontend
-Search frontend code for direct Supabase table operations:
-```bash
-rg "supabase\.from\(" src/
-```
-If `rg` is unavailable, use `grep -r` for the same search.
-For each direct table operation:
-1. What operation? (select, insert, update, delete)
-2. What table?
-3. Does a matching RLS policy allow this operation?
-4. If not → this operation SILENTLY FAILS
+Cover relevant owner, another user, another tenant, anonymous and privileged callers.
+Account for command/role-specific and ALL policies, USING versus WITH CHECK, and permissive versus
+restrictive composition. RLS enabled with no applicable policy defaults to deny; disabled RLS
+does not. Grants and RLS are separate requirements. Superusers and BYPASSRLS roles bypass RLS;
+owners normally do unless FORCE applies. Read the target version's
+[PostgreSQL row security documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 
-## Output Format
+### Step 3: Trace Indirect and Privileged Paths
 
-### Policy Matrix
-Full table of all tables × operations × policies.
+Inspect views and RPCs that expose the same data under another effective identity.
+A SECURITY DEFINER RPC can intentionally provide access denied to direct callers, but its own
+authorization, privileges and search path need review (`audit-auth-db`, RPC Security Audit).
+Do not recommend broader table policies merely because access is mediated through an RPC.
 
-### Findings
-| # | Severity | Table | Operation | Issue |
-|---|----------|-------|-----------|-------|
+### Step 4: Compare Actual Operations
 
-### Frontend Compatibility
-| Frontend Call | Table | Operation | RLS Allows? | Notes |
-|--------------|-------|-----------|-------------|-------|
+Locate database calls in the real client and server roots, including wrappers and generated access
+layers. Determine operation, caller identity, target rows and expected result.
+Check read prerequisites for UPDATE/DELETE and returned-row operations where applicable.
+Distinguish permission errors, policy-check errors, filtered SELECT results and zero-row/no-op
+mutations. An API returning no error does not prove that the intended row changed.
 
-### Recommendations
-Prioritized list of policies to add/modify.
+Use authorized disposable fixtures for behavioral checks: own-row success, foreign-row denial,
+tenant separation, anonymous restrictions, privilege escalation and legitimate privileged use.
+Inspect resulting rows as well as errors. Do not probe real users or mutate production as an audit
+shortcut. Unavailable behavioral proof stays pending under `foundation-testing.md`.
+
+### Step 5: Triage Gaps
+
+Flag unintended exposure, blocked legitimate operations and mismatches between direct/RPC
+consumers and the intended contract. Missing policies can be intentional default deny.
+Rank impact from reachable operations and affected data, separately from a project's blocking
+invariant. Do not invent future DELETE access merely to complete a CRUD grid.
+
+## Output and Definition of Done
+
+Deliver the matrix, source/target state, corroborating caller locations, findings and proposed
+corrections. Each selected case is `finding | checked-clean | not-applicable | not-verified`.
+Name exclusions, uncertain intent and the next check/owner for missing proof.
+Preserve restrictive access when intent is unresolved. Redact tokens and personal data.
+No policy, role, grant or application changes are made by this audit.

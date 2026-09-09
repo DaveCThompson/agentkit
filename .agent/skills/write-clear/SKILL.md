@@ -7,85 +7,90 @@ triggers: [clear writing, concise writing, rewrite, copy edit, session communica
 
 # Write clearly
 
-Turn the user's intent into flat, literal, concise text. Consult `foundation-communication.md` for
-general prose and `pattern-ui-copy.md` for product text.
+Turn the user's intent into text the intended reader can understand and act on without losing
+meaning. [Flat communication](../../../.agent/rules/foundation-communication.md) owns shared prose
+constraints and output patterns. Read [UI copy](../../../.agent/rules/pattern-ui-copy.md) for product text;
+load it only when UI wording is in scope.
+
+## When to Use
+
+- Draft or tighten a message, ticket, handoff or technical document.
+- Review confusing, verbose or inconsistent wording.
+- Shape UI text in the context where the user will read it.
 
 ## Approach
 
-1. Identify the audience, purpose, and decision or action the text must support.
-2. Classify the text as a procedure, explanation or report, ticket, or UI copy. Do not mix procedure
-   and description in the same paragraph.
-3. Preserve facts before tightening: scope, conditions, exceptions, numbers, uncertainty, safety
-   qualifiers, and exact literals.
-4. Lead with the result, current state, action, or decision. Add only the evidence or context needed.
-5. Write one fact per sentence and one topic per paragraph. Use direct verbs, simple tenses, stable
-   terms, periods, and lists.
-6. Remove repetition, filler, hedging, praise, apology, meta-commentary, idiom, and decoration.
-7. Keep complete grammar. Restore explicit wording when an omission could change the reader's action.
-
-## Procedure and report patterns
-
-- Procedure: use imperative steps, put conditions and warnings first, and use one action per step.
-- Session update: result → evidence → next action or blocker.
-- Error: what happened → cause, if known → fix.
-- Incident: time → impact → cause → remediation.
-- Release note: action or command → risk.
-- Ticket: current state → gap → decision → acceptance.
+1. Identify the audience, purpose and decision or action the text supports. Preserve the requested
+   output and tone; an explanation may have no next action.
+2. Inventory the meaning before editing: claims, attribution, requirements, proposals, conditions,
+   exceptions, numbers, uncertainty, safety qualifiers and exact literals.
+3. Choose a structure that exposes the main point and its material support. Keep procedures
+   distinguishable from descriptions so readers know whether an action is required or merely
+   being reported.
+4. Tighten wording and remove repetition using the shared prose rule. Keep one term for the same
+   concept and retain complete grammar where the text calls for sentences.
+5. Compare the revision with the meaning inventory. Check whether any deletion changed who acts,
+   when, under what conditions, with what confidence or authority. Restore wording when its
+   omission could change the reader's action.
 
 ## De-slop pass
 
-Delete words and phrases that add tone but no fact, such as `absolutely`, `simply`, `just`, `clearly`,
-`importantly`, `it is worth noting`, and `in order to`.
+Remove phrasing that contributes neither meaning nor an intentional requested tone. Replace
+inflated verbs with direct verbs, for example `utilize` → `use` and `prior to` → `before`.
+Replace vague praise such as `robust` or `seamless` with the property actually supported, or omit it.
 
-Replace inflated wording with direct wording: `utilize` → `use`, `leverage` → `use`, `prior to` →
-`before`, `facilitate` → `help`, `enables you to` → `can`, and `dive into` → `read` or `examine`.
+Distinguish filler hedging from evidence limits: remove “I just wanted to mention”; preserve
+“likely caused by X; unverified.” Do not turn a reported claim, hypothesis or proposal into an
+established fact. Preserve attribution and probability when they affect interpretation.
 
-Delete vague claims such as `robust`, `powerful`, `seamless`, and `comprehensive` unless they name a
-measurable property. Replace `as needed` with the actual condition. Replace `and/or` with the exact
-allowed choices.
+Resolve ambiguous conditions or choices only when the evidence supports the intended meaning.
+If “as needed” or “and/or” hides a material unresolved choice, expose that uncertainty rather than
+inventing a precise requirement. Do not restate a known error as fact; correct it briefly and
+make any material departure from the supplied source clear.
 
 ## Apply by output
 
-### Session communication
-
-State the result or current state first. Then give material evidence, the next action, and any
-blocker, assumption, uncertainty, or decision needed. Do not narrate tool calls or repeat an
-unchanged summary.
-
 ### Tickets and handoffs
 
-- Write an imperative outcome title.
-- State the current truth, gap, and user impact.
-- Record settled decisions and constraints.
-- Use ordered, implementable steps when they help.
-- Make acceptance criteria observable, with one claim per checkbox.
-- Use exact UI wording only when it is contractual; otherwise capture intent and constraints.
+Write an imperative outcome title and distinguish current truth from the gap. Carry settled
+decisions, exclusions and existing authority forward. Acceptance criteria should describe
+observable outcomes rather than ceremonial activity. Use ordered implementation steps when
+they help the recipient; do not invent settled decisions to make the ticket appear ready.
+
+Keep exact UI wording only when contractual. Otherwise capture intent and constraints so the
+implementer can choose suitable copy. Reuse the work identity and recipient-appropriate detail
+rather than duplicating a plan into another report.
 
 ### UI copy
 
-- Add text only when it clarifies an action, state, decision, risk, or accessibility need.
-- Prefer sentence case and short, natural action labels.
-- Omit an object when context makes it obvious; include it when omission creates ambiguity.
-- Use tooltips for non-obvious, non-critical help—not as a hiding place for required instructions.
-- For errors, state the problem and the next action; include the cause when known and useful.
+Review wording in its actual surrounding interface, using the shared UI rule. Test whether
+omitting the object or explanation still leaves the action and consequence clear. Retain required
+instructions and accessible meaning at the point of use. A shorter label is not an improvement
+when it conceals a consequential distinction.
+
+### Compressed communication
+
+Use the selected source and the command's requested format. Prioritize its central point and
+material qualifier over secondary detail; do not imply exhaustive coverage. Preserve differences
+between historical evidence and current state. A recap does not authorize its listed actions.
 
 ## Review output
 
 - For a rewrite, show the revised text first.
-- For a review, report only material issues and show a replacement when useful.
-- Explain a tradeoff only when the change affects meaning, scope, tone, or product behavior.
-- End durable artifacts and reports with `What we deliberately did NOT do`.
+- For a review, report material issues and provide a replacement when useful.
+- Explain a tradeoff when it changes meaning, scope, tone or product behavior.
+- Follow the shared artifact contract for durable reports, including
+  `What we deliberately did NOT do` when required. Do not add report boilerplate to a short
+  conversation response.
 
 ## Deliberate boundaries
 
-Use these structural rules by default. Use fixed word counts, a controlled dictionary, or full STE
-compliance only when the user or project contract explicitly requests it. Do not force explicit wording
-into UI when context is clear. Never make prose concise by deleting meaning.
+Use fixed word counts, a controlled dictionary or full STE compliance only when the user or
+project contract requests them. Preserve exact literals and necessary technical terms. Never
+make prose concise by deleting meaning or resolve factual uncertainty through copy editing alone.
 
 ## Definition of done
 
-- The reader can find the result, action, state, blocker, or decision quickly.
-- The text preserves all material facts and qualifiers.
-- The same concept uses the same term.
-- The wording sounds natural when read aloud.
-- The next action or missing decision is clear when one exists.
+The reader can find the main point and any actual action or decision. Claims retain their
+conditions, attribution and evidence limits. Terminology is consistent, and wording remains
+natural in its intended context. Any material departure from the source is visible.

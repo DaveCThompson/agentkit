@@ -1,59 +1,36 @@
 ---
-description: Pre-production GO/NO-GO verification — automated checks plus a project-defined manual-flow gate.
+description: Assess release readiness on the exact candidate with applicable proof and explicit pending gates.
 ---
 
 # Verify Pre-Deploy Workflow
 
-Run at the release boundary before promoting to production. Combines the one broad final-tree gate,
-release-specific checks, and manual verification prompts into a single GO / NO-GO recommendation.
+Produce a release recommendation; invoking this check does not itself deploy. Resolve the exact
+candidate, target environment and project release requirements. Use `foundation-testing.md` and
+the project's verification profile for proof lanes and valid receipt reuse. Ask only for a missing
+release decision that cannot be established from the accepted contract or project evidence.
 
-## Goal
-A defensible GO / NO-GO decision with every gate marked PASS / FAIL.
+## Applicable gates
 
-## Inputs required (ask if missing)
-- **Critical-flow list**: the project's must-pass manual flows (define once in
-  `docs/knowledge-base/` or `AGENTS.md`; referenced here as `T1..Tn`). Ask for it if absent.
-- Target environment (staging -> prod, function deploy, etc.).
-- Final commit SHA/tree identity. Cite local or CI final-tree evidence when it covers this exact
-  state; do not repeat an identical broad gate merely because this workflow is a new boundary.
+- **Final-state gate:** run or cite the project's actual broad commands on the candidate being
+  released. Do not invent lint, browser or server requirements for projects that do not have them.
+- **Changed-risk checks:** carry security, performance, accessibility or data findings and their
+  defect-specific proof. Use relevant audit skills when affected risk requires new coverage;
+  a generic green suite does not discharge those obligations.
+- **Data/migrations, when present:** check supported fresh-install and upgrade paths, ordering,
+  compatibility, writes/constraints, effective privileges and recovery needs. Do not require
+  every migration to be rerunnable or prescribe unsafe blanket SQL recipes.
+- **Environment:** verify the relevant configuration and service boundaries without exposing
+  secrets. Origins/CORS/CSP apply to relevant web surfaces, not every project.
+- **Critical flows:** exercise the project's required manual or runtime flows through authorized,
+  available capabilities. Preserve a genuinely human-only lane for its owner; do not demand
+  duplicate human confirmation for already valid equivalent proof.
 
-## Gates
+## Recommendation
 
-### 1. Build verification
-Run or cite the project's broad final-tree gate (lint + typecheck/build + tests). All must report 0
-errors/failures, and cited evidence must cover the exact release SHA/tree.
+For each required gate, report PASS, FAIL, PENDING or reasoned NOT APPLICABLE, its evidence and
+candidate identity. Missing or malformed checks are not a clean pass. GO requires all blocking
+obligations satisfied or an explicit authorized exception with its risk and owner.
+Otherwise return NO-GO or PENDING with the next action; never present pending proof as release-ready.
 
-### 2. Data-layer audit (if the project has a database)
-Run `audit-security` (and `audit-auth-db` on stacks that ship it). Require: no CRITICAL, and no
-HIGH without a documented exception.
-
-### 3. Migration validation (if the project has migrations)
-- [ ] Migrations are idempotent (guarded creates / `CREATE OR REPLACE`).
-- [ ] Constraints cover every value the code writes.
-- [ ] Privileged/`SECURITY DEFINER` functions pin their search path.
-- [ ] Seed data runs clean against a fresh schema.
-
-### 4. Environment verification
-- [ ] Production env vars set (list them in the project's deploy doc).
-- [ ] CORS / CSP / allowed-origins include the production domain.
-
-### 5. Manual test gate
-Confirm the project's critical flows (`T1..Tn`) have been manually verified. **STOP** and ask:
-> "Have you completed manual verification for the critical flows?"
-
-### 6. GO / NO-GO decision
-```
-PRE-DEPLOY VERIFICATION
-Build:        PASS/FAIL
-Data Audit:   PASS/FAIL (X findings)
-Migrations:   PASS/FAIL/N-A
-Environment:  PASS/FAIL
-Manual Tests: PENDING/COMPLETE
-RECOMMENDATION: GO / NO-GO
-```
-
-## When to use
-- Before merging staging -> main, deploying serverless functions, or after major auth/DB changes.
-
-## Notes
-- Steps 2–3 are conditional: skip cleanly on projects without a database or migrations.
+Record the actual scope of the recommendation. A later candidate change invalidates affected
+receipts; reconcile unknown deployment state before any separately authorized retry.

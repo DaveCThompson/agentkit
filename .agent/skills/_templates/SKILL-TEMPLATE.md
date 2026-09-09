@@ -1,109 +1,52 @@
 ---
 name: skill-name-verb-noun
-description: "[What it does]. Use when [trigger conditions]."
-# Optional superset fields — stripped from vendor surfaces, read by the kit for routing/health:
-# triggers: [keyword, phrase]        # words that should route the model here
-# tier: core                         # core | overlay | tech:<stack> (default inferred from name)
-# conflicts-with: [other-skill]      # skills that must not run in the same pass
-# required-tools: [tool-name]        # tools that must be provisioned (see integrations/)
-# verified-against: 2026-07-04       # date/ref of the last context this skill was validated in
+description: "[Distinct capability]. Use when [specific request or condition]."
+# Preserve supported optional kit metadata when relevant:
+# tier: core
+# required-tools: [recognized-integration-id]
+# conflicts-with: [adjacent-skill]
 ---
 
-# Skill Name
+# Skill name
 
-Brief description of what this skill enables.
+<The outcome this skill enables. Assume a capable recipient; include guidance that changes work.>
 
-## When to Use
+## When to use
 
-- Trigger condition 1
-- Trigger condition 2
-
-## When NOT to Use
-
-State the boundary and route to the right sibling — this is what keeps the skill fleet unambiguous.
-- When [adjacent situation] → use `other-skill` instead.
-- When [another situation] → use `another-skill` instead.
-
-## Quick Reference (if using modular references)
-
-**Quick Reference Checklist**:
-
-- **Category 1** — [...] See: `references/category1.md`
-- **Category 2** — [...] See: `references/category2.md`
+<Trigger and a likely adjacent non-trigger. Route to an existing sibling only when the task needs it.>
 
 ## Approach
 
-### Phase 1: [Name]
+<Distinctive method, decision criteria and non-obvious failure cases. Choose detail by consequence.
+Use a fixed sequence only where ordering protects correctness, authority or preservation.
+No mandatory option, hypothesis, finding or persona counts without a concrete task requirement.>
 
-Steps to complete phase 1...
+<Preserve the requested mode: advice, diagnosis, preparation, implementation and publication have
+different endpoints. Carry existing grants and accepted work identity; do not infer new authority.>
 
-### Phase 2: [Name]
+<Reference shared owners for evidence, authority and artifacts rather than copying their recipes.
+Keep short local reminders where omission could change an action. Direct invocation must work
+without hidden parent context. Declare external-tool dependencies and a useful bounded fallback.>
 
-Steps to complete phase 2...
+## Verification / Definition of done
 
-## Verification / Definition of Done
-
-State the concrete bar this skill must clear before its work is "done". Skills that change code
-invoke the lifecycle-aware gate in `foundation-testing.md` (focused local proof during
-implementation; one broad gate on the final tree; release validation at the release boundary) —
-never claim green on unrun commands. Diagnose-only skills state the evidence the output
-must be backed by and the artifact it produces.
-
-- [ ] [Concrete, checkable done-condition 1]
-- [ ] [Concrete, checkable done-condition 2]
-
-## Reflexion
-
-Before delivering, verify:
-- [Key check 1]
-- [Key check 2]
-
-> **Adversarial Tip**: [Optional: Add a hostile persona prompt here if relevant, e.g., "Assume Hostile Reviewer persona..."]
-
-## Constraints
-
-- Constraint 1
-- Constraint 2
+- <Observable outcome and the evidence that supports it.>
+- <Meaningful incomplete, unresolved or not-applicable outcome when the capability needs one.>
+- <For changes: applicable foundation-testing gate; exact scope and state, not generic green.>
 
 ## Output
 
-Expected artifacts or deliverables.
+<Requested deliverable, existing caller-supplied artifact identity if any, material limits and next
+owner. A durable artifact/report ends with What we deliberately did NOT do. Do not force a new file.>
 
----
+## Notes for authors
 
-## Notes for Authors
+Delete these notes and unneeded placeholders. Keep name equal to the kebab-case directory.
+Preserve metadata/UI policy outside the requested change. Retain domain expertise, not generic
+tutorials. Use existing supporting references for substantial conditional detail and state when
+to read each; no empty folders or reference chains to save a few sentences. Read selected
+instructions fully.
 
-> [!IMPORTANT]
-> **Character Limit:** Each SKILL.md must be ≤12,000 characters.
-
-### Naming Convention
-
-- **Folder:** `kebab-case` (e.g., `audit-web-interface`)
-- **Skill name (frontmatter):** `verb-noun` (e.g., `audit-web-interface`)
-- **Header:** `Title Case` (e.g., `# Audit Web Interface`)
-
-### Modular References Pattern
-
-If your skill has detailed reference material exceeding ~5,000 characters, split into:
-
-```
-skills/my-skill/
-├── SKILL.md          # Index with Quick Reference
-└── references/
-    ├── category1.md  # Detailed references with examples
-    └── category2.md
-```
-
-### Progressive Disclosure
-
-The agent sees only `name` and `description` initially. Full content loads when activated.
-
-**Good description:**
-```yaml
-description: Audits layout for spacing violations. Use when reviewing CSS.
-```
-
-**Bad description:**
-```yaml
-description: Helps with code.
-```
+Validate kit metadata and local references. Run changed helpers/examples where applicable.
+For a material judgment change, use authorized isolated forward tests with raw realistic requests,
+not expected answers leaked to the evaluator. Static shape checks do not prove model behavior.

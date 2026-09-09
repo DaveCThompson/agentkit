@@ -1,100 +1,82 @@
 ---
 name: review-peer
-description: Verdict-first review of a capable agent's or peer's work — adopt/adapt/reject findings with file:line evidence, fixing only clear, unambiguous defects. Use for senior-to-senior review; for raising below-standard work to repo quality use review-raise-bar.
+description: Use for evidence-backed verdicts on another author's implementation or findings. Read-only unless repair is requested; use review-raise-bar when the intended outcome is repaired work.
 tier: core
 ---
 
 # Review Peer
 
-Judge a capable peer's work on the evidence and say what you found. The deliverable is verdicts —
-adopt / adapt / reject with proof — not a repaired branch. Fix only what is unambiguously broken;
-everything that requires judgment stays a finding for the author to weigh.
+Review the actual work and deliver evidence-backed verdicts. A plain review is read-only.
+When the user also authorizes repair, make bounded corrections within that grant; use
+`review-raise-bar` when the intended outcome is broader repair to repo standard.
+Author reputation neither proves correctness nor grants write authority.
 
 ## When to Use
 
-- Reviewing work by a senior/staff-tier agent or an experienced developer
-- The author is trusted to act on findings — you owe them judgment, not rework
-- A second opinion on a branch, plan, or review before it lands
-
-## When NOT to Use
-
-- The work is below repo standard and should end up repaired → `review-raise-bar`.
-- Pre-implementation vetting of an idea or plan → `vet-simple` / `vet-hard`.
-- A codebase-wide quality audit, not one agent's work → `audit-code`.
-- Small in-place cleanup with no review scope → `refine-code`.
+Use for a second opinion on a branch, implementation or prior findings. Use `vet-simple` or
+`vet-hard` for pre-implementation risk review and `audit-code` for a broader code-quality audit.
 
 ## Approach
 
-### Phase 1: Recon on the real work
+### Phase 1: Recon on the Real Work
 
-1. Identify the artifacts and files produced by the other agent.
-2. Build an evidence list from the actual repo — `git diff`, the real files — not just from the
-   other agent's summary or prose.
-3. Load only the standards that materially apply to the reviewed work.
+Identify accepted outcomes, exclusions, base/target state, actual artifacts and reviewed diff.
+In shared checkouts distinguish the reviewed work from concurrent edits before any authorized
+repair. Use the caller's ownership record and `pattern-agent-orchestration.md`; do not claim or
+change another writer's files. Load only standards that materially apply.
 
-### Phase 2: Multi-lens pass
+Read source and affected callers rather than relying on the author's summary. Prior reports are
+claims to check. Reconcile stale premises against current code and later user decisions.
 
-Review through the same five lenses as `review-raise-bar`:
+### Phase 2: Multi-Lens Pass
 
-1. **DX** — code standards, executability, concrete file targets and verification steps
-2. **UI** — visual system, layout/token/containment rules
-3. **UX** — discoverability, accessibility, realistic on target devices, sequencing
-4. **Docs** — right locations and names, truthful, non-duplicative, source-of-truth aligned
-5. **Scope** — right-sized, explicit non-goals and acceptance criteria
+Select applicable lenses:
 
-### Phase 3: Verdicts with evidence
+- **Behavior/correctness:** trace the changed contract through a success path and material failure
+  or boundary path. Check side effects, compatibility, ownership and recovery. Inspect whether
+  tests actually exercise the outcome and whether fixture/oracle changes weakened the proof.
+- **DX:** executability, concrete file targets, type and dependency boundaries.
+- **UI/UX:** visual consistency, discoverability, accessibility and target-device behavior where
+  there is an interface. Static inspection cannot establish runtime behavior.
+- **Docs:** truthful claims, appropriate homes, navigation and authoritative status.
+- **Scope:** accepted outcome, exclusions and remaining acceptance.
 
-Classify every major finding:
+Use `foundation-testing.md` for relevant evidence reuse and gaps. No repeated broad gate is
+required merely because a review starts.
 
-- **Adopt** — correct and should remain (say why in one line; don't pad)
-- **Adapt** — directionally right, needs stronger constraints/scope/evidence (state exactly what)
-- **Reject** — not justified by the codebase, standards, or user goals (cite the contradicting
-  file:line or rule)
+### Phase 3: Verdicts with Evidence
 
-Every Adapt/Reject verdict carries `file:line` evidence or a named rule. A verdict without
-evidence is an opinion, not a review.
+For proposed changes or supplied recommendations use **Adopt**, **Adapt** or **Reject**:
+state what is supported, what must change, or the concrete counterevidence.
+For a new defect, state the behavior, triggering conditions, location, impact and proposed correction.
+Do not force every code observation into a prior-recommendation verdict.
 
-### Phase 4: Surgical fixes only
+Separate impact severity from invariant compliance and blocking policy. A review with no material
+findings is valid; describe the checked scope and limits instead of inventing issues.
 
-Fix directly ONLY defects that are unambiguous and within quick-fix scope (≤30 lines, ≤5 files):
+### Phase 4: Authorized Surgical Fixes
 
-- a broken invariant a rule states explicitly (wrong token, missing `sideEffects`, taxonomy-wrong
-  filename)
-- a failing gate (lint/typecheck error introduced by the reviewed work)
-- a factual error in docs (a claim the code contradicts)
+Skip edits for review-only requests. If repair is already authorized, recheck the target and fix
+supported bounded defects such as an introduced failing gate, a factual documentation error or
+a demonstrated behavior regression. Size is a routing signal, not authority.
+Continue routine choices within the grant; return consequential new scope or collisions to the owner.
 
-Anything judgment-flavored — architecture, naming preferences, scope calls, "I'd have done it
-differently" — stays a finding. Run the graduated gate (`foundation-testing.md` §1) on whatever
-you touched.
+Use the shared testing contract for focused proof, including continuity of a bug's behavioral
+assertion and disclosure of oracle changes. If safe reproduction is unavailable, record the specific
+reason, alternative evidence, confidence and missing proof. Do not label an untested symptom repaired.
+Git, integration and publication remain with their authorized owner.
 
 ### Phase 5: Report
 
-Deliver a concise findings report: verdicts grouped Adopt/Adapt/Reject, what you fixed directly
-(with the gate results), and what the author should decide. Update an existing
-`docs/working/REVIEW-*.md` before creating a new one (`pattern-docs-artifacts.md`); create one
-only when a durable review artifact adds value beyond the conversation.
+Lead with verdict and material findings. Include reviewed state/scope, evidence, authorized fixes
+if any, actual proof, limitations and decisions still needed. Use the caller's report identity;
+create a durable `REVIEW-` artifact only when it adds value.
+A completed review with pending runtime evidence does not imply completed implementation acceptance.
 
-## Reflexion
+## Definition of Done
 
-Before delivering, verify:
-- Did I review the actual code/docs, not the author's prose about them?
-- Does every Adapt/Reject verdict carry file:line or rule evidence?
-- Did I stay surgical — or did I drift into raise-bar repair that the author didn't ask for?
-- Are my direct fixes each unambiguous, small, and gate-verified?
-- **Could I explain each major change back simply?** A change whose behavior I can't restate
-  concisely is a complexity signal — recommend splitting or simplifying it, not just approving it.
-
-## Constraints
-
-- Do not repair the branch wholesale — that is `review-raise-bar`'s job; route there if the work
-  turns out to be below standard.
-- Do not claim verification you did not run; name exact commands for anything you touched.
-- Do not create a `REVIEW-` artifact when the conversation summary suffices.
-- Do not soften Reject verdicts into Adapts to be polite — evidence decides.
-
-## Output
-
-- Verdict report (Adopt / Adapt / Reject with evidence), inline or as an updated
-  `docs/working/REVIEW-*.md`
-- Surgical fixes committed with the graduated gate run on the touched surface
-- An explicit routing note if the work actually needs `review-raise-bar`
+Verdicts refer to actual code/docs and the intended contract. Significant conclusions have evidence
+or explicit uncertainty. Each selected lens is `finding | checked-clean | not-applicable |
+not-verified`; missing proof names the check and owner.
+Any edits were within repair authority and owned paths, with focused proof reported.
+No mandatory commit, branch repair or new plan is part of a plain review.

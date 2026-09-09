@@ -7,78 +7,96 @@ conflicts-with: [security-fix]
 
 # Audit Security
 
-Evidence-first security audit centered on the two places projects actually bleed: the
-**client/server boundary** and **secret hygiene**. Diagnose only; no code changes.
-
-> **Authority:** `foundation-security.md` is the binding contract (hard-stop paths, prohibited
-> actions, storage hygiene, CSP). This skill is the *detection method* for that contract — do not
-> restate it, enforce it.
->
-> **Fix counterpart:** scan-only (detection + report). To remediate and write backlog tickets,
-> use the `security-fix` skill (Sentinel).
-
-**Persona: Security Engineer** — "I assume all inputs are malicious, and every grep miss ships."
+Trace reachable threats across the requested trust boundaries and check secret exposure.
+Diagnose only; use `security-fix` for authorized remediation. `foundation-security.md` and
+`pattern-external-mutation.md` own action and target authority.
 
 ## When to Use
-- Before major releases or after adding dependencies
-- After any change near auth, env handling, or storage
-- Periodic health checks
 
-## When NOT to Use
-- You want findings fixed in the same pass → `security-fix`
-- Database/RLS-specific review → `verify-rls-policies` (this skill covers app-layer only)
+Use for security review of changed authentication, data handling, dependencies, configuration or
+exposed operations. For database policy details use `verify-rls-policies`; for the whole identity
+and database propagation path use `audit-auth-db`.
 
 ## Approach
 
-### Step 0: Load Context
-Read `foundation-security.md` and the project's source roots, env-var conventions, and
-client/server split from `project-invariants.md`. Any violation of a hard-stop rule in
-`foundation-security.md` is automatically **Critical**.
+### Step 0: Scope the Threat
 
-### Step 1: Secret Hygiene (grep-driven, exact commands in the report)
-Scope all greps to the project's source roots (see `project-invariants.md`); exclude lockfiles,
-fixtures, and docs — but report the exclusions so the reader can audit the audit.
-- Grep for hardcoded credentials: `key|token|secret|password|credential|bearer` plus known
-  prefixes (`sk-`, `sk_live`, `ghp_`, `AKIA`, `eyJ` for inline JWTs, PEM headers).
-- Verify secret source files (`.env*`, `*.local`) are git-ignored **and** not already tracked
-  (`git ls-files` beats reading `.gitignore` — a listed pattern doesn't untrack a committed file).
-- Check git history is not the leak: a secret deleted in HEAD but present in history is still
-  exposed. Flag for rotation, not just removal.
+Identify target/base state, reviewed changes, source roots, deployment model and protected assets.
+List entry points, caller control and privileged effects. Select additional checks by threat:
+injection, cross-tenant access, request forgery, file handling, outbound requests, serialization or
+resource exhaustion where the target exposes those mechanisms.
+Do not imply that a client/server and secret scan covers all security properties.
 
-### Step 2: Client/Server Boundary (the highest-value check)
-- **Server-only env vars must never reach client bundles.** Grep client-side code for server env
-  access; check for framework "public" prefixes (`NEXT_PUBLIC_`, `VITE_`, etc.) wrapping values
-  that are actually secrets. A service-role or admin key in a client bundle is a **Critical**
-  finding regardless of whether it's "only staging."
-- Verify no privileged operation (admin mutation, billing, role change) trusts client-supplied
-  identity or flags without server-side re-validation.
-- Confirm browser storage holds no plaintext secrets and reads go through a schema-validated
-  wrapper (contract in `foundation-security.md` §3).
+### Step 1: Secret Hygiene
 
-### Step 3: Validation & Auth Posture
-- **Fail-closed:** trace error paths in access checks — an exception or validation failure must
-  land on *denied*. A `catch` that returns success is Critical.
-- **Timing-safe comparison** for any secret/hash check — flag `===`/`==` on secrets.
-- **No weakened auth:** diff-aware check for lowered password rules, disabled protections, or
-  test bypasses left enabled in production paths.
+Choose detectors and commands that return locations or redacted findings. Start broad keyword
+discovery with filename-only output, then inspect through a redacting mechanism; do not print or
+persist raw credential-bearing lines. Record detector, location, credential type and exposure path,
+not the value. Do not put credentials into command arguments.
 
-### Step 4: Supply Chain & Config
-- `npm audit` (or the project's equivalent): High/Critical advisories are findings; note whether
-  the vulnerable path is actually reachable.
-- Unapproved new dependencies since last audit; dangerous script flags; missing/relaxed CSP
-  directives without a justifying comment (contract in `foundation-security.md` §5).
+Inspect tracked configuration and actual ignore/tracking state: an ignored pattern does not untrack
+a file. Check relevant history because deletion from the current tree does not remove prior
+exposure. Include fixtures, docs and build artifacts when their publication or data makes them
+relevant. Explicitly list uninspected history, generated bundles and excluded directories.
+A synthetic example may be harmless; determine whether a value is live/privileged without testing
+a real credential outside granted authority.
 
-## Findings Model
-Per finding: **Severity** (Critical / High / Medium / Low), **evidence** (file:line or command +
-output), **concrete failure scenario** ("attacker with the bundle extracts X and can Y"), and a
-**remediation pointer** for `security-fix`. Severity tracks exploitability × blast radius — a
-leaked credential is Critical even if "internal," because rotation cost is already incurred.
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
+Redact tokens, credentials and personal data before saving evidence. A gitignored directory is not
+sufficient protection. If exposure is found, preserve only redacted proof and identify the scoped
+rotation/revocation owner; do not rotate, rewrite history or publish the secret during an audit.
+
+### Step 2: Client/Server Boundary
+
+Trace imports, environment substitution and build output that could expose server credentials.
+Framework public prefixes are signals; inspect the actual build boundary and credential capability.
+A public identifier is not automatically a secret. A privileged key in a downloadable artifact is
+a serious exposure regardless of an internal or staging label.
+
+Trace admin, billing and role mutations from caller-supplied identity to server enforcement.
+Check storage against the project's threat model and security contract, including schema validation,
+trust in stored values and privileged information persistence.
+
+### Step 3: Validation & Authorization
+
+Trace denial and error paths at the enforcement boundary. Determine whether an exception can allow
+the protected operation. Compare tenant/user ownership and privilege transitions, not only whether
+an authentication helper is called.
+
+Inspect timing-sensitive comparisons where attacker observations could reveal a secret; assess the
+whole protocol and use of the platform's intended primitive. A grep match on equality alone is a
+candidate, not a vulnerability verdict.
+Review changed password/auth protections and test bypasses for production reachability.
+For validation, follow input through normalization, validation and its eventual interpreter/sink.
+
+### Step 4: Supply Chain & Configuration
+
+Use the project's available dependency advisory tool without repair/install flags. Distinguish
+advisory severity, installed affected version, reachable path and exploit preconditions.
+Inspect relevant install scripts, new dependencies and relaxed security configuration.
+Assess CSP and other controls against the actual deployment; a comment does not establish that a
+weakened boundary is safe.
+
+### Step 5: Corroborate Within Authority
+
+Prefer source traces and disposable local fixtures for denial and legitimate-use checks.
+Do not send attack traffic, access real users' data or perform external remediation solely because
+the audit identified a threat. Missing capabilities and unsafe reproductions stay explicit under
+`foundation-testing.md`; report the next bounded check and owner.
+
+## Findings Model and Repair Handoff
+
+Preserve the supplied finding/work identity and selected scope. Record entry point, attacker control,
+protected operation, reachability, exact state, redacted evidence, counterevidence, confidence and
+impact severity. State applicable invariant/blocking policy separately.
+Include the proposed repair outcome, abuse-case denial check and legitimate-operation check.
+Carry outstanding operational actions and their owners separately from local code repair.
+Do not substitute a different finding because it is cheaper or infer containment from a green suite.
 
 ## Definition of Done
-- [ ] Every grep/command run is listed verbatim in the report (reproducible audit)
-- [ ] Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
-- [ ] Client bundle checked for server-only env vars and privileged keys
-- [ ] Fail-closed and timing-safe checks traced, not assumed
-- [ ] Each Critical/High has a named failure scenario, not a category label
-- [ ] Report ends with a Pass/Fail call and a prioritized handoff for `security-fix` — zero code changed
+
+Each selected boundary is `finding | checked-clean | not-applicable | not-verified`, with scope
+and reason. Commands/methods are reproducible without embedded sensitive data. High-impact findings
+name a reachable failure scenario or clearly labeled uncertainty.
+The report exposes exclusions and pending proof, and returns a prioritized handoff to
+`security-fix`. Zero findings is valid. No application, credential, external-system or scanner
+configuration mutations occurred.

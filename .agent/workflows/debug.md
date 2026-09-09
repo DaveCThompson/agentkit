@@ -1,34 +1,22 @@
 ---
-description: Debug with systematic root-cause analysis; a failing reproduction test is mandatory before any fix.
+description: Diagnose, reproduce or repair a bug using discriminating evidence and scoped authority.
 ---
 
 # Debug Workflow
 
-Systematic debugging with hypothesis testing and reproduction rigor.
+Determine the requested outcome: diagnosis, reproduction-only, or repair. A bug report can justify
+investigation; a diagnosis-only request does not authorize production changes. Carry the supplied
+symptom, environment, evidence, exclusions and existing repair grant into `debug-standard`.
 
-## Goal
-A validated fix with a passing reproduction test and zero regressions.
+Use `debug-deep` when the cause remains ambiguous or intermittent and its hypothesis-driven method
+adds value. Escalation follows evidence, not a fixed number of failed attempts or hypotheses.
+Preserve unresolved findings and the current reproduction rather than restarting the problem.
 
-## Inputs required (ask if missing)
-- Bug description and steps to reproduce.
-- Environment details (if specialized).
+`foundation-testing.md` owns repair proof: meaningful failing evidence before a fix, the same
+behavioral oracle afterward, and explicit bounded alternatives when a safe automated reproduction
+is infeasible or containment must come first. Reuse a valid reproduction. Setup failures do not
+prove the bug, and weakening the oracle does not prove repair.
 
-## Safety + scope
-- Do NOT implement a fix without a **failing reproduction test** first.
-
-## Skill routing (explicit)
-- `debug-standard` — reproducible logic/UI bugs.
-- `debug-deep` — intermittent, state-heavy, race-condition, or concurrency issues (use when
-  standard debugging stalls or the bug touches many files).
-
-## Procedure
-1. **Reproduction (MANDATORY gate)**: Read `debug-standard`'s `SKILL.md`; write a test (e.g.
-   `repro.test.*`) that **fails** on the current bug. No fix proceeds until this test exists.
-2. **Hypothesis**: Generate 3–4 hypotheses before reading suspect code.
-3. **Investigation**: Follow the selected skill; confirm the root cause with evidence
-   (`@file:line`). Escalate to `debug-deep` if the cause resists standard analysis.
-4. **Fix & verify**: Apply the fix; confirm the reproduction test passes; run focused local proof
-   (lint + build/typecheck + tests as applicable), then follow the lifecycle gate for the final tree.
-
-## Notes
-- "Standard" = obvious logic/UI failures. "Deep" = races, HMR issues, complex async state.
+Return the requested outcome. A meaningful red reproduction can complete a test-only task.
+Diagnosis can end with a supported cause or bounded uncertainty. Repair needs defect-specific
+evidence and applicable regression checks; do not invent success because the broad suite is green.

@@ -1,93 +1,96 @@
 ---
 name: audit-auth-db
-description: Comprehensive audit of authentication flows, database schema, RLS policies, RPCs, and entitlements engine.
+description: Use for read-only review of Supabase identity, schema, authorization and entitlement propagation after auth or database changes, or when access decisions disagree.
 tier: tech:supabase
 ---
 
 # Audit Auth & Database
 
-Perform a Staff Engineer-level audit of the auth and database systems.
-
-**Persona: Staff Engineer — Security & Data Integrity**
-> "I trace every data path end-to-end. I verify what's written matches what's read."
+Trace identity, authorization and data integrity from entry point to database and back.
+This is a read-only audit; a report or suspected vulnerability does not authorize schema changes,
+credential operations or live abuse tests. Shared authority belongs to `foundation-security.md`
+and `pattern-external-mutation.md`.
 
 ## When to Use
-- Before pushing auth/DB changes to production
-- After creating new migrations, RPCs, or triggers
-- After modifying entitlements engine or auth atoms
-- Periodic health check (monthly)
 
-## Audit Checklist
+Use after auth/schema/RPC changes, inconsistent access decisions, or entitlement refresh and
+revocation failures. Use `verify-rls-policies` for a policy-only question.
 
-### Phase 1: Schema Validation
-1. List all migrations in `supabase/migrations/` — verify ordering is correct
-2. For each column referenced in code (RPCs, triggers, auth-atoms.ts, entitlements.ts):
-   - Verify the column exists in a migration
-   - Verify the column's type matches what code expects
-3. For each CHECK constraint:
-   - List ALL values written by ANY code path (grep for table inserts/updates)
-   - Verify every written value is in the CHECK
-4. Run `seed.sql` mentally against the schema — would all INSERTs succeed?
+## Approach
+
+### Phase 1: Discover the Contract and Schema
+
+Read applicable project requirements and `tech-supabase-auth.md`. Locate migration and seed
+sources, exposed schemas, auth clients, server handlers, triggers and permission tests.
+Discover the actual authority source and entitlement model; do not assume table or module names.
+
+Trace representative writes and reads end-to-end. Check migration ordering, final column types,
+defaults, nullability, CHECK values and foreign keys against every relevant writer, including
+webhooks, RPCs and seeds. Distinguish inspection of seed compatibility from an executed fresh-schema
+test. A migration file alone does not prove that the target database applied it.
 
 ### Phase 2: RLS Policy Audit
-5. For each table with RLS enabled, build a policy matrix:
-   | Table | SELECT | INSERT | UPDATE | DELETE |
-   |-------|--------|--------|--------|--------|
-   Fill in the policy condition or "MISSING" for each cell.
-6. Flag any MISSING policies that could cause silent data loss
-7. Verify `access_codes` intentionally blocks all client access (documented with COMMENT)
+
+Use `verify-rls-policies` for effective-access inventory and the caller/table/operation matrix.
+Include exposed tables without RLS. Reuse that matrix rather than creating a competing policy
+presence checklist. Intentionally denied direct access and authorized RPC-only operations are
+valid designs; compare them to actual clients and intended behavior.
 
 ### Phase 3: RPC Security Audit
-8. For each `SECURITY DEFINER` function:
-   - [ ] Has `SET search_path = public` in CREATE (not just ALTER)
-   - [ ] Validates user identity (auth.uid() check)
-   - [ ] Admin RPCs check `profiles.is_admin`
-   - [ ] Returns structured JSON (not raw exceptions)
-9. For each function with GRANT to `anon`:
-   - [ ] Document WHY anonymous access is needed
-   - [ ] Verify it can't be abused (rate limiting, input validation)
+
+For callable functions, including invoker functions that reach privileged helpers:
+
+- Trace effective callers through explicit grants, role membership, defaults and PUBLIC privileges.
+  Do not start anonymous-exposure review only from explicit grants to `anon`.
+- Inspect definer identity, effective RLS bypass, input control and the authorization check before
+  privileged work. A supplied user/tenant identifier must not confer authority.
+- Check final search-path configuration and resolution of relations, operators and helper calls.
+  Accept an empty search path with qualified relations or a trusted, explicitly hardened path.
+  Inspect who can create objects in any searched schema; `public` is not inherently trusted.
+- Verify anonymous operations have a stated purpose and controls suited to abuse potential.
+  Review error disclosure and the public return contract without requiring a particular JSON shape
+  or catch-all exception handler.
+
+Consult [Supabase function security and privileges](https://supabase.com/docs/guides/database/functions)
+and the target PostgreSQL version's function guidance when assessing hardening. CREATE-only text
+searches miss later ALTER, grant/revoke and ownership changes.
 
 ### Phase 4: Metadata Propagation
-10. Trace the full metadata sync chain:
-    - Source (subscriptions table columns) → sync_user_metadata trigger → auth.users.raw_app_meta_data → JWT claims → auth-atoms.ts parsing
-11. For each field auth-atoms.ts reads from metadata:
-    - [ ] Field is included in sync_user_metadata trigger output
-    - [ ] Field has a source in the database (column exists)
-12. Verify frontend calls `refreshSession()` after state-changing operations
+
+Trace the discovered chain: authority record → propagation mechanism → token/session/cache →
+server and UI consumers. List fields each consumer needs and their sources. Exercise or inspect
+grant, downgrade, revocation, failed synchronization, token expiry and refresh behavior.
+Identify where stale claims remain usable and whether that duration meets the security contract.
+A UI refresh is not proof of server-side revocation.
 
 ### Phase 5: Admin Authorization Consistency
-13. List every admin check in the codebase:
-    - Frontend (auth-atoms.ts)
-    - Edge Functions
-    - RPCs
-14. Verify all check the SAME authority source
-15. Flag any path that trusts JWT metadata without fallback to `profiles.is_admin`
+
+Locate privileged checks across UI, server handlers, functions and policies. Compare each to the
+accepted authority model and freshness requirements. Multiple representations can be valid if
+their trust and synchronization contracts are explicit. UI gates are convenience, not enforcement.
+Check fail-closed paths and cross-user/tenant access as well as legitimate administrative access.
 
 ### Phase 6: Entitlements Alignment
-16. List every tier value in entitlements.ts decision tree
-17. Cross-reference with CHECK constraint values — flag mismatches
-18. Verify every access decision path has a test in entitlements.test.ts
+
+Compare entitlement values and transitions to schema constraints and consumers. Inspect precedence
+and defaults for absent, expired or conflicting grants. Map important access decisions to actual
+tests and report missing outcomes; do not equate test-file existence with coverage.
 
 ### Phase 7: Edge Function Security
-19. Verify CORS patterns match ALL deployment domains (staging, production, previews)
-20. Verify rate limiting is implemented
-21. Verify error responses don't leak internal details
-22. Verify admin authorization in Edge Functions
 
-## Output Format
+Check caller authentication, operation authorization, input bounds, error disclosure and abuse
+controls at exposed handlers. Evaluate CORS against intended browser origins; CORS is not caller
+authorization. Preview domains need access only when the deployment contract includes them.
 
-Generate a markdown report with:
-1. Summary: PASS/FAIL with finding count by severity
-2. Findings table: # | Severity | Title | Status | Fix
-3. Policy matrix for all tables
-4. Metadata sync trace diagram
-5. Recommendations prioritized by severity
+## Output and Definition of Done
 
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
-Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
+Return the scope and state reviewed, effective-access matrix, significant propagation paths,
+findings with evidence and impact, and remaining proof. Use a diagram only when the propagation
+path is hard to follow in prose. Each selected lens is `finding | checked-clean | not-applicable |
+not-verified`; a source-only audit cannot claim live database verification.
+Separate impact severity, policy blocking and uncertainty using `foundation-testing.md`.
+Redact credentials, tokens and personal data before storing evidence.
 
-## Severity Levels
-- CRITICAL: System will fail or produce wrong results in production
-- HIGH: Security risk, data integrity risk, or silent data loss
-- MEDIUM: Inconsistency that causes confusion or maintenance burden
-- LOW: Minor improvement or tech debt
+The audit is delivered when important access and data paths are assessed or have a specific gap,
+next check and owner. Findings may be zero. No schema, policy, application or credential changes
+are part of this skill.

@@ -1,103 +1,97 @@
 ---
 name: worker-execute
-description: The guarded implement loop for a parallel worker — Decision lines as guardrails, every edit inside the ticket's declared Files surface, continuous self-check against Acceptance, graduated gate per change class. Use after worker-bootstrap passes and before worker-report.
+description: Execute an accepted worker assignment within its declared files and resources, preserving decisions and proof ownership. Use after readiness is established, including a direct ticket route that delegates this loop.
 tier: core
 ---
 
 # Worker Execute
 
-The implement loop for one worker in a parallel wave, guarded by the ticket's own contract lines.
-Shared contracts live in `pattern-agent-orchestration.md` (the kernel). WHY the guardrails: the
-orchestrator cleared collisions using your ticket's `**Files**` surface — an edit outside it is a
-collision nobody checked for, and a "better idea" that overrides a Decision line silently breaks
-the partition other workers were planned around.
+Carry out the assigned deliverable and preserve the contract used to partition it. Shared identity,
+scope, and reporting requirements live in `pattern-agent-orchestration.md` §§2–3; execution stays
+within those boundaries even when another skill supplies the domain method.
 
 ## When to Use
 
-- `worker-bootstrap` completed: verified base, green base gate, guardrails loaded.
-- Resuming an in-progress worker ticket on an already-bootstrapped branch.
-
-## When NOT to Use
-
-- Environment not yet verified → `worker-bootstrap` first.
-- Implementation complete, ready to close out → `worker-report`.
-- You are integrating branches or updating the queue → the `orchestrate-*` skills (workers never
-  merge to main or write the Status Board — kernel §6).
-- Solo, non-parallel implementation → `implement-feature` / `implement-refactor` directly.
+Use after `worker-bootstrap` or equivalent established readiness, or resume a valid active attempt.
+A direct solo ticket can use this loop without a board or parallel setup. Unresolved readiness
+returns to `implement-flight-check` or `worker-bootstrap`; completed or blocked work uses
+`worker-report`.
 
 ## Approach
 
 ### Phase 1: Load the guardrails
-From the assigned ticket, before the first edit:
-1. **Decision lines** — settled choices, not suggestions. You implement them; you do not relitigate
-   them. If a Decision is impossible or contradicts observed reality, STOP and flag with evidence —
-   do not silently pick an alternative.
-2. **Acceptance list** — your continuous self-check target and your exit condition.
-3. **`**Files**` globs** — your writable surface. Everything else in the repo is read-only to you.
+
+Read the accepted revision, active attempt, deliverable kind, Decision lines, exclusions, Acceptance,
+and writable files/resources. Reconcile completed work and later accepted decisions before resuming.
+
+A material impossible decision needs evidence and a coordinator disposition. Continue routine
+implementation choices and independent work already inside the accepted outcome. The worker cannot
+revise a binding file boundary; request a collision-checked assignment revision before dependent edits.
 
 ### Phase 2: Route by ticket type
-- Feature / new behavior → compose `implement-feature` (its phases: KB routing, code-graph
-  comprehension, execution loop, hostile-QA self-correction).
-- Restructuring with behavior invariants → compose `implement-refactor` (invariants list, safety
-  net, atomic reversible steps).
-The composed skill drives the *how* of each edit; this skill wraps it with the surface guard and
-Acceptance loop below.
+
+Use the method appropriate to the requested deliverable:
+
+- Feature/new behavior: `implement-feature` for planned work, `implement-quick-fix` for a bounded
+  small change, or the accepted embedded steps for a self-contained ticket.
+- Behavior-preserving restructuring: `implement-refactor`.
+- Bug diagnosis/repair: `debug-standard` or `debug-deep`, preserving diagnosis-only versus repair
+  authority and supplied reproduction evidence.
+- Test-only or reproduction-only: `implement-test`; intentional red can be the requested result.
+- Review/audit: the matching review or audit skill with its read-only boundary.
+- Research or documentation: the matching research/writing skill, with artifact/source checks.
+
+A composed skill does not add release, cleanup, broad refactoring, or new-artifact duties to the
+assignment. Keep the same accepted work identity; do not create a second plan to enter a route.
 
 ### Phase 3: Guarded edit loop
-For every edit, in order:
-1. **Surface check BEFORE writing**: the target path must match the ticket's `**Files**` globs.
-   Deterministic backstop after each work chunk:
-   `git diff --name-only <base>..HEAD` plus `git status --short` — every listed path must match the
-   globs. This catches indirect writes (codegen, formatters) the pre-check misses.
-2. **Out-of-surface need** → STOP, do not edit. Record the path + why it's needed; flag it to the
-   orchestrator as a collision risk. Options are the orchestrator's: expand your surface, re-route
-   to another ticket, or serialize. A worker never self-expands a surface.
-3. **Gate per change class**: run the graduated gate (`foundation-testing.md` §1) at the tier the
-   change demands — `lint` + `typecheck` always; focused domain tests on behavior/schema/route
-   change; `build` when build-affecting. Use the project's one-command gate form — for Node repos
-   the `gate:*` scripts (`npm run gate:types`, `npm run gate`, …) documented in `tech-node-gate.md`
-   — a single allowlisted, prompt-free command per `pattern-command-shape.md`, not a
-   `cd … && <runner> … | tail` compound. Keep every run's real result; it feeds the §3 report.
-4. **Cite-or-run during execution:** any commit SHA, file path, or test count written into code,
-   comments, or the deviation ledger MUST be verified first (`git log`/`ls`/the runner's real pass
-   line). An unverified citation is a defect — the §3 report cite-or-runs all of them, but catching
-   it during execution is cheaper than at report time.
-5. **Acceptance re-read** after each composed-skill phase: which items are now satisfied, which
-   remain, does any edit so far *violate* one? Drift caught mid-loop is cheap; at merge it is not.
+
+1. Before each write, resolve its target against the assignment allowlist. Include indirect outputs
+   from formatters, generators, tests, and tools. If a command can write beyond that boundary,
+   narrow it or return the need to the coordinator before running it.
+2. After a meaningful work chunk, compare actual attributed changes with the accepted surface.
+   In a worktree, inspect committed changes from the recorded start plus staged, unstaged, and
+   untracked outputs. In a shared tree, compare owned paths with their captured starting contents;
+   global dirty paths are not all this worker's work.
+3. Preserve foreign changes. Unexpected edits within an owned path require reconciliation; do not
+   revert them to recover an earlier baseline. Only the coordinator revises ownership after checking
+   collisions.
+4. Collect focused proof appropriate to changed outcomes under `foundation-testing.md` §1.
+   Reuse matching evidence under §1A. Changed assumptions, failures, or new edits justify additional
+   checks; a skill transition does not.
+5. Check remaining Acceptance against actual results. Preserve unperformed runtime/human/docs
+   lanes and their owners; a green generic command cannot close them.
+
+In shared-tree-disjoint mode the coordinator owns every Git mutation, generation, and combined proof
+snapshot. Do not stage, commit, switch branches, or checkpoint with Git. An independent worktree
+committer may checkpoint owned work only within its assignment grant.
 
 ### Phase 4: Deviation ledger
-Maintain a running list of every departure from the ticket (approach changed, step skipped,
-surprise dependency, out-of-surface flag raised) with the why. This becomes the
-`deviations from plan` field of the kernel §3 completion report — deviations surfaced *before*
-merge are the whole point of the report contract.
+
+Record material in-scope adjustments, skipped work, unexpected dependencies, and scope requests with
+their reasons. Preserve accepted coordinator revisions and changed prerequisite evidence. Do not log
+every keystroke or reopen settled choices merely because another approach exists.
+
+For bug repairs, carry the same behavioral assertion across before/after proof, or the specific
+reason and alternative evidence allowed by `foundation-testing.md` §1A. For gate changes, disclose
+oracle/fixture/threshold changes and preserve meaningful detection evidence under §1C. Do not invent
+causal certainty from a green baseline.
 
 ### Phase 5: Exit
-Exit the loop only when (a) every Acceptance item is satisfied and the gate at the ticket's
-blast-radius tier is green, or (b) a blocking flag (impossible Decision, out-of-surface need,
-inherited red gate) is raised to the orchestrator. Either way, proceed to `worker-report` — even a
-blocked ticket closes with a truthful report.
 
-## Verification / Definition of Done
+Return through `worker-report` when the requested deliverable is complete, required proof needs
+another owner, the attempt is blocked/failed, or cancellation ends the work. Use existing status
+vocabulary; keep progress and attempt disposition separate from work status.
 
-- [ ] `git diff --name-only <base>..HEAD` ⊆ the ticket's `**Files**` globs — verified by path-set
-      comparison, or every exception STOP-flagged and recorded in the deviation ledger.
-- [ ] Every Decision line either implemented as written or explicitly flagged — none silently
-      overridden.
-- [ ] Every Acceptance item checked off against observed behavior, not intention.
-- [ ] Graduated gate ran at the change class's tier after each chunk; commands + real results
-      retained. No unrun-green claims (`foundation-testing.md`).
-- [ ] Deviation ledger current — empty is a valid (and reportable) state.
+For required pending proof, name the check, owner, and gated transition. Continue independent
+authorized work when possible. Stop dependent work for missing authority, binding scope changes, or
+uncertainty that further safe investigation cannot resolve. A progress request gets an interim
+snapshot and does not by itself terminate an active assignment.
 
-## Constraints
+## Definition of Done
 
-- Never merge to the main branch; never write the Status Board or any shared queue doc — single
-  writer is the orchestrator (kernel §6).
-- Never edit outside the declared `**Files**` surface; STOP-and-flag is the only escape hatch.
-- Never `git stash`; on any merge/rebase conflict, stop and report per `git-protocol.md` §3.
-- Commit WIP to your own branch to checkpoint; keep commits scoped to the ticket.
-- Bugs discovered outside scope: note them in the deviation ledger for the report — do not fix.
-
-## Output
-
-A worker branch whose diff sits inside the declared surface, Acceptance satisfied (or a blocking
-flag raised), gate evidence and deviation ledger in hand. Hand off to `worker-report`.
+- Actual writes stay in the accepted revision's files/resources; any scope need is returned before expansion.
+- Decisions, exclusions, and remaining Acceptance are preserved through the chosen domain route.
+- Evidence supports the claimed outcomes and identifies pending lanes and final-tree owner.
+- Material deviations and useful partial/negative evidence are ready for the report.
+- Completion, pending proof, interruption, and an interim update are not conflated.

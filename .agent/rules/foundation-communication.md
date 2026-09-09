@@ -19,6 +19,9 @@ Use flat, literal language. Write so the reader understands it in one pass.
 - Keep complete grammar. Short does not mean telegraphic.
 - Delete filler, hedging, praise, apology, meta-commentary, idiom, and decorative language.
 - Preserve scope, conditions, exceptions, numbers, uncertainty, safety qualifiers, and exact literals.
+- Remove filler hedging, not material probability, attribution or evidence limits. A suspected
+  cause must not become an established cause during compression. Summaries preserve the selected
+  source and current accepted scope, including cancellation and completed work.
 - Do not use `should` for a requirement. State the requirement directly or use `must` when it belongs
   in descriptive prose.
 

@@ -1,38 +1,64 @@
 ---
 trigger: model-decision
-description: Consult when adding menus, tabs, routes, or scroll behavior — URL-first active state, semantic slugs (never ordinal IDs), scroll reset with entry animations, Suspense-wrapped lazy routes.
+description: Consult when adding menus, tabs, routes or scroll behavior — route identity, active state, compatible URLs, scroll restoration and framework-specific loading boundaries.
 tier: kind:app
 domain: layout
 ---
 
 # Navigation Patterns
 
-Rules for Wayfinding: Menus, Tabs, and Routing.
+Preserve route identity, browser navigation and the project's wayfinding contract. Reuse actual
+router and menu APIs; visual conventions and scroll policies are not universal framework rules.
 
 ## 1. Menus & Dropdowns
-*   **Spacing**: General Dropdowns (`4px` gap).
-*   **Radii**: Menu Container Radius = Item Radius (8px) + Padding (4px) = 12px.
-*   **Interaction**: Ensure hover states use the semantic `--control-bg-hover` token.
+
+- Use established spacing, radii and state tokens. Concentric container/item geometry is useful,
+  but menu sizes depend on borders, padding, content and target requirements.
+- Distinguish navigation lists, disclosure menus and composite menu widgets. Preserve naming,
+  keyboard operation, dismissal and focus return for the chosen pattern.
 
 ## 2. Routing & URL State
-*   **URL First**: Always derive "Active" state from `useLocation()`, not local state.
-*   **Visuals**: Use `data-active="true"` attribute selectors, not `.active` classes.
-*   **Page Transitions**: For any lazy-loaded page route, ensure wrapping in `<Suspense>` with a consistent `LoadingScreen` component.
+
+- Derive route-active state from the actual router/location for bookmarkable navigation.
+  `useLocation()` is one API; local state remains appropriate for transient non-route controls.
+- Use `aria-current` where it identifies the current page/location. Classes or data attributes are
+  styling mechanisms, not substitutes for accessible state or a mandated selector spelling.
+- Match loading/error boundaries to the router/framework. React lazy components need an applicable
+  Suspense boundary; not every router's lazy route uses the same loading mechanism.
+  Preserve useful shell content and provide failure/retry behavior, not a required `LoadingScreen`.
 
 ## 3. Scroll Management
-*   **Initial Reset**: For pages with entry animations (e.g., `framer-motion` transforms), always use `useLayoutEffect` to explicitly `window.scrollTo(0, 0)` on mount. This counteracts browser/hydration offsets during the animation window.
-*   **Behavior**: Set `scroll-behavior: smooth` in `globals.css` only for user-driven scrolling. Programmatic resets should be instantaneous.
+
+- Discover the router's restoration and focus policy before adding effects. Preserve back/forward
+  positions, hash destinations and nested scrollers. New-page top reset may be appropriate, but
+  not on every mount or every parameter update.
+- Diagnose animation-induced offsets against the measured scroll owner and layout. Do not add a
+  universal `useLayoutEffect`/window reset that overrides restored state or focus.
+- Respect reduced motion for smooth navigation. Choose instantaneous resets explicitly where the
+  policy needs them; global `scroll-behavior: smooth` does not distinguish user from script calls.
+  See [CSS scrolling behavior](https://www.w3.org/TR/css-overflow-3/#smooth-scrolling).
 
 ## 4. Semantic Slugs & Invariance
-*   **Immutable IDs**: Case study routes and navigational items MUST use semantic slugs (e.g., `circl-app`, `branding-system`), NEVER ordinal IDs (`work-1`, `project-2`).
-*   **Ref Ordering**: Changing the order of items in a matrix should never require data migration or URL changes.
+
+- Keep externally used IDs and URLs stable across reordering. Semantic slugs, database IDs and
+  opaque identifiers can all be appropriate; an ordinal derived from current list position is fragile.
+- Preserve existing compatibility links or plan redirects when a rename is authorized.
+  Descriptive slugs are not necessarily immutable and must not expose private data.
+- Retiring runtime content does not authorize deleting client-locked placeholders or published
+  routes. Preserve explicitly required archive targets and links according to the project's
+  retirement contract; coordinate redirects/removal rather than inferring them from UI absence.
 
 ## 5. Verification
 
 ### Invariants (Automated)
-- [ ] **Semantic Slugs**: `grep "project-[0-9]\|work-[0-9]" apps/<app>/` (Must use semantic slug naming).
-- [ ] **URL-First Active States**: `grep "isActive" apps/<app>/` (Prefer `data-active` attribute selectors in CSS).
+
+- Use actual route/link tests for stable identity, redirects, active state and loading/error paths.
+  A search for `project-1` or `isActive` cannot establish a violation by spelling alone.
+- Verify linked targets exist and required compatibility URLs still resolve.
 
 ### Logic (Manual/Reasoning)
-- [ ] **Scroll Reset**: Does navigating to a new page correctly start at the top despite exit/entry transforms?
-- [ ] **Deep Linking**: Can users link directly to a specific work item within an index?
+
+- Exercise deep links, reload, back/forward, hash links, repeated navigation and relevant nested
+  scrolling, including interrupted entry/exit motion.
+- Check focus and active announcements after navigation. Report static coverage separately from
+  browser restoration and rendering evidence under `foundation-testing.md`.

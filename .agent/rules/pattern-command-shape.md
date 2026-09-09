@@ -1,61 +1,71 @@
 ---
 trigger: always
-description: Compose shell commands so the permission engine can match them — one command per call, no cd prefix, dedicated tools over shell utilities, no inline loops or command substitution. Consult before any Bash/PowerShell call.
+description: Consult before shell calls to choose inspectable command structure, explicit working directories, safe quoting and true result capture under the current runtime's permission and tool contracts.
 domain: tooling
 ---
 
 # Command Shape (permission-friendly shells)
 
-The permission engine splits a compound command on `&&` / `;` / pipes and requires **every**
-segment to match an allow rule. One unmatchable segment prompts the whole command — so the
-allowlist being complete for a command's *head* is not enough. Most agent prompts are caused by
-command **shape**, not missing rules: a saved "always allow" of a compound one-liner is a dead
-fossil that never matches again once one token changes. Shape the command so it matches. This rule
-is always active.
+Make commands inspectable, correctly scoped and faithful to the current tool's execution contract.
+Permission matching, persistent cwd/environment and available file tools vary by runtime.
+Command shape improves clarity; it never grants authority or justifies bypassing a refusal.
 
 ## 1. One logical command per call
-Issue independent steps as **separate** tool calls, not `a && b; c`. The Bash tool's working
-directory and environment persist between calls, so nothing is lost by splitting. A compound is
-acceptable only when the steps are genuinely dependent AND every segment is independently
-allowlistable (e.g. `git add -- <path> && git commit -F <file> -- <path>`).
 
-## 2. Never prefix `cd`
-The tool's cwd persists; a leading `cd "…" &&` adds an unmatchable segment for nothing. Pass a
-path to the command instead (`git -C <dir> …`, `npm --prefix <dir> …`), or rely on the persisted
-cwd. (Observed: 63% of prompted calls carried a dead `cd` prefix.)
+Prefer separate calls for independent steps; batch only when dependency, latency or an atomic
+operation warrants it and each effect is authorized. Capture each meaningful result.
+Use the tool's documented argument/environment support and quote paths for the actual shell.
+Do not assume shell state persists across calls or that every compound is parsed the same way.
+
+<a id="2-never-prefix-cd"></a>
+
+## 2. Set the working directory explicitly
+
+Prefer an explicit tool working-directory parameter or a supported command-specific directory flag.
+Avoid a redundant `cd … &&` prefix. If the tool lacks a cwd parameter, a correctly checked directory
+change can be necessary; confirm failure prevents the dependent action. Never rely on an unverified
+persisted directory for a destructive command.
 
 ## 3. Dedicated tools over shell utilities
-Read / Grep / Glob / Edit / Write **never** prompt. `cat` / `grep` / `sed` / `find` — and
-especially in-place `sed -i` or a `for … done` file loop — inside a Bash call **do**. Reach for
-the tool:
-- Reading files → **Read** (not `cat`, not `head`/`tail` on a source file).
-- Searching content → **Grep**; finding paths → **Glob** (not `find` / `grep -r`).
-- Editing a file → **Edit** / **Write** (not `sed -i`, not a PowerShell `Set-Content` script).
 
-## 4. No inline `for` / `while` loops
-A loop construct is unsplittable and unmatchable. Unroll a small loop into N separate simple calls,
-or when the iteration is real, run a `node` script (`node *` is allowlisted) instead of a shell
-loop. Same for PowerShell `foreach` / `$var = …; … | ForEach-Object` pipelines — prefer the
-PowerShell tool with simple statements, or a `node` script.
+Use purpose-built file/search/edit tools when available and appropriate. Otherwise normal shell
+reading/search, including `rg`, is valid. No tool name universally guarantees prompt-free execution.
+Follow the current editing constraints; do not substitute shell writes for a required patch tool.
+Check actual paths and scope before every mutation, including indirect script outputs.
 
-## 5. No command substitution `$(…)` (nor here-strings for messages)
-Claude Code prompts on **any** command containing `$(…)`, regardless of the base command, because
-substitution can hide arbitrary execution — no allowlist can rescue it. If you need a value, capture
-it in a prior call and use the literal, or use a tool. Likewise a multi-line message delivered via
-`$(cat <<EOF)`, a `<<'EOF'` heredoc, or a PowerShell `@'…'@` here-string is unique every time and
-never re-matches — see `git-protocol.md` §6.3 for the commit-message form.
+<a id="4-no-inline-for--while-loops"></a>
+
+## 4. Bounded iteration
+
+Prefer clear bounded calls or an existing reviewed script over dense loops. A genuine batch loop
+is valid when its target set, per-item errors and partial completion are explicit.
+Moving the same effects into Node or another interpreter does not make them safer or approved.
+Do not choose an allowlisted interpreter to evade a restricted command.
+
+<a id="5-no-command-substitution--nor-here-strings-for-messages"></a>
+
+## 5. Substitution and literal text
+
+Avoid hidden execution and fragile nested quoting. Capture a needed value with a read-only call
+and validate it before use, or use a documented argument API. Some runtimes permit substitutions
+or literal here-documents/here-strings; inspect expansion rules rather than making universal
+permission-engine claims. In particular, unquoted substitutions and interpolated strings can run
+code or expose secrets. Use simple arguments or a real message file for authorized Git messages
+under `git-protocol.md`; do not create one merely to satisfy a ritual.
 
 ## 6. Redirect-and-check, not pipe-and-parse
-When you must capture output, redirect to a file and inspect it with the Read tool — do not build a
-`… | grep … | tail` pipeline (the pipe defeats matching *and* masks the true exit code, per
-`foundation-testing.md` §1). For verification gates specifically, run the project's one-command gate
-(`foundation-testing.md` §1); for Node repos that's the `gate:*` npm-script convention documented in
-`tech-node-gate.md`. Either way it collapses the whole gate to one allowlisted command that owns its
-own exit code.
+
+Preserve the runner's real exit and useful output. Prefer tool-returned output; an authorized owned
+output file can help with large results, but redirection is a filesystem write and may expose data.
+A filtered pipeline can mask failure unless upstream status is captured correctly for that shell.
+Use `foundation-testing.md` for evidence and actual project gate commands. Existing Node/Python
+gate conventions apply only where configured; a familiar command name is not proof it exists.
 
 ## What still (correctly) prompts — do not try to shape around these
-Outward-facing or destructive effects are gated by design (`pattern-external-mutation.md`): external
-`curl`/network fetch, `git push` / `git push --delete`, broad `rm`, process kills
-(`Stop-Process -Force`), and `powershell -NoProfile -Command "<arbitrary string>"`. The fix for a
-recurring one of these is a named, narrowly-scoped helper script (invoked via the allowlisted
-`node *`), not a broader allow rule.
+
+Respect the current sandbox/permission policy and `pattern-external-mutation.md`.
+Network access, publication, deletion and process control have different effects; a read-only fetch
+is not inherently a mutation, and not every host prompts for it. Explicit denial remains a boundary.
+Resolve exact action, target, authority and preservation before outward/destructive effects.
+A helper script must preserve those checks; it cannot launder a denied operation through an
+allowlisted head or a broader rule. Do not change permission configuration to finish routine work.

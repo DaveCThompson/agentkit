@@ -7,138 +7,151 @@ domain: motion
 
 # Framer Motion Patterns
 
-Rules for using Framer Motion correctly. For GSAP-specific rules see `pattern-motion.md`. For the library selection decision table see the project's animation-strategy spec (path in `project-invariants.md`).
+Use the installed Motion/Framer Motion version and actual project motion contract. Preserve
+geometry, state and accessible endpoints through interruption and navigation. Consult
+`pattern-motion.md` when GSAP also participates; no local wrapper is supplied by this kit.
 
 ## 0. Import Surface
 
-All motion primitives, hooks, types, and variant factories are imported from `@app/motion`, never directly from `framer-motion`. The motion package re-exports the full Framer Motion surface (`export * from 'framer-motion'`) plus this project's shared variants, GSAP bindings, and the normalised `useReducedMotion`.
+Discover package versions, exports and the project's import boundary. Use an existing shared
+motion package if it owns required variants or lifecycle behavior. `@app/motion` is one possible
+local alias, not mandatory infrastructure. Direct imports from the installed library are valid;
+current Motion documentation uses `motion/react`, while older projects may use `framer-motion`.
+Do not migrate packages or replace a compatibility wrapper just to match the newest example.
 
-- App code must have zero direct `from 'framer-motion'` imports. Verify with `grep -r "from 'framer-motion'" apps/`.
-- One import statement per source module. Do not leave multiple adjacent imports from `@app/motion` in the same file; merge them.
+Follow the compiler/linter's type/value import conventions. Merging redundant imports is useful,
+but a fixed import count or a global grep cannot prove the actual module contract.
 
 ## 1. When to Use Framer Motion
 
-Framer Motion is the default for:
-
-- **UI state transitions**: hover, press, focus — use `whileHover`, `whileTap`
-- **Scroll reveals**: standard section/card entrances — use `whileInView`
-- **Layout animations**: magic-move transitions between positions — use `layout` + `layoutId`
-- **Page transitions**: route enter/exit — use `AnimatePresence`
-- **Scroll-linked values**: header morphing, parallax offsets — use `useScroll` + `useTransform`
-
-Use GSAP instead when: complex multi-track timelines, SplitText character reveals, TextPlugin typing effects, or ScrollTrigger scrubbing are required.
+Motion offers gesture feedback, in-view reveals, shared/layout transitions, presence and scroll
+values. Choose among these and existing CSS/browser/GSAP methods by required behavior and cost.
+Do not add a second library merely because an effect is a timeline, reveal or page transition.
 
 ## 2. Scroll Reveals (`ScrollReveal`)
 
-Always use the `ScrollReveal` wrapper — do not replicate `whileInView` inline on one-off elements.
-
-```tsx
-<ScrollReveal>
-  <SurfaceCard>...</SurfaceCard>
-</ScrollReveal>
-```
-
-- Fires once (`once: true`) by default
-- Reduced motion: swaps to `noMotionVariants` (instant, no transform)
-- Default direction: vertical `y` only — never `x` drift
+Reuse an existing reveal wrapper when its trigger, layout and lifecycle fit. Inline `whileInView`
+is also valid. Once-only versus repeat and vertical versus horizontal movement are design choices.
+Keep meaningful content reachable if startup or a visibility gate fails. Check the real reduced-motion
+path before hiding content; skipped motion still needs its visible endpoint and completion state.
+A wrapper can change grid/flex geometry, so inspect the rendered container.
 
 ## 3. Layout Animations (`layoutId`)
 
-Used for the nav active-state pill. Rules:
+Shared elements intentionally use matching `layoutId` values. Prevent accidental collisions among
+unrelated groups, using `LayoutGroup` namespacing where supported; do not require every matched
+source/destination to have a different ID.
+See [Motion layout animations](https://motion.dev/docs/react-layout-animations).
 
-- Shared `layoutId` values must be unique across the page — collisions cause jumps
-- When animating into an overlay or viewer, the destination `motion` node must own a deterministic box on first render. Do not let a lazily-mounted child image, async content, or portal-time measurement define the geometry after the `layoutId` node appears.
-- For shared-element media viewers, keep the source frame mounted through the opening sample and only visually hide it after the destination is active. Hiding it too early causes first-open snaps.
-- If the source is inside a clipped, scrolling, or reused track, use a fixed-position proxy as the `layoutId` source. Give the proxy an explicit lifecycle: arm for opening, render during closing, and never keep it mounted while idle.
-- Strip `y` from the `transformTemplate` when the element participates in scroll-driven geometry — measurement artifacts from scroll morphing will otherwise cause the pill to drift vertically during navigation
-
-```tsx
-<motion.div
-  layoutId="activeNav"
-  transformTemplate={({ x, scaleX, scaleY }) =>
-    `translateX(${x ?? '0px'}) scaleX(${scaleX ?? 1}) scaleY(${scaleY ?? 1})`
-  }
-/>
-```
+- Establish a usable source/destination box for shared media transitions. Reserve async image/content
+  geometry and inspect first-open, repeat-open and close paths before adding measurement workarounds.
+- Keep a required source measurement available through the transition. A fixed proxy can help for
+  clipped/reused tracks, but only when native scroll/fixed layout support does not fit.
+  Give a proxy a bounded opening/closing lifetime and keep it from duplicating accessible content,
+  intercepting idle input or surviving teardown.
+- Use installed `layoutScroll`/`layoutRoot` support when relevant to scroll/fixed measurement.
+  Trace parent transforms and coordinate spaces before removing a transform axis.
+- A custom `transformTemplate` must preserve every transform needed by the chosen layout model.
+  Stripping `y` is a local workaround only when the verified contract excludes vertical movement;
+  it is not a general cure for scroll-driven geometry.
 
 ## 4. Page Transitions (`PagePresence`)
 
-`PagePresence` is currently a plain `<div>` wrapper — **no AnimatePresence, no motion.div, no enter/exit variants**. Page-local GSAP components (HeroReveal, Home timeline) own all entry animation.
+Inspect the real route wrapper, keys, mount policy and entry-animation owners. An inert wrapper,
+retained tree or keyed `AnimatePresence` may all be intentional. Changing keys resets component
+identity and can cancel state/timelines; preserve or rebuild them according to navigation semantics.
+Do not assume a component named `PagePresence` is a plain div or globally forbid page enter/exit.
 
-Do NOT restore `AnimatePresence` + `key={pathname}` to PagePresence. That pattern unmounts the page component tree on every navigation, killing in-flight GSAP timelines and causing HeroReveal to re-evaluate its gate on every route change — the root cause of the double-animation regression.
-
-If a route-level cross-fade is needed in the future, use a CSS `transition: opacity` toggled via a className on the PagePresence container — no remount, GSAP timelines survive.
-
-The `pagePresenceVariants` and `noMotionPagePresenceVariants` factories remain in `@app/motion` for reference but are not currently applied.
+For presence animations, check stable child keys, the actual presence boundary and retained exiting
+content. Avoid duplicate focusable page regions and complete exit cleanup. A CSS opacity transition
+can fit a retained wrapper, but it does not guarantee router children or GSAP timelines survive.
+See [AnimatePresence](https://motion.dev/docs/react-animate-presence).
 
 ## 5. Scroll-Linked Values (`useScroll` + `useTransform`)
 
-Used for the header scroll-morphing sequence. Rules:
+Assign each element/property/lifetime an owner. GSAP and Motion both writing inline styles is a
+competing-writer problem, not a permanent specificity advantage for one library.
+Use separate wrappers, composed source values/CSS variables, or an explicit handoff.
+A CSS-variable proxy is not automatically observable by `useTransform`: connect actual reactive
+inputs/subscriptions and clean them up rather than expecting computed CSS to trigger Motion.
 
-- **Never** let GSAP write inline `opacity`, `transform`, or `width` on an element that also receives a Framer Motion `MotionValue`. GSAP inline styles have higher specificity and permanently override the motion expression.
-- When coexistence is required, use a CSS variable proxy in GSAP and read it in the Framer Motion `style` prop via `useTransform`.
-- Decouple scroll progress per property when they should respond at different rates:
-  ```tsx
-  const geometryProgress = useTransform(scrollYProgress, [0, 0.12], [0, 1]);
-  const materialProgress = useTransform(scrollYProgress, [0, 0.10], [0, 1]);
-  ```
+Different properties may map the same scroll progress to different ranges, for example geometry
+finishing before material color. Derive those ranges from the intended scene and verify resize,
+scroll containers and interruption; fixed fractions are examples, not required timings.
+Follow `foundation-performance.md` for measured rendering cost.
 
 ## 6. Motion Initialization (`initial`)
 
-- **Always define `initial` state**: To prevent console warnings and "animate from undefined" artifacts, explicitly declare values for all properties used in the `animate` prop.
-- **Entry Logic**: When using `entryPlayed` state to disable initial entry animations on subsequent mounts, use `initial={entryPlayed ? false : { ... }}` to preserve the current state while avoiding redundant entry deltas.
+Choose an initial state when an entrance is intended. Motion permits `initial={false}` to skip
+initial animation; not every animated property needs an explicit initial prop to avoid warnings.
+Check server/initial-client consistency and visible startup/failure paths.
+An `entryPlayed` gate can suppress repeat entrances, but its storage/lifetime must match navigation
+and preference changes. `initial={false}` does not by itself preserve state across remounts.
+See [motion component](https://motion.dev/docs/react-motion-component).
 
 ## 7. `useReducedMotion`
 
-This project imports `useReducedMotion` from `@app/motion` (not directly from `framer-motion`). The shared hook normalises the value across SSR and handles the `null` initial state.
-
-Always check `prefersReducedMotion` and short-circuit to instant/static state — never skip this.
+Use the real library hook or project wrapper and inspect its SSR/initial/preference-change behavior.
+Choose a static or reduced-motion alternative that preserves content, feedback and completion;
+do not equate “skip” with leaving the element hidden or removing necessary state transitions.
+A setting can disable transform/layout animation while opacity still changes; check what the actual
+configuration covers. See [useReducedMotion](https://motion.dev/docs/react-use-reduced-motion)
+and `foundation-accessibility.md`.
 
 ## 7. Verification
 
-- [ ] No inline `whileHover` lift (`y: -1`, `scale: 1.02`) on standard controls — use background-layer expansion instead
-- [ ] All `whileInView` elements have a `noMotionVariants` fallback or `useReducedMotion` guard
-- [ ] `layoutId` values are unique and `y` is stripped from `transformTemplate` when the element is scroll-driven
-- [ ] Overlay/media `layoutId` proxies disarm after the transition and do not block idle source interactions
-- [ ] No GSAP inline styles on elements that also use Framer Motion `MotionValue`
+- [ ] Import/API choices resolve in the installed version and preserve existing wrapper contracts.
+- [ ] Reveals settle visibly on playback, skip, preference change, interruption and failed gates.
+- [ ] Shared IDs match intended elements without cross-group collisions; geometry remains correct.
+- [ ] Proxies, subscriptions, timers and exiting nodes clean up without reviving loops or stealing focus.
+- [ ] Route mount/key behavior and cross-driver property ownership match the accepted design.
+- [ ] Browser evidence supports visual claims; missing runtime/consumer checks remain unverified.
 
+<a id="orchestration-circularity-function-declarations-over-usecallback"></a>
 
----
-
-## Orchestration Circularity (Function Declarations over useCallback)
-
+## Orchestration circularity and callback lifetime
 
 ## Overview
-In complex Framer Motion components (like `TestimonialDeck`), multiple state-driven phases (idle -> committing -> settling) often require circular logical references.
-Implementing these with `const` and `useCallback` triggers **Temporal Dead Zone (TDZ)** errors because `useCallback` dependencies are evaluated in sequence, and a `const` cannot be referenced as a dependency before its point of definition.
+
+A callback body can refer to a later declaration if it executes after initialization. An eagerly
+evaluated dependency array cannot read a later `const` in its temporal dead zone.
+That distinction matters when settling/queued navigation phases refer to each other.
 
 ## Standard Pattern
-When internal orchestration logic requires circularity (e.g., `finalizeSettle` -> `scheduleQueuedNavigation` -> `playDotAdvanceLeadIn` -> `commitDismiss` -> `finalizeSettle`):
 
-1. **Revert to Function Declarations**: Use the `function` keyword for the core orchestration functions.
-2. **Leverage Hoisting**: Function declarations are hoisted, allowing them to safely reference each other throughout the component body without TDZ errors.
-3. **Internal stability**: If reference stability for children is required AND logic is circular, wrap the *entry point* (e.g. `handlePan`) in a `useCallback` that calls the internal hoisting-aware functions.
+For genuinely circular local logic, hoisted function declarations can avoid declaration-order
+errors. Prefer a clear state machine or ordered pure transition functions when that simplifies the
+flow. Hoisting does not bound recursion, cancel asynchronous work or make closures current.
+
+Functions declared during render get new identities. A memoized entry point with omitted dependencies
+can still capture stale functions/state. Choose dependencies or a version-appropriate current-value
+mechanism deliberately; test queued callbacks across rerenders and teardown rather than silencing lint.
 
 ## Rationale
-Prevents runtime `ReferenceError` crashes during component initialization while maintaining the ability to build complex, multi-phase animation state machines.
+
+Separate initialization safety from callback identity and lifetime. Circular phases need a bounded
+transition/queue policy, with completion and cancellation handled explicitly. Do not assume
+`useCallback` is universally required or harmful.
 
 ## Example
-```tsx
-// ❌ FAILS with TDZ if finalizedSettle references scheduleQueuedNavigation
-const finalizeSettle = useCallback(() => {
-  scheduleQueuedNavigation();
-}, [scheduleQueuedNavigation]);
 
-const scheduleQueuedNavigation = useCallback(() => { ... }, []);
+This JavaScript-only example isolates declaration-order semantics; it is not a React lifecycle test.
 
-// ✅ SUCCEEDS due to hoisting
-function finalizeSettle() {
-  scheduleQueuedNavigation();
+```javascript
+function unsafeDependencies() {
+  const finalize = () => schedule(); // Deferred reference alone is not the failure.
+  const dependencies = [schedule]; // Throws before schedule is initialized.
+  const schedule = () => 'scheduled';
+  return { finalize, dependencies };
 }
 
-function scheduleQueuedNavigation() {
-  // logic...
+function createController() {
+  function finalize() { return schedule(); }
+  function schedule() { return 'scheduled'; }
+  return { finalize, dependencies: [schedule] };
 }
 ```
 
-// WHY: Reverting to function declarations is the high-craft solution for circular internal logic in large components when reference stability for child components can be managed by higher-level entry-points.
+Verify that calling `unsafeDependencies()` throws `ReferenceError` and that
+`createController().finalize()` returns `'scheduled'`. Separately test real hooks, current-state
+reads, queue termination and disposal in the consuming app under `foundation-testing.md`.

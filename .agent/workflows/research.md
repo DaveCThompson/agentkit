@@ -1,27 +1,22 @@
 ---
-description: Conduct external research and synthesize findings into project-specific recommendations.
+description: Research open questions and map supported findings to the project without implying approval.
 ---
 
 # Research Workflow
 
-Bridge general knowledge to project-specific constraints by chaining deep research with synthesis.
+Resolve the decision/question, supplied evidence, project context and one report destination.
+Reuse the caller's path. Otherwise use a flat `REVIEW-research-<topic>.md` in the resolved working
+store when a durable report is needed. Pass this same identity through all selected skills.
 
-## Goal
-A synthesized report with actionable, project-mapped recommendations.
+Use `research-deep` for consequential evidence gaps that require retrieval. Use
+`research-synthesize` to map supplied or retrieved findings to the project; do not repeat research
+when the provided corpus is sufficient. Retrieval failure permits a bounded analysis of available
+evidence with clear limits, not invented sources or an unconditional stop.
 
-## Inputs required (ask if missing)
-- Research topic or question.
+Use `research-curate` when the request needs stable local evidence or knowledge-store promotion.
+Direct upstream citations remain valid without mandatory local ingestion. Preserve hard findings,
+conflicts, source provenance and distinctions among retrieval, corroboration and runtime proof.
+Filing or promotion does not accept a recommendation or authorize implementation.
 
-## Skill routing (explicit)
-- `research-deep` — external/web investigation.
-- `research-synthesize` — map findings to this project's rules and knowledge base.
-
-## Procedure
-1. **Deep research**: Follow `research-deep`'s `SKILL.md`; run web/doc investigation.
-2. **Synthesis**: Follow `research-synthesize`'s `SKILL.md`; align findings with `.agent/rules/`,
-   `AGENTS.md`, and the relevant `docs/knowledge-base/` sections.
-3. **Report**: Write `docs/working/REVIEW-research-{topic}.md`.
-
-## Notes
-- This workflow earns its place by sequencing two skills (investigate -> map); neither alone
-  produces project-actionable output.
+Return the supported recommendation, alternatives or no-change conclusion and relevant remaining
+uncertainty. Continue to planning only when requested or already within scope.

@@ -5,132 +5,72 @@ domain: git
 
 # Git Protocol for Agents
 
-**Never use `git stash`**. Stash creates base-commit drift, silently reverts
-unrelated tracked-file changes on pop, and corrupts the working tree when
-the branch has diverged. Agents have no recovery mechanism for this — always
-commit, branch, or flag the conflict instead.
+Preserve owned and concurrent work. Git refs, the index and the working tree are shared mutable
+state; scope alone does not isolate independent committers. Never use `git stash` as coordination.
 
-## Rules
+## 1. Branch and base ownership
 
-### 1. Always Start on a Fresh Branch
+The integration owner establishes the requested branch/base before editing. Use a fresh task branch
+when branch creation is in scope; honor an explicitly selected branch or checkout. Workers in a
+shared-tree-disjoint run do not create/switch branches. Independent committers use separate worktrees.
 
-```
-git checkout -b feat/agent-<name>-<short-descriptor>
-```
+Resolve the chosen base and confirm it contains the intended prerequisites. New paths can legitimately
+be absent; verify their intended parent/creation scope. On mismatch, preserve state and coordinate
+recovery. Zero local commits does not justify `reset --hard` or dropping untracked/ignored files.
 
-Every agent session gets its own branch. Never work directly on `main`.
+## 2. No stash-based handoffs
 
-### 2. Never Use `git stash`
+Do not stash/pop to move work between tasks. Use owned commits when authorized, or explicit preserved
+local artifacts. A pushed branch carries tracked commits, not ignored tickets, evidence or notes;
+deliver those through an authorized accessible channel and verify recipient access.
 
-- Stashing to temporarily set aside work is forbidden.
-- If you need to switch context: commit WIP (with a meaningful message
-  prefixed `WIP:`) or create a new branch.
-- Related hazard: a pre-commit hook that OOMs (e.g. lint-staged running type-aware
-  `eslint --fix` on a large branch) can silently auto-revert and leave an ORPHAN BACKUP
-  STASH — mechanism and the portable heap-bump fix live in `tech-node-gate.md` §1.
+## 3. Conflict handling
 
-### 3. On Merge Conflict: Stop
+On merge/rebase/cherry-pick conflict, stop the operation's progression and report affected files,
+both intended behaviors and a recommended resolution. Do not automatically choose `--ours` or
+`--theirs`, reset, or discard state. Resolve only with the applicable explicit authority.
+Do not run order-dependent Git operations concurrently.
 
-If `git merge`, `git rebase`, or `git cherry-pick` produces a conflict:
+## 4. Commit and integration preconditions
 
-1. **Do not** resolve it automatically with `--theirs` or `--ours`.
-2. **Do not** use `git stash` to work around it.
-3. **Stop** and report the conflict to the user with:
-   - Which files conflicted
-   - The two sides (what each branch changed)
-   - The recommended resolution if you can determine it
+Before commit, verify branch, HEAD, index, intended diff and ownership of every named path.
+Stage/commit by explicit pathspec; a pathspec does not protect foreign changes within the same file,
+so resolve mixed ownership first. Avoid sweeping add/commit commands in shared trees.
+Use normal `git commit -m` arguments or a real message file, not command substitution.
 
-### 4. Commit Before Merging
+Before merge/rebase, checkpoint owned work and account for all other local state. Never discard
+changes merely to obtain a clean status. Prefer an in-memory merge preview when available.
+The accepted output is an immutable commit/content identity; refresh review/proof if its tip changes.
 
-Always commit or explicitly discard local changes before running `git merge`
-or `git rebase`. A dirty working tree causes spurious conflicts.
+## 5. Publication and handoff
 
-### 5. Push for Handoff
+Commit, merge, push and remote publication are separate authorities. Push only when the user's
+grant covers the exact repository/ref and action, per `pattern-external-mutation.md`.
+A local handoff can be complete without publication if the recipient can access the accepted output.
+When publishing, confirm the remote result. An uncertain push requires reconciliation before retry.
 
-If another agent needs to build on your work, push your branch and note the
-branch name in the handoff. Do not stash-pop across agent boundaries.
+## 6. Concurrent sessions
 
-### 6. Concurrent Sessions Share Nothing
+- One coordinator owns a shared tree's Git, generation, shared metadata and final proof.
+  Parallel authors are allowed only with explicit disjoint write sets and attributed changes.
+  Use isolated worktrees for independent Git writers or incompatible environments.
+- Re-read before edits and before staging; another writer may have changed the same path.
+  Stop and coordinate overlapping ownership rather than absorbing a foreign diff.
+- Ticket frontmatter owns work status. Boards own scheduling and derive status; maintenance
+  cannot decide a ticket is complete from a board summary or an ancestor citation.
+- Freeze writers for a combined verification snapshot. Shared-tree tests cover the combined
+  content, not an individual author's diff unless the fixture truly isolates it.
+- Only the resource owner cleans worktrees/branches after checking inactivity, unique commits,
+  all useful local files and required evidence. Retain ambiguous or active resources.
 
-Several interactive sessions often share one working tree — the branch and
-the staging area are shared, mutable state that another session can change
-under you at any moment.
+## 7. Diverged or resumed work
 
-1. **One session per working tree.** If a second session must run
-   concurrently, give it its own `git worktree`. Mandatory for long sessions
-   in cloud-synced-synced repos — that is where these races actually occurred.
-2. **Re-check immediately before ANY commit.** Run
-   `git branch --show-current` (the tree may have moved under you) and scan
-   `git status` for staged entries you did not stage.
-3. **Always commit by pathspec:**
+Measure divergence and inspect current instructions, accepted outputs and remaining requirements.
+Do not rebuild already accepted work from a stale base. Preserve partial progress and its active
+attempt identity; stop the old writer before assigning the same surface to a resumed attempt.
 
-   ```
-   git commit -m "..." -- <path1> <path2>
-   ```
-
-   This commits only the named paths and is immune to foreign staged entries
-   regardless of the race. Never bare `git commit` or `git commit -am` in a
-   tree another session may share. Stage by pathspec too (`git add -- <paths>`);
-   never `git add -A` / `git add -u` in a shared tree — they sweep in another
-   session's changes exactly like a bare commit.
-
-   **Multi-line messages — never via command substitution or a heredoc.** A
-   single-line message uses `-m "…"`. For a body, either repeat the flag
-   (`git commit -m "subject" -m "body para" -- <paths>`) or write the message
-   to a scratchpad file with the Write tool and pass it as a real path:
-
-   ```
-   git commit -F <scratchpad>/msg.txt -- <path1> <path2>
-   ```
-
-   Do **not** use `git commit -m "$(cat <<EOF … EOF)"`, `git commit -F - <<'EOF'`
-   (stdin heredoc), or a PowerShell `@'…'@` here-string. Every one of these
-   prompts on every commit: `$(…)` prompts unconditionally, and a heredoc /
-   here-string body is a unique unmatchable segment that never re-matches a saved
-   allow (`pattern-command-shape.md` §5). `-F <realfile>` is the prompt-free form.
-4. **Wrong-branch repair is pointer-only.** If a commit landed on the wrong
-   branch, fix it with `git branch -f <intended-branch> <sha>` — never
-   reset or cherry-pick gymnastics in a live shared tree.
-5. **Never edit another session's single-writer file.** The Status Board is
-   written only by the orchestrator; a maintenance or review session that
-   finds it wrong reports the discrepancy, it does not correct it. Two
-   writers on a single-writer file is how the one trustworthy surface
-   stops being trustworthy.
-6. **Sync derived surfaces TO the board; never adjudicate from the
-   maintenance seat.** Indexes, README rows, and ticket headers are
-   derived — bring them into agreement with what the board records. A
-   maintenance session must not decide what the program's state *is*; it
-   has the narrowest view of the tree and the least context for that call.
-7. **Re-read before every edit, and attribute every dirty file before
-   staging.** In a shared tree HEAD can advance and files can be rewritten
-   under you mid-session. A file you did not touch appearing dirty is
-   another session's work — leave it, and never let it reach your pathspec.
-
-### 7. Diverged Long-Lived Branches: Preview, Reconcile-by-Doc, Supersede
-
-Before merging or pushing a long-lived integration branch onto a shared branch, do NOT
-assume it is simply "ahead." A blind merge here is how duplicated or broken work reaches
-a shared branch.
-
-1. **Measure divergence, don't guess.** `git rev-list --left-right --count <upstream>...HEAD`
-   plus `git merge-base <upstream> HEAD`. Non-zero on BOTH sides means the branches have
-   DIVERGED (siblings), not ahead/behind: a plain push is impossible and the merge may be
-   large. Stop and scope before acting.
-2. **Check for a documented reconciliation plan first.** Long-lived branches often already
-   carry a working doc (a release-train / integration / reconciliation ticket or board) that
-   records which line is canonical and how to land it. Grep the repo's working docs before
-   merging — the decision may already be made; do not re-derive it or act against it.
-3. **Preview conflicts in memory — never merge-then-abort.** `git merge-tree --write-tree
-   [--name-only] <upstream> HEAD` performs the merge in memory and lists conflicts (exit 1)
-   WITHOUT touching the working tree. A real `git merge` you then `--abort` dirties a shared
-   tree and can leave conflict markers behind.
-4. **Duplicate-integration signature → supersede, not merge/cherry-pick.** When two lines
-   built the same work by different paths, `git cherry <upstream> HEAD` shows every commit as
-   unique `+` (no patch-id match) and the preview shows `add/add` conflicts on the same feature
-   files. A content-merge AND a broad cherry-pick are both wrong here — they reconcile two
-   hand-authored copies of one feature and risk shipping duplicated or broken logic. If one line
-   is the confirmed superset: confirm nothing is unique to the other side
-   (`git diff --name-status --diff-filter=D <other> HEAD`), then `git merge -s ours <other>` —
-   it keeps HEAD's tree entirely, records the other line as a merge parent so history is
-   preserved, and makes the push a clean fast-forward. NEVER force-push to discard the other
-   line's commits.
+A patch-ID comparison, deleted-path list or clean merge cannot establish semantic equivalence.
+If two branches independently implement the same feature, reconcile unique behavior and history
+before selecting integration strategy. Superseding a branch or making an ancestry-only merge requires
+explicit agreement on the retained result; never infer it from a textual similarity heuristic.
+Do not force-push or move shared refs to hide divergence.

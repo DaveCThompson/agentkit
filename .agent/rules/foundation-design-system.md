@@ -7,176 +7,221 @@ domain: design-system
 
 # System Foundations
 
-> **Related Knowledge Base:** the project's design-system spec (semantic color logic, theme
-> switching, concentric corners) — path in `project-invariants.md`.
+Preserve the project's visual and interaction contract across themes, states and layouts.
+Use its actual components, tokens and styling pipeline; this rule supplies design-system review
+methods, not a mandatory palette, framework or product aesthetic.
 
-Core physics and non-negotiables of the Design System.
+Read the relevant project specification and maintained examples, using `project-invariants.md`
+when present. `foundation-design-tokens.md` owns token semantics and mechanical candidate checks;
+`foundation-accessibility.md` and `foundation-performance.md` own their respective constraints.
 
-## 1. Zero Hex Tolerance (CRITICAL)
-*   **Rule:** Modern UI styling **MUST** use existing tokens from `foundation-design-tokens.md` and the generated primitives stylesheet.
-*   **Constraint:** Hardcoded hex codes (e.g. `#fff`) are a **CRITICAL** failure.
-*   **Action:** If a theme variable is missing, fix the theme, do not fallback to hex.
+<a id="1-zero-hex-tolerance-critical"></a>
+
+## 1. Token Use & Literal Exceptions
+
+Use established semantic tokens for roles they actually represent. A raw color can be an
+accidental bypass, a token definition, brand artwork, data input or a compatibility fallback;
+inspect context before assigning impact or changing it. Token presence alone does not prove
+theme or accessibility correctness.
+
+Preserve explicit project restrictions and scoped exceptions. Fix a missing required token at
+its owner rather than hiding a typo with a random value. A supported fallback can be intentional.
+Do not treat every hex match as Critical or presume all primitives are generated. Use the token
+rule's actual exclusion/severity model and report policy blocking separately from user impact.
 
 ## 2. File & Directory Casing
-*   **Strict Kebab-Case Mandate:** All files and directories within the source tree MUST follow **strictly kebab-case** (e.g., `user-profile.tsx`, `prompt-input-field.module.css`).
-*   **Hooks Exception:** React hooks MUST use `camelCase` (e.g., `use-is-mac.ts` is forbidden; use `useIsMac.ts`).
-*   **Why:** Prevents "Failed to fetch dynamically imported module" errors on case-insensitive file systems (Windows/macOS) and ensures consistency across environments.
-*   **Enforcement:** Managed by `eslint-plugin-check-file` and verified via `npm run lint`.
+
+Follow the project's naming scheme and framework-required filenames. Match import casing to
+the actual path, including assets and styles. Case-insensitive development filesystems can hide
+mismatches that fail on a case-sensitive target; this does not make kebab-case uniquely correct.
+Use the project's configured linter/compiler and relevant target build, without inventing a
+filename plugin or renaming files merely to impose this kit's preferences.
 
 ## 3. CSS Modules & Styling
-*   **Selectors Match DOM:** When refactoring JSX, update the corresponding CSS Module.
-*   **Child Targeting:** Solve nested hovers with child targeting (`.wrapper:hover > .child`).
-*   **No Inline Styles:** Component styles must be in CSS Module files.
-*   **HTML Email Exception:** Dedicated HTML email renderers may use inline styles and literal fallback colors when client compatibility requires it. Keep this exception tightly scoped to copied/exported email markup, not normal app UI.
-*   **Composes:** Extract shared styles to a base module and use `composes`.
-*   **Gaps:** Use `gap` for spacing in flex/grid containers, avoid extensive margin hacks.
+
+Use the established styling system: CSS Modules, utility classes, scoped styles or another
+supported approach. Keep selectors aligned with actual DOM structure, state and component
+boundaries. Child selectors and CSS Modules `composes` are techniques when supported; inspect
+cascade, import order and ownership before sharing styles.
+
+Keep runtime geometry, animation and CSS-variable bridges where inline values express the
+contract. Do not introduce CSS Modules as a universal replacement. Dedicated exported HTML
+email can need inline styles and literal fallback colors for client compatibility; verify those
+clients and keep the exception scoped to that output.
 
 ## 4. Layout & Spacing
-*   **Gap-First Layouts:** For primary containers, use `display: flex; flex-direction: column; gap: var(--spacing-*)`.
-    *   Outer Rhythm: `var(--spacing-6)` (24px).
-    *   Inner Rhythm: `var(--spacing-3)` (12px).
-    *   Atomic Rhythm: `var(--spacing-1)` (4px).
+
+Choose layout from content and relationships. Reuse the project's spacing/density scale, container
+primitives and responsive constraints when present. Flex/grid gap is useful for sibling spacing;
+it does not replace every margin, inset or internal padding.
 
 ### Background Hierarchy (The Unwrapped Strategy)
-1.  **App Wrapper:** `--surface-bg-tertiary` (Dark frame).
-2.  **Workspace/Canvas:** `--surface-bg-secondary` (Flat).
-3.  **Content/Output:** `--surface-bg-primary` (High contrast, "Raised").
-    *   *Goal:* Visual progression from Frame -> Workspace -> Result.
 
-*   **Concentric Radii:** `container_radius = inner_element_radius + padding`.
-    *   Example: Button (10px/`md`) + Padding (4px/`spacing-1`) = Container (14px/`xl`).
-    *   **Premium Card Wrapper:** Use a `6px` (`var(--spacing-1p5)`) offset with `var(--radius-2xl)` for the wrapper and `var(--radius-lg)` for the inner card.
+Distinguish shell, workspace and content surfaces when the design uses that hierarchy. Token
+names such as `--surface-bg-primary` are examples, not an installed catalog or fixed color order.
+Preserve required opacity, layering and contrast in actual themes and transitions.
+
+For concentric corners, compare outer radius, inner radius, padding and borders, including
+clamping and unequal insets. Verify real geometry instead of copying a fixed pixel/token pairing.
+Do not use undefined intermediate scale steps to recreate another project's card treatment.
 
 ## 5. Motion Physics
-*   **Goal:** "Snappy but Fluid."
-*   **Reduced Motion:** Always respect `prefers-reduced-motion`. Set durations to `0s`.
-*   **No Drift:** Animations must start/end on pixel-perfect grid lines.
-*   **Scannability:** Never animate hover states on "Scanning Surfaces" (Sidebar items, Menus).
+
+Use the project's motion language and interaction purpose. Preserve stable reading, focus and
+target geometry; a hover effect is not inherently incompatible with a list or menu.
+Measure layout/paint costs and avoid movement that disrupts the task.
+
+Provide an appropriate reduced-motion alternative and implement its visible/state completion
+path. Setting every duration to zero can skip events that code relies on. Confirm skip,
+interruption and changed-preference behavior under `foundation-accessibility.md` and
+`pattern-motion.md` when applicable. Pixel alignment and easing are contextual design decisions.
 
 ## 6. Spacing Invariants
-*   **Zero-Margin:** All components **MUST** have 0px external margins. Spacing is managed by parent `gap` or `padding`.
-*   **No Magic Numbers:** Hardcoded pixel values (e.g., `margin-top: 15px`) are forbidden. Use tokens.
+
+Prefer clear ownership: the parent often owns spacing between children, while the child owns
+internal spacing. Preserve valid auto-centering, logical margins, intentional overlap and
+formatting-context behavior. A zero-margin rule can be a project convention, not a universal
+CSS invariant.
+
+Distinguish scale-based spacing from borders, geometry and runtime measurements before rejecting
+a pixel value. Replacing margin with gap/padding can change collapse, hit areas or available space;
+verify the affected layout instead of relying on string substitution.
 
 ## 7. Icons & Typography
-*   **Explicit Icon Architecture:** `font-variation-settings` is atomic. Use `data-fill="true"` for state changes.
-*   **Optical Sizing:** Small icons (<20px) MUST use a font range starting at 15px (not 20px).
-*   **Button Icons:** Explicitly set to **20px** by default.
-*   **Typography:**
-    *   Labels: `text-xs`, `font-weight-semibold`.
-    *   Content: `text-sm`, `font-weight-normal`.
+
+Use actual icon assets/font axes and readable text roles. Choose icon size, optical sizing,
+weight and line height from the component, font support, density and accessibility needs.
+No universal 20px icon or text-xs/text-sm assignment applies.
+
+When using variable icon fonts, preserve required axes when setting `font-variation-settings`;
+a state attribute is one way to select the full intended declaration. Verify the font's supported
+axis ranges and render actual glyphs at target sizes. See
+[CSS font variation settings](https://www.w3.org/TR/css-fonts-4/#font-variation-settings-def).
+Labels and meaningful icons retain accessible names; decorative icons remain excluded appropriately.
 
 ## 8. Theming & SVG
-*   **SVG Colors:** Must be CSS-Driven via `fill: var(...)`. No inline fills.
-*   **GSAP Override:** If animating SVG, cleanup inline styles in `onComplete`.
-*   **MutationObserver:** Components caching colors must watch `data-theme` changes on `<html>`.
-*   **Brand Identity:** Brand colors must be defined in localized CSS modules.
+
+Prefer existing theme-aware color roles through CSS/custom properties or `currentColor` when
+appropriate. SVG attributes, embedded brand values or runtime styles may be part of the intended
+asset/animation API; do not erase them merely because they are inline.
+
+If colors are cached imperatively, subscribe to the actual theme authority and invalidate stale
+values. A MutationObserver suits a DOM-attribute source; context/store/media-query sources may
+have better native subscriptions. Track cleanup and theme changes without assuming a
+`data-theme` attribute on html.
+
+Animated SVG needs completion, cancellation and teardown behavior for owned properties. Restore
+prior styles only when that matches the ownership handoff; do not clear unrelated styles or
+depend on `onComplete` as the sole cleanup path.
 
 ## 9. Feature Status Indicators
 
-*   **Preview Mode:** Features that are built but deferred or mocked MUST use a top-level `Banner` with `variant="caution"`.
-    - **Icon:** `construction`.
-    - **Label:** "PREVIEW MODE" (bold).
-    - **Why:** Sets expectations for non-production features while allowing feedback/demos.
+When preview, mocked or incomplete behavior affects a user's decision, disclose that limitation
+at the relevant surface using the project's existing status pattern. State the actual limitation
+and available action. Do not require a particular Banner, icon, uppercase label or top-level
+warning when local contextual copy is sufficient. Apply `pattern-ui-copy.md`.
 
 ## 10. Miscellaneous System Invariants
-*   **Vertical Stretch:** `position: fixed` needs `bottom: auto` if height stretches unexpectedly.
-*   **Z-Index:** Stack with the `var(--z-index-surface-*)` tokens, never a raw `z-index: N`. The numeric scale lives in `primitives.css` (`--z-index-inset: -1`, `standard: 0`, `base: 1`, `raised: 2`, `premium: 10`, `floating: 100`, `overlay: 1000`); components consume the `--z-index-surface-*` aliases from `semantics.css`. Use `inset/base/raised` for intra-component layering and `premium/floating/overlay` for cross-surface stacking.
-    *   **Shared-plane stacking** — element competes with other components in the page/root context (sticky header, overlays, page glows). Use the global `--z-index-surface-*` token.
-    *   **Internal-layer stacking** — element only stacks against its own component's children, inside an isolated root (`isolation: isolate`). Define a **component-local** named z-index scale at the isolated root as CSS custom properties (e.g., `--z-backdrop: 1; --z-stage: 2;`). Children reference the local vars. Do not invent new global rungs for orphan values like `3`, `4`, `78`, `79`.
-*   **Documented max-tier constants** (sanctioned exceptions, must carry a `// CONSTRAINT:` comment):
-    1. `globals.css` noise overlay (`z-index: 9999999`) — must cover modals per §14.
-    2. `cursor.module.css` (`z-index: 10000000`) — must sit above the noise overlay.
-*   **Selection Toolbar:** Must be the **LAST** child in JSX to ensure z-index visibility.
+
+- For unexpected fixed/absolute stretching, inspect containing block, insets, height/min-height,
+  box sizing and content. Clearing `bottom` is one possible correction to an overconstrained
+  box, not a universal fix; preserve intended viewport anchoring.
+- Distinguish shared-plane stacking from component-internal layers. Use the project's shared
+  tiers when elements compete across surfaces. A local named scale can clarify layers inside
+  an isolated component, provided the isolation itself fits the design.
+- Inspect stacking-context boundaries, portals and the browser top layer before raising numbers.
+  No global noise/cursor max-tier constants belong to every project. Keep existing exceptional
+  values only with the actual constraint and coverage, not a copied filename exemption.
+- DOM order matters for some ties, but putting a selection toolbar last does not guarantee
+  visibility or correct focus. Check its real stacking, clipping and navigation relationship.
+
+<a id="verification"></a>
 
 ## 11. Verification
 
 ### Invariants (Automated)
-- [ ] **No Hex Codes**: `grep "#[0-9a-fA-F]{3,6}"` (Critical. Use tokens.)
-- [ ] **No Direct Margins**: `grep "^[^/]*margin:"` (Use `gap` in parent or `padding` in child. Exceptions: `margin: 0`, `margin: 0 auto`, `margin-inline: auto`, `margin: -1px` intentional negatives, and `// CONSTRAINT:` commented lines.)
-- [ ] **No Direct Z-Index**: `grep "z-index: [0-9]"` (Use `var(--z-index-surface-*)` tokens or component-local vars. Only two documented max-tier constants may remain: noise overlay in `globals.css` §14 and cursor in `cursor.module.css`, both with `// CONSTRAINT:` comments.)
-- [ ] **Lowercase Features**: All feature directories must be lowercase.
+
+Use the existing checks in `foundation-design-tokens.md`, the project's token validator and
+applicable compiler/linter. Do not duplicate blanket hex/margin/z-index greps here.
+Text matches are candidates; exclusions must remain scoped to the relevant check.
+
+Verify real token references, imports/filename casing, selectors and component contracts.
+Record configured roots, exclusions and checks not executed. An empty or incomplete scan is
+not a full pass; `foundation-testing.md` owns evidence validity.
 
 ### Logic (Manual/Reasoning)
-- [ ] **Reduced Motion**: Does any animation logic check `prefers-reduced-motion`?
-- [ ] **Scannability**: Are listing items static on hover (no layout shifts)?
+
+Check affected themes and states, focus/keyboard paths, overflow, spacing, portals and contrast.
+Test relevant viewport and parent-container conditions with real content and text enlargement.
+For changed animations, clipping or overlays, inspect actual rendered behavior and performance.
+Report the tested state/method and remaining runtime proof instead of inferring it from a build.
 
 ## 12. Branding & Logo Architecture
-*   **Asset-First:** Standard brand logos SHOULD be extracted to separate SVG assets (Light/Dark variants) in a dedicated branding-assets directory.
-*   **Theme Resolution:** Components requiring theme-aware assets MUST use the `useResolvedTheme` hook to determine the effective theme ('light'|'dark').
-*   **Logo Registry:** All brand assets MUST be defined in a single branding-config module to allow global toggles and asset switching.
-*   **Fallback Strategy:** Use a "Generic Partner" asset pattern by default if `ENABLE_PARTNER_BRANDING` is false.
 
----
+Reuse the existing brand asset/API owner. Separate assets, inline SVGs and a shared registry are
+valid choices according to reuse, theme, delivery and editing requirements. Do not introduce a
+branding directory or global registry without an ownership need.
+
+Resolve light/dark/system variants through the actual theme mechanism; no fixed hook or branding
+flag is assumed. Preserve brand fidelity and accessible alternatives. If branding is disabled
+or unavailable, use the product's intended fallback rather than inventing a “Generic Partner.”
 
 ## 13. Data-Attribute CSS Color Bridge
 
-When a component needs to inherit a dynamic accent color based on a category/type prop, use a `data-*` attribute and a CSS custom property bridge. This avoids prop drilling, inline styles, and className collisions.
+For a finite category/type palette, an attribute can select a component-local custom property
+that descendants consume. Bind it to actual semantic roles or a documented palette boundary,
+and provide the intended missing/unknown-category behavior. Primitive and semantic tokens are
+different layers; “semantic primitive” is not a new token category.
 
-**Pattern:**
-```css
-/* In the component's CSS module */
-.card[data-category="why"]  { --category-color: var(--primitive-primary-500); }
-.card[data-category="how"]  { --category-color: var(--primitive-accent-a-600); }
-.card[data-category="what"] { --category-color: var(--primitive-accent-b-600); }
-
-/* Children consume the local variable */
-.title { color: var(--category-color); }
-.icon  { color: var(--category-color); }
-```
-
-```tsx
-<motion.div data-category={activeCategoryKey} className={styles.card}>
-  {/* children inherit --category-color automatically */}
-</motion.div>
-```
-
-**Rules:**
-- Use semantic primitive tokens (`--primitive-primary-500`) as the values, not hardcoded colors
-- Scope the bridge to the component root — do not set it globally
-- Works correctly through `AnimatePresence` since the attribute updates with the keyed re-mount
-
----
+Inspect DOM inheritance and portal scope under `foundation-design-tokens.md`. Prop/style-based
+bridges can also be appropriate for runtime colors. Updating a data attribute does not require a
+keyed remount; exiting/retained nodes can keep old values. Test the actual animation/theme lifetime
+instead of assuming AnimatePresence guarantees propagation.
 
 ## 14. Global Tactility (Noise Overlays)
-To achieve a "premium" surface feel, the project uses a global noise overlay.
-*   **Implementation**: A `.noise-overlay` div at the start of the `<body>` (outside the content tree for performance).
-*   **Theme Inversion Pattern**: 
-    - **Light Mode**: Use `mix-blend-mode: multiply` with a dark-on-white noise texture.
-    - **Dark Mode**: Adapt via `[data-theme-mode='dark']`. Use `filter: invert(1)` to flip the noise colors and `mix-blend-mode: screen`.
-*   **Stacking**: Use a persistent high z-index (e.g., `9999999`) to ensure the "tooth" covers Modals and Tooltips.
-*   **Performance**: Force a dedicated layer with `transform: translateZ(0)` and `will-change: transform`.
 
----
+A noise texture is an optional project treatment. Preserve it when specified; do not add one
+to every app. Choose blend mode, intensity and stacking against real themes and content.
+Keep decoration out of the focus/accessibility and hit-test paths, and verify underlying text,
+controls and dialogs remain readable.
+
+High z-index, body placement, `translateZ(0)` or `will-change` does not guarantee performance or
+coverage of the top layer. Measure paint/compositing and memory before promoting layers.
+Blending/isolation affects the backdrop; see
+[CSS compositing and blending](https://www.w3.org/TR/compositing-1/).
+Respect the actual overlay owner during cleanup or theme changes.
 
 ## 15. Browser Clipping & Radius Inheritance
 
-To ensure reliable corner radii and clipping of absolute-positioned or accelerated content (like Next.js `Image` or GSAP revealed layers):
+For clipped absolute/animated content, reproduce the defect on the affected browser and inspect
+overflow, border radius, transforms, containing blocks and stacking. `isolation: isolate`
+creates a stacking context; it is not a universal clipping fix. Keep workarounds supported by
+their specific visual regression evidence.
 
-*   **Isolation Standard**: Containers with `overflow: hidden` and `border-radius` SHOULD use `isolation: isolate;` to force a stacking context. This ensures that browsers (especially Safari) clip child content reliably without "pixel leakage" at the corners.
-*   **Avoid Inherit on Base Frames**: Do not use `border-radius: inherit;` on base component frames (e.g., `SiteImage`). This forces the radius to 0 if the parent has no radius, overriding page-level specificity.
-*   **Dynamic Ratio**: Use CSS variables (e.g., `--aspect-ratio`) passed via React props to manage container proportions. This prevents layout shift during hydration and simplifies component APIs.
-
----
+`border-radius: inherit` is valid when the parent's computed radius is intended. Inspect the
+cascade and parent value before replacing it. A static or dynamic aspect ratio can reserve space
+only when its initial value matches the intended geometry; runtime variables alone do not prevent
+hydration shifts. Verify loading and resized states under the actual image/component framework.
 
 ## 16. Responsive Strategy: Container Queries First
 
-*   **Non-Negotiable:** Component-level responsive behavior MUST use `@container` queries, not `@media` queries.
-*   **`@media` is reserved** for viewport-level layout shifts only (e.g., switching from sidebar to bottom nav at mobile breakpoints).
-*   **Why:** `@container` makes components self-contained and reusable across different layout contexts. A card component should respond to its container's width, not the viewport's.
-*   **Pattern:**
-    ```css
-    .wrapper {
-      container-type: inline-size;
-    }
+Prefer a size container query when a component's layout depends on its available parent size
+and supported infrastructure fits. Use viewport media queries for viewport-dependent layouts and
+media features/preferences. Intrinsic flex/grid layout may avoid a breakpoint entirely.
 
-    @container (min-width: 400px) {
-      .card { flex-direction: row; }
-    }
-    ```
-*   **Constraint:** All new responsive components must use `container-type: inline-size` on their wrapper. Existing `@media`-based components should be migrated opportunistically during refactors.
+Locate or establish the appropriate query container and inspect its sizing effects; do not put
+`container-type: inline-size` on every wrapper automatically. A size query styles eligible
+descendants based on an ancestor container, not that same element based on its own size.
+Check the target browser contract, named/nested container selection and fallback layout.
+See the [CSS container-query specification](https://drafts.csswg.org/css-conditional-5/#container-queries).
 
----
+Test a component in narrow and wide parent contexts as well as page breakpoints. Preserve valid
+media-query behavior unless the requested change and evidence justify migration. No opportunistic
+framework/layout migration is implied by an unrelated refactor.
 
 ## See Also
-- `foundation-design-tokens.md` — For semantic and primitive token definitions.
-- `foundation-accessibility.md` — For keyboard and screen reader foundations.
+
+- `foundation-design-tokens.md` — token contract, generation ownership and scoped checks.
+- `foundation-accessibility.md` — semantics, input support, focus and motion alternatives.
+- `foundation-performance.md` — measured loading, rendering and compositing decisions.
+- `pattern-refactoring.md` — preserve visual/behavioral contracts during structural changes.

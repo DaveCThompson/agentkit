@@ -16,7 +16,9 @@ Restate the latest explanation without adding a second explanation.
 ## Approach
 
 1. Use the latest assistant explanation, or the specific point named by the user.
-2. Preserve its central meaning and required next action.
+2. Preserve the central claim, its material uncertainty or attribution, and any required action.
+   Prioritize those over secondary detail. Correct a known error briefly rather than repeating it
+   as fact; do not imply the one-line restatement covers every detail.
 3. Return one plain-English sentence on one line, with no heading, list, aside, or follow-up.
 4. If no explanation is available, say that in one line.
 

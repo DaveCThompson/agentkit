@@ -1,57 +1,64 @@
 ---
 name: explore-concept
-description: Broad ideation and problem definition using Socratic questioning. Use for early-stage exploration when the problem isn't well-defined.
+description: Explore an unclear problem, generate distinct concepts, or resolve material requirements through a focused interview. Use before choosing what to build.
 tier: core
 ---
 
 # Explore Concept
 
-Broad ideation and problem definition using Socratic questioning.
-
 ## When to Use
-- Early-stage exploration
-- Problem isn't well-defined
-- Need to generate divergent ideas
-- Clarifying requirements
+
+Use for problem framing and divergent ideas. A clear implementation brief does not need another
+discovery round. This skill produces understanding and recommendations; it does not grant build
+authority.
 
 ## Approach
 
 ### Phase 1: Socratic Discovery
-Ask 3-5 probing questions:
-- What problem are we really solving?
-- Who benefits and how?
-- What does success look like?
-- What constraints exist?
 
-Reject vague answers — push for specificity.
+Read the supplied brief, prior decisions, and relevant examples before asking questions. Establish
+who experiences the problem, what happens today, the desired outcome, and hard constraints.
+Distinguish the reported pain from a proposed solution.
+
+Ask about unknowns that could change the outcome. Make a vague answer concrete with an example,
+frequency, consequence, or observable success condition. Do not require an answer the current task
+can safely proceed without.
 
 ### Phase 2: Divergent Ideation
-Generate **10 divergent concepts** without constraints, then select top 3.
 
-Make them genuinely different — **if two concepts would draw the same reaction from the user, replace
-one.** Contrast is the point; near-duplicates waste the user's reaction.
+Explore meaningfully different ways to address the problem, including improving the current
+approach or doing less. Relax optional assumptions during divergence while keeping hard constraints
+visible. Compare viable concepts, without filling an option quota.
 
-For each:
-- Core idea
-- Key benefit
-- Biggest risk
+For each useful concept, describe the core idea, benefit, largest risk, and assumption that would
+make it fail. If two concepts would draw the same user reaction, combine them or make the
+difference consequential. Converge when the alternatives expose the important tradeoff.
 
 ### Phase 3: Synthesis
-Narrow to 1-2 directions worth exploring further. After the user reacts, **name the real requirement
-behind what they rejected** ("you consistently rejected X → the real constraint is Y") — the
-rejection pattern often defines the spec better than the pick does.
 
-## Interview Mode (resolve ambiguity before building)
-When planning/brainstorming is largely done but unknowns remain, switch from a question dump to a
-one-question-at-a-time interview:
-- Rank open questions by impact — architecture-changing first, then behavioral edge cases, then
-  cosmetic — and ask the highest-impact one via `AskUserQuestion` with 2–3 concrete options + a
-  recommendation. "You decide" is a valid answer.
-- **Never ask what the code or existing docs already answer** — read first.
-- Checkpoint periodically: restate the decisions so far as one consolidated list to prevent drift.
-- Stop when the remaining unknowns are cheaper to discover during implementation than to investigate now.
+Recommend the direction best supported by the problem and evidence. Preserve explicit user
+decisions separately from inferred preferences. A rejected option may suggest a constraint; name
+that interpretation as an assumption and explain what would overturn it. Confirm it only when it
+would materially change scope or the chosen outcome.
 
-## Constraints
-- No code or implementation plans
-- No premature convergence
-- End with: "Which of these directions feels most aligned with our goals?"
+## Interview Mode
+
+Use a focused interview when most planning is settled but material ambiguity remains.
+
+- Rank questions by consequence: system boundaries, behavioral edge cases, then presentation.
+- Read existing answers first. Use a structured question tool only if available in the active
+  mode; otherwise ask a concise question in text. Offer concrete alternatives and a recommendation
+  when they help. Accept delegated decisions such as "You decide."
+- Keep a compact checkpoint of accepted choices and unresolved assumptions after meaningful changes.
+- Stop interviewing when remaining unknowns can be learned more effectively during already
+  authorized implementation. This stopping rule does not authorize implementation by itself.
+
+## Output and Definition of Done
+
+Return the problem, recommendation, decisive evidence, explicit decisions, and remaining
+assumptions in conversation or the caller's existing work item. A separate exploration document
+is optional. Ask a closing question only when a material choice remains.
+
+The requested exploration is complete when the user can assess a direction or see exactly which
+missing fact prevents one. Continue into planning or building only when the request already
+covers that work.

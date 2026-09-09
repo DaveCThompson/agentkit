@@ -1,8 +1,7 @@
 ---
-status: proposed        # proposed | accepted | superseded
-supersedes:             # optional: DECISION-<older-topic>.md this replaces
+status: proposed
 applies-to:
-  - "src/example/**"     # code/config globs this decision governs — makes it agent-retrievable
+  - "src/example/**"
 last-verified: YYYY-MM-DD
 ---
 
@@ -20,7 +19,10 @@ last-verified: YYYY-MM-DD
      Fails the test? A small locked fact belongs in project-invariants.md or a spec section, not here.
      Keep this doc SMALL: a one-paragraph Context is fine; drop the optional sections when empty. -->
 
-**Status:** Proposed (<date / who>)
+<!-- Frontmatter owns status: proposed | accepted | superseded. Add supersedes: with an actual
+     older decision filename when applicable. Use actual code/config globs and verification date.
+     Record acceptance provenance in Context when accepted; do not maintain a body status.
+     Remove optional empty metadata/sections. -->
 
 ## Context
 <The forces at play — why this even came up. 2–5 sentences.>
@@ -37,3 +39,7 @@ last-verified: YYYY-MM-DD
 
 ## Revisit trigger   <!-- optional — the condition under which we would reopen this -->
 <e.g. "flip to Option B if <constraint> changes.">
+
+## What we deliberately did NOT do
+
+<Material alternative or scope excluded by this decision.>

@@ -7,46 +7,80 @@ domain: layout
 
 # Structure Patterns
 
-Rules for layout containers: Containers, Sections, Cards, and Surface Panels.
+Compose layouts from the project's actual primitives, dimensions and responsive contract.
+Preserve intended containment and interaction semantics; component names from another app are
+not requirements. Read `foundation-design-system.md` and the applicable project specification.
 
 ## 1. Layout & Containers
-*   **Containment Priority**: For any content that needs to respect a max-width (1200px) and consistent horizontal padding (24px desktop / 16px mobile), you MUST use the `<Container>` component from `@app/ui`.
-*   **Default Mode**: Full-bleed is the default for secondary or staged backgrounds. Containment is an opt-in child wrapper.
-*   **PageShell**: The `PageShell` primitive must remain free of internal containment logic. It defines the page grid; the `<Container>` defines the content boundary within that grid.
-*   **Footer**: The footer MUST use `<Container>` for its inner content, matching the 1200px constraint.
-*   **Header**: The header bar uses `max-width: 1240px` (intentionally wider than Container). Do not normalize it to 1200px.
+
+- Locate the existing content-boundary primitive and its real import/API before using it.
+  `Container`, `PageShell` and `@app/ui` are possible local contracts, not kit-provided APIs.
+- Reuse established max-widths and gutters. A deliberately wider header than body/footer may be
+  correct; neither equalizing them nor imposing 1200/1240px is a portable fix.
+- Trace which wrapper owns padding, width and page grid. Avoid doubled gutters or accidental
+  containment. Full-bleed backgrounds can contain a constrained child; full bleed is not every
+  page's default. Preserve existing shell containment when its consumers depend on it.
 
 ## 2. Page Sections
-*   **Composition**: A standard page section should be composed of a `<PageSection>` wrapper.
-*   **Prop Consistency**: `PageSection` owns the intro container automatically. Use `contentContained` when the section body should share that same left spine. Reserve `fullWidth` for intentionally full-bleed section bodies, and do not wrap an intro-bearing `PageSection` in an extra outer `<Container>`.
-*   **Hero Treatment**: The portfolio uses two distinct hero patterns:
-    *   **Card Panel Hero** (`PageHero`, `EditorialLead`): For index, utility, and case study pages. `PageHero` owns its own `<Container>`.
-    *   **Open Hero Grid**: For identity and narrative-first pages (Home, About).
+
+- Reuse the actual section primitive when its heading, spacing and body layout fit.
+  If `PageSection` owns an intro container, do not add a redundant outer container.
+  Use `contentContained` or `fullWidth` only if the real API defines those semantics.
+- Select card-panel versus open-grid heroes from the page's content and approved design.
+  Existing `PageHero`/`EditorialLead` components may own their own containers; inspect them.
+  These patterns remain useful without requiring portfolio-specific components or page categories.
 
 ## 3. Cards & Lists
-*   **Hover Fidelity**: Interactive cards (e.g., `WorkTeaserCard`) must use semantic hover states defined by the design system (e.g., scale-up, depth increase).
-*   **Clickability**: Entry-point cards MUST be fully clickable. Do not rely on isolated "CTA" buttons inside the card as the primary hit area.
+
+- Give actionable cards recognizable hover, focus and pressed feedback using the local design
+  system. Scaling/lift is optional; test clipping, text stability and reduced motion.
+- Enlarge a primary hit target when this preserves selection and secondary actions.
+  Do not nest controls in a link/button or turn every row into a button.
+  Apply `pattern-interactions.md` for navigation/action semantics.
 
 ## 4. Surfaces & Modals
-*   **Surface System**: Use `SurfaceCard` with tiered `variant` props (`premium`, `floating`, `matte`) to define material depth instead of ad-hoc shadows or background colors.
-*   **Concentricity**: Nested elements must respect the radius math defined in the project's radius/concentricity spec (path in `project-invariants.md`).
+
+- Prefer existing surface variants and depth tokens when they express the intended hierarchy.
+  `SurfaceCard` and `premium`/`floating`/`matte` are conditional examples, not required APIs.
+- Preserve the project's radius/concentricity geometry. Account for border and padding; inspect
+  actual nested edges rather than normalizing all corners to a copied number.
 
 ## 5. Adaptive Layouts
-*   **Responsive Bands**: The canonical breakpoint set is defined in the project's responsiveness spec (path in `project-invariants.md`). CSS custom properties cannot be used in media queries, so breakpoints are documented conventions, not tokens.
-*   **Container Queries**: Components MAY use `@container` for internal layout switches when container-type infrastructure exists. No reference implementation exists yet.
-*   **Safe-Area Insets**: Ensure layouts account for mobile safe-area insets on full-bleed elements.
+
+- Use the project's responsive bands and intrinsic layout constraints. Ordinary CSS `var()`
+  custom properties cannot parameterize a media-query condition; build-time variables or an
+  existing preprocessing/custom-media system are separate mechanisms.
+- Use container queries when component behavior depends on an eligible ancestor's size and the
+  target supports the needed features. Discover existing infrastructure and examples rather than
+  asserting none exist. Check containment's effect on sizing.
+- Account for safe-area insets on affected full-bleed controls/content without double padding.
+  Check zoom/reflow, narrow parent containers, long text and supported writing directions.
 
 ## 7. Modals & Dialogs
-*   **Accessibility Registration**: When using Radix-wrapped `Dialog` primitives from `@app/ui`, avoid manual `aria-labelledby` or `aria-describedby` linking.
-*   **Automatic Linking**: Simply nest `<DialogTitle>` and `<DialogDescription>` within `<DialogContent>`. Radix UI automatically handles the mapping.
-*   **Hidden Descriptions**: If a visual description is not desired, use the `<DialogDescription>` component with a `.visuallyHidden` utility class rather than omitting it or using manual ARIA attributes.
+
+- Use the actual dialog implementation's naming, description, dismissal and focus contract.
+  For Radix, `Dialog.Title` and optional `Dialog.Description` supply automatic associations
+  when composed correctly. A wrapper may expose a different API; inspect the rendered result.
+- A meaningful visually hidden title/description is valid when it needs announcement, not merely
+  to satisfy a component count. For complex content, a description may be unhelpful.
+  Radix documents removing the description and supplying `aria-describedby={undefined}`;
+  explicit ARIA linking is also valid when it targets real, appropriate content.
+- Verify an accessible name, applicable modal focus containment, Escape behavior, focus return
+  and background interaction. Library usage alone is not an accessibility pass.
+  See [Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog).
 
 ## 8. Verification
 
 ### Invariants (Automated)
-- [ ] **Container Usage**: `grep -U "<Container[^>]*>\\s*<PageSection" apps/<app>/` (Should return zero matches for intro-bearing sections.)
-- [ ] **Containment Prop**: `grep "contentContained" apps/<app>/` (Verify the explicit body-containment path is used where needed.)
+
+- Trace container/section call sites to actual prop definitions and token values. Use the project's
+  compiler/linter and existing invariant checks for contractual patterns.
+- A search for nested containers is a candidate for doubled gutters, not a universal violation.
+  Do not introduce a global grep requiring a particular wrapper or prop.
 
 ### Logic (Manual/Reasoning)
-- [ ] **Concentricity**: Do nested card elements have correctly derived border radii?
-- [ ] **Hit Areas**: Are project teaser cards clickable across their entire surface?
+
+- Compare content spines, gutters, nested corners and intended full-bleed regions at relevant
+  widths. Check overflow, safe areas and dynamic content.
+- Exercise primary/secondary hit targets, selection, keyboard operation and modal focus behavior.
+- Record actual rendered evidence and untested conditions under `foundation-testing.md`.

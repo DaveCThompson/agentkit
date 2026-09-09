@@ -1,219 +1,181 @@
 ---
 trigger: model-decision
-description: Consult before writing GSAP animations — hybrid motion architecture, CSS variable proxies, SplitText reveals, timeline orchestration, FOUC prevention, reduced-motion handling.
+description: Consult before building or changing GSAP timelines, responsive CSS/scroll composition, text reveals or gated entry — property ownership, interruption, visible fallbacks and reduced motion.
 tier: tech:gsap
 domain: motion
 ---
 
 # GSAP Motion Patterns
 
-> **Related Knowledge Base:** docs/knowledge-base/SPEC-motion.md (motion principles, GSAP timelines, GSAP/CSS coexistence).
+Preserve the intended endpoint, accessible content and ownership through playback, interruption
+and teardown. Choose techniques from actual competing properties and lifecycle evidence;
+a visual style or hook count is not a universal correctness rule.
 
-GSAP-specific rules for high-fidelity timelines, SplitText, TextPlugin, ScrollTrigger, and GSAP/CSS coexistence. For Framer Motion usage rules see `pattern-framer-motion.md`.
+Read the project's motion contract and installed GSAP/plugin/framework versions. The
+`gsap-css-layout` skill owns complete conditional examples. Read its project-root path
+`.agent/skills/gsap-css-layout/SKILL.md`, not a path relative to a generated rule's location.
+For Motion/Framer Motion projects, also consult the applicable `tech-framer-motion.md` rule.
 
 ## 1. Hybrid Motion Architecture
-*   **GSAP**: Mandatory for complex, timeline-based cinematic scenes, text manipulation (SplitText), and choreographed intro sequences.
-*   **Conflict Prevention**: GSAP animations must use a local `scope` (use `useGSAP`) to avoid selector collisions with Framer Motion elements.
+
+Use GSAP where its timeline, text or scroll methods fit the installed stack and requested result.
+Do not introduce a second library just because an effect is cinematic. Scope selectors to the
+owned component/region, using `useGSAP`/context or explicit element references as applicable.
+Separate style ownership from tool choice: different systems may safely control different properties.
 
 ## 2. CSS Variable Proxy (Critical for Dual-Driver Elements)
-*   **Rule**: When an element is driven by *both* a GSAP intro timeline and Framer Motion scroll values, GSAP must **never** write inline `opacity`, `width`, `visibility`, or `transform` directly. These inline styles override CSS expressions permanently.
-*   **Pattern**: Tween a CSS custom property (`--my-progress: 0 → 1`) and let CSS `calc()` or `var()` consume it alongside the scroll-driven variables.
-*   **Reference**: See `.agent/skills/gsap-css-layout/SKILL.md` for the complete catalog.
+
+When drivers compete for the same style, compose independent inputs via CSS variables, separate
+wrappers, or an explicit ownership handoff. Direct inline writes can override stylesheet expressions;
+they are not forbidden when that property belongs to the current driver and cleanup is correct.
+
+A progress variable can preserve responsive geometry as the container changes. It is value
+composition, not a GPU guarantee: a variable consumed by width still changes layout.
+For opacity/visibility proxies, verify the complete visible endpoint, skipped motion, interruption
+and restoration of prior owned values. Do not clear all inline styles on a shared element.
+See the skill's **Responsive geometry with a CSS variable proxy** and **Visibility proxy with a
+complete lifecycle** examples, plus `foundation-performance.md`.
 
 ## 3. Text Reveal (SplitText)
-*   **Masking**: Characters must be wrapped in `overflow: hidden` containers (`charsClass: 'gsap-char-inner'`, `wordsClass: 'gsap-char-outer'`).
-*   **Descender Clipping Fix**: 
-    *   Masked containers for text with descenders (`g`, `y`, `p`, `q`, `j`) MUST include `padding-bottom: 0.12em` and a matching negative `margin-bottom` to prevent glyph clipping.
-*   **Cleanup**: Always call `split.revert()` or ensure the component unmounts cleanly to prevent DOM pollution.
+
+Split only text whose DOM the animation owns. Use the installed
+[SplitText API](https://gsap.com/docs/v3/Plugins/SplitText/) and preserve its accessibility support;
+nested links or meaningful markup need additional inspection before splitting.
+
+Masking is optional. When used, check descenders, accents, actual font metrics, line height, zoom
+and line reflow; a fixed `0.12em` pad does not guarantee clearance. Choose mask wrappers/padding
+from that measurement. Track and revert split DOM on teardown or resplitting, and rebuild dependent
+animations when font/width changes affect the split. Removing a component is not proof every
+plugin listener, wrapper or timeline was cleaned.
 
 ## 3a. Per-Target Parallelism with `parent.add(child, 0)`
 
-When N targets each need their own multi-step sequence and **all sequences should run in parallel**, build one **child timeline per target** and add each at parent position `0`. Do NOT chain `.to()` calls for multiple targets on a single shared timeline.
+When each target needs a multi-step sequence and the sequences should overlap, a child timeline
+per target added at a shared parent position makes timing explicit. Explicitly positioned tweens
+or a stagger can also express the contract. Unpositioned additions append at the timeline end;
+looping over targets without positions can accidentally serialize their later steps.
 
-The default position parameter for an unpositioned `.to()` is `+=0` from the **end of the timeline**, not "after the previous tween for this target." Chaining per-target tweens on a shared timeline therefore appends each target's later steps after every prior target's final step, ballooning the timeline duration to `O(targets × steps × stepDuration)` and pushing return-to-rest tweens far into the future.
-
-```ts
-// CORRECT — parallel per-target sequences
-const parent = gsap.timeline();
-targets.forEach((t) => {
-  const child = gsap.timeline({ delay: gsap.utils.random(0, 0.1) });
-  child.to(t, { ...step1 }).to(t, { ...step2 }).to(t, { ...step3 });
-  parent.add(child, 0);
-});
-return parent; // total duration ≈ delay + sum(stepDurations)
-
-// INCORRECT — sequential cascade across all targets
-const tl = gsap.timeline();
-targets.forEach((t) => {
-  tl.to(t, { ...step1 }, gsap.utils.random(0, 0.1)) // absolute position
-    .to(t, { ...step2 })  // appends to end of timeline (after every prior target)
-    .to(t, { ...step3 }); // appends to end of timeline
-});
-return tl; // total duration ≈ targets × stepCount × stepDuration
-```
-
-Before queuing a new sequence on a target, call `gsap.killTweensOf(el, 'attr')` (or the relevant property string) to clear in-flight tweens from other systems (hover, sparkle, etc.) that would otherwise fight the new animation. Keep any module-level "currently displaced" trackers in sync — clear them when the sequence resets dot positions.
+Inspect the resulting start times/duration, including deliberate delays, repeats and overlap.
+Before replacing a sequence, stop only the timeline/properties owned by that interaction.
+Do not use a broad `killTweensOf` call to clear unrelated hover, scroll or animation drivers.
+Keep local displaced/active trackers aligned with the actual terminal or cancelled state.
+See [GSAP timeline positioning](https://gsap.com/docs/v3/GSAP/Timeline/add()/).
 
 ## 4. Orchestration
-*   **Staggers**: Use small staggers (`0.01s - 0.04s`) for character/item-level motion to maintain a premium "brushed" feel.
-*   **Easing**: 
-    *   Cinematic entries: Use `expo.out` or `power4.out`.
-    *   Crisp sequential fire (staggered UI): Use `power3.out` — **mandatory** for nav links, control icons, list items.
-    *   **Prohibited for staggers**: `back.out()` and `elastic.out()` — these overshoot and cause visible wobble in sequential sequences.
-*   **Unified arrays**: When items span multiple containers (e.g., nav links + control icons), concatenate into a single array for one unbroken left-to-right stagger.
+
+Choose easing and stagger from the project's motion language and reading order. Overshoot can
+be intentional; check clipping, visual stability and user control. There is no mandatory easing
+or per-item duration for every nav link or list.
+
+Combine targets into one ordered group when they form one sequence; preserve logical order for
+the language and layout. Use independent groups when their lifetimes or interaction differ.
+Do not force a left-to-right order onto every writing direction.
 
 ## 5. FOUC Prevention + Gated Entry (Single Hook Rule)
 
-**Use one `useGSAP` hook — never two** when combining initial hide with a gated animation. Two hooks create separate GSAP contexts with separate cleanup cycles. In React Strict Mode the cleanup gap between them produces a rendered frame where elements flash visible, causing a "partial fade, then restart" double-animation glitch.
+Keep a gated hide and its reveal under one lifecycle owner. One `useGSAP` callback is a useful
+implementation when they share dependencies; separate hooks are valid for independent properties
+or lifetimes. Hook count alone cannot prove a flash or its absence.
 
-```tsx
-// CORRECT: single hook
-useGSAP(() => {
-  gsap.set(targets, { opacity: 0, y: 28, visibility: 'hidden' });
-  if (!isGateOpen) return;
-  gsap.to(targets, { opacity: 1, y: 0, visibility: 'visible', duration: 0.82 });
-}, { scope: ref, dependencies: [isGateOpen], revertOnUpdate: true });
-
-// INCORRECT: two hooks — double-animation glitch in Strict Mode
-useGSAP(() => { gsap.set(targets, { opacity: 0 }); }, { scope: ref });
-useGSAP(() => { if (!isGateOpen) return; gsap.to(targets, { opacity: 1 }); }, { scope: ref, dependencies: [isGateOpen] });
-```
+Do not hide meaningful content while waiting indefinitely for a gate. Prefer visible defaults
+and hide only once the reveal can run, or provide an explicit bounded failure/skip path.
+A layout effect cannot hide server HTML retroactively after it has painted.
 
 ### CSS initial state + data-attribute override (SSR-safe pattern)
 
-For components that must survive SSR hydration with content already hidden, pair a CSS module rule with a data-attribute override instead of relying solely on `gsap.set`:
-
-```css
-/* Default: hidden for animation */
-.root :global([data-hero-reveal]) { opacity: 0; visibility: hidden; }
-
-/* Override: visible when animation is skipped (higher specificity wins) */
-.root[data-hero-revealed='true'] :global([data-hero-reveal]) { opacity: 1; visibility: visible; }
-```
-
-Set `el.dataset.heroRevealed = 'true'` in the immediate-visible path (reduced motion, post-intro navigation, tween complete). This ensures elements are visible via CSS alone even if the GSAP context is reverted, making the component resilient to timing edge cases.
-
-*   For page hero entries on non-home pages, use the `HeroReveal` component — do not inline the GSAP logic per page.
+A CSS-hidden initial state is suitable only when the product needs it and delayed/failed JS,
+closed gates and skipped motion have tested visibility fallbacks. A data-attribute override can
+make completed state survive context restoration, but an attribute set only by JS does not solve
+no-JS failure. Assign ownership of that attribute and restore/remove it deliberately on teardown.
 
 ### Client reveal wrappers: default-visible CSS + JS hide
 
-For client-only ScrollTrigger reveal wrappers (e.g. `GSAPReveal`), do **not** hard-code `style={{ visibility: 'hidden' }}` in JSX. Default the container to visible in CSS and hide it via `gsap.set(el, { visibility: 'hidden' })` at the top of the same `useGSAP` callback (the one that builds the timeline). `useGSAP` runs in a pre-paint layout effect, so capable browsers still see no flash, while no-JS / JS-error visitors keep the content instead of being stranded behind a permanently invisible wrapper.
+Visible CSS defaults preserve content when startup never begins. Schedule any JS hide and reveal
+together and handle errors after the hide. For ScrollTrigger gating, ensure users can still reach
+the content if the trigger never activates. Reuse an existing reveal primitive when its lifecycle
+fits; no universal `HeroReveal` or `GSAPReveal` component exists.
 
 ## 9. Page Entry Choreography (Three-Beat Rule)
 
-Every page follows the same three-beat entry sequence. Do not deviate from this order.
+Header → hero → body is an optional product choreography. Preserve it where specified, including
+its readiness signals, without imposing fixed timings/components on every page. Essential content
+must not be permanently hidden behind a missing header-complete signal.
 
-**Beat 1 — Header** (~1.8s, fires immediately on mount)
-The `AppHeader` GSAP timeline runs to completion and calls `setIsHeaderComplete(true)`.
-
-**Beat 2 — Hero content** (gated on `isHeaderComplete`)
-- Home: bespoke GSAP timeline — SplitText chars for heading, word-split for description, absolute positions `0`, `0.28`, `0.48` within the timeline.
-- All other pages: `HeroReveal` component with `data-hero-reveal` targets on heading + body. Default stagger `0.15s`; increase to `0.25–0.30s` when a more sequential read is desired (e.g. Testimonials hero).
-
-**Beat 3 — Page body content** (gated on `isHeaderComplete`, delayed past hero)
-Wrap all below-hero page sections in a second `HeroReveal` with `delay={0.6}`. This ensures body content never appears before the hero text has landed.
-
-```tsx
-// Pattern for all non-home pages
-<HeroReveal delay={0.6}>
-  <div data-hero-reveal className={styles.pageContent}>
-    {/* all below-hero sections */}
-  </div>
-</HeroReveal>
-```
-
-When multiple sections must each stagger independently (e.g. Testimonials), use one `data-hero-reveal` div per section and set an explicit `stagger` on the `HeroReveal`:
-
-```tsx
-<HeroReveal delay={0.6} stagger={0.2} className={styles.sectionsReveal}>
-  <div data-hero-reveal><PageSection .../></div>
-  <div data-hero-reveal><PageSection .../></div>
-  <div data-hero-reveal><PageSection .../></div>
-</HeroReveal>
-```
-
-**CSS requirement:** When a `HeroReveal` wrapper collapses multiple sections into one grid/flex item, the inner `data-hero-reveal` div must carry `display: grid; gap: var(--layout-section-gap)` (or flex equivalent) to preserve inter-section spacing. Add a page-local CSS class — do not inline the style.
-
-**Grid matrix stagger:** Use `(index % columns) * stepSeconds` — never raw `index * step`. Raw index causes rows 2+ to have compounding delays (0.6s, 0.8s, 1.0s) that force users to scroll far before cards appear. Default: `(index % 3) * 0.15`.
+A wrapper may collapse grid/flex children into one item; preserve the intended inner layout and
+spacing through the project's styling system. Choose per-row, per-column or continuous stagger
+from the actual visual order and scroll exposure. A modulo-column formula is useful for a repeated
+row pattern, not a universal grid rule; recompute for responsive column counts.
 
 ## 6. `revertOnUpdate: true` for Reactive Dependencies
 
-`@gsap/react` v2.1+ defaults to `deferCleanup = true` when `dependencies` are provided. This means each dependency change **adds** the callback to the existing GSAP context without reverting the previous run. Stale `gsap.set` calls, SplitText instances, and duplicate timelines accumulate until component unmount.
+When a dependency change replaces a `useGSAP` animation, `revertOnUpdate: true` provides teardown
+before rebuilding. If the owner deliberately updates one persistent timeline, use that lifecycle
+instead. Track responsive and reduced-motion changes; preferences can change after hydration.
 
-**Rule:** Any `useGSAP` with `dependencies` that include React context values, state, or props that can change more than once must set `revertOnUpdate: true`.
-
-```tsx
-useGSAP(() => {
-  // Runs fresh on every dependency change — no accumulated stale animations
-}, { scope: ref, dependencies: [isGateOpen, prefersReducedMotion], revertOnUpdate: true });
-```
-
-`revertOnUpdate: true` makes `useGSAP` behave like a standard `useLayoutEffect`: cleanup (context revert) runs before the new callback. Since `useGSAP` uses `useLayoutEffect` internally, the revert + re-run is synchronous before browser paint — there is no visible flash.
-
-**Exceptions:** `useGSAP` calls with no dependencies, or with only static dependencies (e.g., `prefersReducedMotion` alone that never changes after hydration), have lower risk and may omit this flag.
+Check the installed [GSAP React lifecycle contract](https://gsap.com/resources/React/).
+Verify Strict Mode setup/cleanup, dependency replacement, interruption and remount; do not promise
+flash-free rendering solely from the option or an implementation-detail version claim.
 
 ## 6a. Killing Timelines Created Outside `useGSAP`
 
-`useGSAP` only auto-reverts animations created **inside** its callback. One-shot timelines created in event handlers or non-GSAP effects (a click-triggered burst, a status-change shake/pulse) live outside any GSAP context and are never auto-cleaned.
+Late callbacks/event handlers need `contextSafe` where appropriate or explicit tracking/cleanup.
+Remove owned listeners and timers as well as animations. Prevent completion callbacks from
+rearming loops or updating an inactive controller after teardown.
 
-**Rule:** Track every such transient timeline and kill it on unmount. If its `onComplete` re-arms a looping timeline (`repeat: -1`), guard the callback with an unmount flag — otherwise an unmount mid-animation spawns a forever-running timeline against detached DOM (a real leak a green build cannot catch).
-
-```tsx
-const transientTimelinesRef = useRef<Set<gsap.core.Timeline>>(new Set());
-const isUnmountedRef = useRef(false);
-
-function trackAndRearm(t: gsap.core.Timeline) {
-  transientTimelinesRef.current.add(t);
-  t.eventCallback('onComplete', () => {
-    transientTimelinesRef.current.delete(t);
-    if (isUnmountedRef.current) return;       // do not resurrect the loop after unmount
-    loopTimelineRef.current = startLoop();
-  });
-}
-
-useEffect(() => () => {
-  isUnmountedRef.current = true;
-  transientTimelinesRef.current.forEach((t) => t.kill());
-  transientTimelinesRef.current.clear();
-}, []);
-```
+If using an active/unmounted flag, initialize it on each setup as well as marking it inactive
+on cleanup so development setup-cleanup-setup remains valid. Killing a tween does not automatically
+apply the desired final visibility or mean successful completion; handle cancellation separately.
 
 ## 7. Single Animation Owner Per DOM Region
 
-Each DOM subtree must have exactly one component responsible for its entry animation. When two independent systems animate the same elements simultaneously (e.g., a route-level wrapper applying `opacity/y` while page-local GSAP does the same), the visible result is always a double fade, stutter, or blank flash.
-
-**Rule:** If a page-level wrapper applies any entry animation, page-local components must wait for it to complete before starting their own. If pages own their own entry animations, the route-level wrapper must be visually inert (no opacity/transform on the page container).
-
-Current contract:
-- `PagePresence` is a plain `<div>` wrapper — no animation. Pages own their entry animations exclusively.
-- If route-level cross-fade is added in the future, it must use a CSS transition on a className toggle rather than `AnimatePresence` key-remount. Remounting kills in-flight GSAP timelines and forces HeroReveal to re-evaluate its gate on every navigation.
+Assign ownership by element, property and lifetime. A subtree may have multiple coordinated
+owners on independent properties or wrappers. Competing writers need composition or a handoff,
+not an assertion that every overlap is a visual defect. Preserve live scroll styles when an intro
+finishes and inspect parent/child transform or opacity composition when effects combine.
 
 ## 8. PagePresence + GSAP Coexistence (Updated)
 
-`PagePresence` is currently a plain `<div>` — it applies no animation. Page-local GSAP timelines (HeroReveal, Home page timeline) are the sole animation owners.
-
-If a cross-fade is added in the future, do NOT use `AnimatePresence` + `key={pathname}`. That pattern unmounts the old page component tree, killing all in-flight GSAP timelines and forcing HeroReveal to re-evaluate its gate. Instead, toggle a CSS class on the PagePresence container and let `transition: opacity` handle the cross-fade without any remount.
+Discover the actual route wrapper, mount/key policy and animation owners. A CSS class transition,
+retained route tree or deliberate remount can all be valid designs. Remounting resets component
+state and timelines; preserve or rebuild them according to the requested navigation contract.
+Do not assume a component named `PagePresence` is inert, or prohibit `AnimatePresence` globally.
 
 ## 7. Grid Safety with GSAP
-*   When GSAP toggles `display: none` on grid children, ALL grid children must have explicit `grid-column` assignments to prevent auto-placement drift.
-*   Grid `gap` must scale with the expansion proxy when the container starts below the gap threshold.
+
+When hiding a grid child changes auto-placement, explicit columns can preserve a required logo
+or control position. Apply them where the design requires fixed tracks, not automatically to
+every child. Inspect min-content, gaps, padding and responsive track definitions.
+A progress-linked gap can help a container that starts narrower than its gutters; compare actual
+geometry before adding that coupling.
 
 ## 8. Cinematic Accessibility
-*   **The Reduced-Motion Mirror**: Every cinematic sequence must have a static or high-utility fallback. Do not delete content under reduced motion; reveal it instantly or via a 0.4s opacity fade only.
-*   **Hydration Safety**: Use CSS-driven initial states (`opacity: 0`, `visibility: hidden`) and only trigger transitions after mount confirmed user preferences to prevent "Motion Flash".
-*   **Safe-Contrast (AA)**: Premium surfaces (Glass, Blurs) must meet WCAG 2.1 AA (4.5:1). When `prefers-reduced-motion` is active, Glass surfaces must increase background opacity to reduce visual noise.
-*   **Focus Continuity**: Complex 3D components (e.g., Testimonial Deck) must implement explicit identity-binding for focus. When a top item is dismissed, focus must be programmatically moved to the incoming item's container.
+
+Provide a static/reduced-motion alternative that keeps meaningful content and usable controls.
+On a mid-animation preference change, reach the intended visible state and settle required
+readiness without restarting loops. Test pause/stop/hide and flashing criteria where applicable.
+
+Use `foundation-accessibility.md` for contrast criteria/levels/exceptions and keyboard behavior.
+Glass opacity and a particular fade duration are project design choices. On dismissal or item
+replacement, preserve focus by identity and move it to a logical available control when necessary;
+do not always force focus to a container.
 
 ## 10. Typing and Content Rotation
 
-- **Proxy-Only Backspacing**: For any typewriter 'delete' or 'clear' phase, NEVER use `TextPlugin` heuristics with `text: ''`. You MUST use the **Proxy Property Animation** pattern (animating a numerical `len` property and updating `innerText` via `substring(0, len)`) to guarantee character-by-character reduction from the right.
-- **Alignment Stability**: Dynamic text containers MUST use `justify-content: flex-start` or `text-align: left` to prevent horizontal "sliding" when content length fluctuates.
-- **Aria-Live Continuity**: Rotating text elements MUST use `aria-live="polite"` and `aria-atomic="true"` to ensure screen readers announce updates without interrupting the user.
+Choose the text method by required deletion/replacement behavior. If TextPlugin's matching does
+not produce the intended order, use a numerical proxy over grapheme clusters as the skill shows.
+Do not use UTF-16 substring steps as a universal character model. Own only a dedicated text node
+and restore its original content on teardown.
+
+Use logical start alignment when a stable leading edge is intended; centered text may be
+deliberate. Preserve line height while empty and verify actual glyph clipping.
+Keep a stable accessible phrase for decorative typing. Announce a completed meaningful status
+change when appropriate; do not require a live region to announce every decorative character.
 
 ## 11. Verification
-- [ ] **Scroll coexistence**: No stale GSAP inline styles on scroll-driven elements after timeline completes.
-- [ ] **Accessibility**: All motion timelines check `prefers-reduced-motion` and implement the "Mirror" policy.
-- [ ] **Hydration**: Component initial states are CSS-driven to prevent flash.
-- [ ] **Performance**: GSAP timelines use `useGSAP` for automatic lifecycle management.
-- [ ] **Grid**: Explicit `grid-column` on all children when any sibling toggles `display`.
-- [ ] **Typing**: Backspace animations use the Proxy Property pattern (no left-deletion).
+
+- [ ] Visible endpoints cover normal, skipped, changed-preference, failed-gate and interrupted paths.
+- [ ] Resize/scroll/navigation preserve responsive geometry and other property owners.
+- [ ] Cleanup removes owned animations, listeners, timers and split DOM without restarting loops.
+- [ ] Actual text, focus, clipping, reading order and motion alternatives remain usable.
+- [ ] Relevant browser evidence supports visual claims; parsing/builds alone do not.
+- [ ] Missing runtime/plugin/consumer proof is named under `foundation-testing.md`.

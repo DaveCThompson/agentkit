@@ -1,32 +1,21 @@
 ---
-description: Exploration hub. Routes an ideation request to the matching explore-* skill before any plan is drafted.
+description: Route open questions to concept, technical, visual or interaction exploration.
 ---
 
 # Explore Workflow
 
-Hub router for deep exploration of UI, UX, tech, concept, or architecture — ideation and
-evaluation *before* a plan is drafted.
+Infer the open question from the request and existing context. Ask only if the ambiguity changes
+the work materially. Exploration compares possibilities and reduces uncertainty; it does not
+silently turn an option into an accepted plan.
 
-## Goal
-Route the request to the best specialized exploration skill and produce an options/evaluation
-artifact, not an implementation plan.
+| Question | Skill |
+| --- | --- |
+| What problem or opportunity should we pursue? | `explore-concept` |
+| How could we build it; which architecture or technology fits? | `explore-tech` |
+| How should it look? | `explore-ui-design` |
+| How should people move through and interact with it? | `explore-ux` |
 
-## Inputs required (ask if missing)
-- Domain: `ui`, `ux`, `tech`, `concept`, or `architecture`.
-
-## Skill routing (explicit) — choose exactly one
-- `ui` -> `explore-ui-design` (visual: layout, color, type, composition)
-- `ux` -> `explore-ux` (interaction design, user flows, information architecture)
-- `tech` -> `explore-tech` (libraries, patterns, performance trade-offs)
-- `concept` -> `explore-concept` (Socratic problem framing, early-stage ideation)
-- `architecture` -> route to `/architect` (this is a planning step, not open exploration)
-- else -> ask which domain to explore.
-
-## Procedure
-1. Detect the domain from arguments.
-2. Read the selected skill's `SKILL.md` and follow its exploration process.
-3. If no domain is provided, present the menu of options above.
-
-## Notes
-- This is a hub only — there are no per-domain `explore-*` workflows; each maps straight to a skill.
-- Exploration prioritizes divergent options; converge to a plan via `/plan` afterward.
+Combine relevant lenses when they address different consequential questions; avoid duplicate
+ceremony. Architecture comparison belongs to `explore-tech`, not directly to `/architect`.
+Carry findings, uncertainty and the caller's artifact identity into planning when planning is
+requested or already authorized. An understanding-only answer is a valid stopping point.

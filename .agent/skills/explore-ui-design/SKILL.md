@@ -1,56 +1,63 @@
 ---
 name: explore-ui-design
-description: Explores visual design options (layout, color, typography, interactions). Use when user asks "how should this look?" or needs design alternatives for a component.
+description: Explore visual design alternatives when the user asks how a page or component should look. Compare layout, hierarchy, typography, color, and visual states.
 tier: kind:app
 ---
 
 # Explore UI Design
 
-Generate visual design options using Visionary → Pragmatist → Engineer role-switching.
+## When to Use
 
-## Socratic Gate
-If request is vague, ask first:
-- What problem does this solve?
-- What existing patterns should it align with?
+Use for visual decisions within an interaction model. Unresolved task flows belong to
+[explore-ux](../explore-ux/SKILL.md); technical architecture belongs to
+[explore-tech](../explore-tech/SKILL.md).
 
 ## Approach
 
 ### Phase 1: Context
-- Design system context (the project's CSS-principles strategy doc — see `project-invariants.md`)
-- Existing patterns to align with
-- Mood/tone goals
 
-### Phase 2: Generate Options (Visionary)
-Create **3-4 distinct approaches** covering:
-- Structure (layout, composition)
-- Hierarchy (size, spacing, contrast)
-- Interactivity (states, transitions, motion)
-- Styling (borders, shadows, corners)
+Read the brief, prior choices, nearest relevant UI, and the project's actual design-system
+contracts. Locate token definitions and styling conventions through the project index. Do not
+assume a particular CSS strategy document exists. Establish audience, task, tone, and device
+constraints only where they affect the design.
 
-Make them genuinely different — **if two would draw the same reaction, replace one.** Contrast is
-what lets the user discover a preference they can't yet state.
+### Phase 2: Generate Options
 
-Use ASCII wireframes with `var(--token-name)` syntax.
+Develop alternatives that expose meaningful visual tradeoffs:
 
-### Phase 3: Critique (Pragmatist)
-For each option: token usage, pattern adherence, accessibility implications.
+- Structure and composition.
+- Hierarchy through size, spacing, contrast, and typography.
+- Rest, focus, hover, active, disabled, empty, loading, and error treatments where applicable.
+- Transitions and motion, including interruption and reduced-motion expectations.
+- Borders, elevation, density, and alignment with existing components.
 
-### Phase 4: Recommend (Engineer)
-Select with rationale, effort estimate (Low/Med/High).
+Use sketches, annotated wireframes, or another available medium that makes the choice legible.
+Token references are useful in a CSS-based project, but an ASCII sketch is not required.
+Do not pad an option set with alternatives likely to produce the same reaction.
 
-## Reflexion
-Before delivering:
-- Every value traces to a design token?
-- Looks cohesive with existing app?
-- Accessibility considered?
+### Phase 3: Critique
 
-## Constraints
-- Use existing tokens; flag new ones as "Proposed System Update"
-- No code generation
-- No user flows (that's `exploring-ux`)
+Compare each option's task emphasis, consistency, token fit, implementation cost, and accessibility
+risks. Specify concrete requirements such as visible focus, meaningful reading order, and
+information that cannot depend on color alone. These are design expectations; runtime contrast,
+keyboard, and assistive-technology checks remain pending until exercised.
 
-## Output
-Discussion document ending with: "Which direction aligns with your goals?"
+### Phase 4: Recommend
 
-After the user reacts, **name the real requirement behind what they rejected** — the rejection
-pattern often defines the spec better than the pick.
+Recommend a direction with rationale and the most important tradeoff. After feedback, distinguish
+the user's stated preference from an inferred explanation of it. Carry the latter as a revisable
+assumption; confirm only if it changes the result materially.
+
+## Boundaries
+
+Use the project's existing tokens and [foundation-design-tokens](../../../.agent/rules/foundation-design-tokens.md)
+where applicable. Mark additions as "Proposed System Update"; do not present invented tokens as
+available. With no established system, label the proposed visual vocabulary explicitly.
+Design exploration does not authorize production code or design-system changes.
+
+## Output and Definition of Done
+
+Use conversation or the supplied destination. Return enough visual detail to assess the
+recommendation, plus accepted choices, assumptions, proposed system changes, and pending checks.
+Ask for a decision only if one remains material. The next planner must be able to distinguish
+accepted requirements from visual hypotheses.

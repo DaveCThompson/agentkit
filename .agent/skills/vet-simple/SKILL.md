@@ -23,7 +23,8 @@ This is a lightweight pre-implementation review of a *plan or architecture*. Rou
 
 ## Artifacts
 
-- `docs/working/REVIEW-VET-{name}.md` — Review findings and recommendations
+Reuse the caller's plan/report or respond in conversation. Create a `REVIEW-` artifact only when
+a durable handoff adds value; follow `pattern-docs-artifacts.md`.
 
 ## Approach
 
@@ -35,7 +36,10 @@ This is a lightweight pre-implementation review of a *plan or architecture*. Rou
 
 ### Phase 2: Overlooked Aspects
 
-**Checklist**:
+Select lenses for the actual stack, surface and risk. Browser/React checks apply only to those
+targets; for CLI or service work inspect inputs, output contracts, I/O, concurrency and recovery.
+
+**Candidate lenses**:
 - [ ] **Edge Cases**: Empty states, loading states, error states
 - [ ] **Accessibility**: Keyboard navigation, screen reader support, focus management
 - [ ] **Mobile**: Touch targets, responsive layout, gesture conflicts
@@ -46,7 +50,7 @@ This is a lightweight pre-implementation review of a *plan or architecture*. Rou
 - [ ] **Security**: XSS vectors, data validation, sensitive data exposure
 
 **For Each Item**:
-- **Status**: Covered | Partially Covered | Not Covered
+- **Status**: Covered | Partially Covered | Not Covered | Not Applicable (with reason)
 - **Impact**: Low | Med | High
 - **Recommendation**: Specific action to address
 
@@ -64,7 +68,7 @@ This is a lightweight pre-implementation review of a *plan or architecture*. Rou
 
 ### Phase 4: Quick Wins
 
-Identify low-effort, high-value improvements:
+Report low-effort improvements only when their benefit follows from a concrete gap:
 - Missing guard clauses
 - Obvious accessibility fixes
 - Simple performance optimizations
@@ -72,16 +76,22 @@ Identify low-effort, high-value improvements:
 
 ### Phase 5: Priority Scoring
 
-**Scoring System**:
-- **Critical (9-10)**: Blocks implementation, must fix
-- **High (7-8)**: Significant risk, should fix before merge
-- **Medium (4-6)**: Worth addressing, can be follow-up ticket
-- **Low (1-3)**: Nice-to-have, optional
+Rank by plausible impact, preconditions and confidence. Separate project blocking policy from
+severity. Plan risks are hypotheses until supported by source or runtime evidence; do not turn an
+unverified possibility into a confirmed defect.
 
 ## Constraints
 
-- Time-boxed: spend max 15 minutes on review
+- Keep the review lightweight. Stop when material assumptions and risks are assessed or the next
+  useful check exceeds this review's scope; name that gap and owner.
 - Actionable: every finding must have a specific recommendation
-- Prioritized: use the scoring system consistently
-- Constructive: focus on what to add, not only what is wrong
+- Prioritized: explain impact without unsupported numeric scoring
+- Read-only: do not modify the plan or implementation during a review.
+- No finding quota: covered plans can return no findings.
 
+## Definition of Done
+
+The selected plan's material assumptions, affected behavior, failure paths and recovery have a
+bounded assessment. Findings name evidence, uncertainty and a concrete next action. Unanswered
+questions have an owner. Use `foundation-testing.md` for proof validity; the review itself does not
+verify future implementation or grant repair authority.

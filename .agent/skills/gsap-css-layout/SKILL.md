@@ -1,222 +1,192 @@
 ---
 name: gsap-css-layout
-description: Advanced rules for marrying GSAP timelines with React UI components to prevent unhandled layout shifts and grid bugs.
+description: Use when building or debugging GSAP animations that share responsive layout, visibility, or scroll-driven styles with React and CSS.
 tier: tech:gsap
 ---
 
-# Skill: GSAP × CSS Layout Animation
+# GSAP and CSS layout animation
 
-When using GSAP inside React for layout-affecting animations (width, position, visibility toggling), follow these principles to prevent sub-pixel snapping, interpolation jank, CSS Grid drift, and stale inline styles that collide with scroll-driven systems.
+## When to use
 
-**Scope**: Any component where GSAP timelines coexist with CSS-driven layout (Grid, Flexbox) or with Framer Motion scroll-linked values.
+Use for competing animation writers, responsive geometry, compact grids, gated reveals, and
+animated text. Follow the project's motion contract and `pattern-motion.md`; the patterns below
+are conditional techniques, not a required visual style. Diagnose-only requests end with evidence.
 
----
+## Approach
 
-## Principle 1: CSS Variable Proxy — Never Tween Layout Strings
+First identify the element, property, writer, and lifetime involved. Check installed GSAP and
+`@gsap/react` versions before adopting APIs. Two systems can own different properties on one
+element. When both need the same property, compose separate inputs, use separate wrappers, or
+hand ownership over explicitly. Do not clear a live scroll driver's styles to finish an intro.
 
-GSAP's internal interpolation engine parses CSS values as strings. When a target value depends on responsive units (`%`, `vw`, `calc()`), GSAP snapshots the *computed* pixel value at tween start and interpolates toward the *computed* pixel value at tween end. This is fragile: resize events, container queries, and scroll-linked variable changes all invalidate the snapshot silently.
+### Responsive geometry with a CSS variable proxy
 
-**THE RULE:**
-Tween a unitless CSS custom property (`0 → 1`) and let native CSS `calc()` consume it.
+A unitless progress variable lets CSS combine intro progress with the current container size
+and scroll inset. This avoids depending on a previously measured pixel endpoint when the
+geometry changes. Direct tweens are still useful for fixed geometry; layout transitions can
+also use measured endpoints with invalidation or GSAP Flip when appropriate.
 
 ```javascript
-// BAD — GSAP snapshots a stale pixel value
-tl.to(el, { width: 'calc(100% - 24px)', maxWidth: '1240px' });
-
-// GOOD — browser recalculates every frame natively
 gsap.set(el, { '--expansion-progress': 0 });
 tl.to(el, { '--expansion-progress': 1, duration: 0.5 });
 ```
 
 ```css
 .frame {
-  /* Browser GPU handles responsive math at paint time */
-  width: calc(68px + (100% - var(--inset) * 2 - 68px) * var(--expansion-progress, 1));
+  /* Responsive value composition; changing width still performs layout work. */
+  width: calc(68px + (100% - var(--inset, 12px) * 2 - 68px) * var(--expansion-progress, 1));
 }
 ```
 
-**WHY THIS MATTERS FOR FUTURE WORK**: Every scroll-scrubbed section, text reveal container, or parallax layer that also has an intro sequence should use this pattern. It is the only way to guarantee that a GSAP intro tween and a Framer Motion `useTransform` scroll driver can coexist on the same element without one overwriting the other's inline styles.
+The dimensions and timing are illustrative. If the required endpoint is full bleed, inspect
+whether `max-width` or the inset already caps the element. Remove a cap only when it conflicts
+with that endpoint. Keep it when the design requires a maximum. Profile layout cost when width
+changes affect responsiveness; CSS variables do not turn layout into GPU-only work.
+[Browser animation guidance](https://web.dev/articles/animations-guide) explains the rendering stages.
 
----
+### Visibility proxy with a complete lifecycle
 
-## Principle 2: GSAP Inline Styles Poison Scroll-Linked CSS
-
-When GSAP writes `opacity: 1` via `autoAlpha: 1`, it stamps an **inline style** on the element. That inline style has higher specificity than any CSS class or custom property expression. If the same property is also driven by a scroll-linked CSS variable (e.g., `opacity: calc(...)` in the stylesheet), the scroll formula becomes permanently dead.
-
-**THE RULE:**
-For any property that is *also* scroll-driven or theme-driven in CSS, proxy the GSAP intro through a dedicated CSS variable instead of animating the property directly.
+Inline `opacity` from `autoAlpha` can override a stylesheet's scroll opacity expression. Give
+the intro its own variables instead. This example owns only two custom properties on `shell`;
+no other writer may use them during this controller's lifetime. CSS defaults remain visible
+when JavaScript never starts. The gate caller leaves content visible until it can start, or
+calls the immediate path when motion is skipped.
 
 ```javascript
-// BAD — stamps inline opacity:1 that kills scroll fade
-tl.to(shadowEl, { autoAlpha: 1 });
+function createIntro(shell, { reducedMotion = false, onComplete = () => {} } = {}) {
+  const names = ['--intro-alpha', '--intro-visibility'];
+  const previous = names.map(name => [
+    name, shell.style.getPropertyValue(name), shell.style.getPropertyPriority(name),
+  ]);
+  let tween;
+  let completed = false;
+  let disposed = false;
+  const finish = () => {
+    if (disposed || completed) return;
+    shell.style.setProperty('--intro-alpha', '1');
+    shell.style.setProperty('--intro-visibility', 'visible');
+    completed = true;
+    onComplete();
+  };
 
-// GOOD — proxy variable, CSS multiplies it into the scroll formula
-gsap.set(shell, { '--intro-alpha': 0, '--intro-visibility': 'hidden' });
-tl.to(shell, { '--intro-alpha': 1, duration: 0.3 });
+  if (reducedMotion) {
+    finish();
+  } else {
+    shell.style.setProperty('--intro-alpha', '0');
+    shell.style.setProperty('--intro-visibility', 'visible');
+    tween = gsap.to(shell, {
+      '--intro-alpha': 1, duration: 0.3, onComplete: finish,
+    });
+  }
+
+  return {
+    reveal() { // Preference change or cancelled intro that must show its terminal state.
+      tween?.kill();
+      finish();
+    },
+    dispose() { // Teardown is not successful completion.
+      if (disposed) return;
+      disposed = true;
+      tween?.kill();
+      for (const [name, value, priority] of previous) {
+        if (value) shell.style.setProperty(name, value, priority);
+        else shell.style.removeProperty(name);
+      }
+    },
+  };
+}
 ```
 
 ```css
 .shadow {
-  /* Intro proxy × scroll expression — both work simultaneously */
-  opacity: calc(var(--intro-alpha, 1) * ((1 - var(--scroll-progress)) * 0.44));
+  opacity: calc(var(--intro-alpha, 1) * (1 - var(--scroll-progress, 0)) * 0.44);
   visibility: var(--intro-visibility, visible);
 }
 ```
 
-**CRITICAL INVARIANT**: After any GSAP intro timeline completes, *zero* inline `opacity`, `visibility`, `width`, or `transform` styles should remain on elements that also participate in scroll-driven CSS. Use `clearProps` or proxy variables exclusively.
+The inline snapshot and tween teardown above are one cleanup owner. It is a standalone
+controller; call `dispose()` before remount or replacement. Do not also register its tween in
+an independently reverted context that could restore an intermediate hidden state. In a
+`useGSAP` implementation, let that context own the initial GSAP sets and tween instead, with
+equivalent visible defaults and terminal paths. Never use `clearProps: 'all'` on shared elements.
 
----
+### React lifecycle and gated entry
 
-## Principle 3: CSS Grid Auto-Placement Destruction
+Keep initial state and its reveal under one lifecycle owner. A single `useGSAP` callback is a
+useful way to coordinate a gate, but separate effects are valid for independent properties or
+lifetimes. When dependency changes must replace the old animation, use `revertOnUpdate: true`.
+An intentional persistent timeline can instead be updated by its owner. Scope selectors to the
+component, and wrap late animation callbacks with `contextSafe` or explicitly track their cleanup.
+Remove listeners and timers as well as timelines. See [GSAP's React guide](https://gsap.com/resources/React/)
+and [context lifecycle](https://gsap.com/docs/v3/GSAP/gsap.context()/).
 
-When GSAP sets `display: none` on grid children to sequence their entrance, CSS Grid collapses those tracks entirely. The remaining visible child falls under the auto-placement algorithm, which assigns it to the **first available** column — destroying symmetric centering.
+Do not rely on default-hidden SSR content with JavaScript as its only escape. Hide only after
+the reveal can be scheduled, or supply a CSS/no-JS fallback and a bounded gate-failure path
+appropriate to the product. If hiding before hydration is essential, verify delayed hydration
+and failed startup explicitly. A layout effect cannot retroactively hide server HTML already painted.
 
-**THE RULE:**
-When mixing GSAP `display` toggling with CSS Grid symmetric layouts (`1fr auto 1fr`), you **MUST** hardcode `grid-column` on every child.
+Check reduced motion before hiding. Respond to preference changes during playback by finishing
+the visible state. Complete upstream readiness signals on skip paths; do not re-arm loops or
+signal success from an unmounted controller. Distinguish a cancelled reveal from teardown.
+Exercise Strict Mode setup/cleanup, interrupted navigation, gate failure, and remounts where used.
 
-```css
-/* CRITICAL: Prevents auto-placement when siblings are display:none */
-.navWrapper     { grid-column: 1; }
-.logo           { grid-column: 2; }
-.controlsWrapper { grid-column: 3; }
-```
+### Compact grids and constraints
 
-When columns 1 and 3 are `display: none`, column 2 remains anchored because `1fr` divisions distribute the remaining space evenly around the explicit center track.
-
----
-
-## Principle 4: Grid Gap Overflow at Compact Scale
-
-If the container starts extremely small (e.g., 68px circle) and the grid has a static `gap: 16px`, the gap alone may exceed the container bounds. CSS Grid resolves overflows left-to-right, pushing centered content off-axis by exactly the unaccommodatable gap pixels.
-
-**THE RULE:**
-Bind grid `gap` to the expansion proxy so it starts at 0 and grows with the container:
-
-```css
-.bar {
-  gap: calc(var(--expansion-progress, 1) * 16px);
-}
-```
-
----
-
-## Principle 5: Never Use `max-width` in Proxy Formulas When Scroll Variables Coexist
-
-If a CSS variable formula already uses a scroll-driven inset (e.g., `var(--current-inset-side)` that resolves from `max(12px, ...)` down to `0`), adding a static `max-width` inside the same `calc()` creates a hard ceiling that the scroll driver can never exceed.
+`display: none` removes a child from grid placement. For a layout whose logo must stay in the
+center track while siblings disappear, assign the intended columns explicitly:
 
 ```css
-/* BAD — max-width caps at 1240px even when scroll wants full bleed */
-width: calc(68px + (100% - var(--inset) * 2 - 68px) * var(--expansion-progress));
-max-width: calc(68px + (1240px - 68px) * var(--expansion-progress));
-
-/* GOOD — scroll-driven --inset naturally constrains width at rest */
-width: calc(68px + (100% - var(--inset) * 2 - 68px) * var(--expansion-progress));
-/* No max-width needed — --inset handles the 1240px cap via its own formula */
+.nav { grid-column: 1; }
+.logo { grid-column: 2; }
+.controls { grid-column: 3; }
 ```
 
----
+This assumes a matching three-column template such as `minmax(0, 1fr) auto minmax(0, 1fr)`.
+Check intrinsic content widths and overflow too. If keeping space is intended, visibility or
+opacity may be a better choice than removing children; handle focusability deliberately.
 
-## Principle 6: Crisp Stagger Easing — No Wobble
+For a container that begins smaller than its normal gutters, a progress-linked gap can preserve
+centering: `gap: calc(var(--expansion-progress, 1) * 16px)`. Inspect computed track sizes, padding,
+min-content constraints, and gaps before choosing this fix. There is no universal pixel offset.
 
-For sequential item entrances (nav links, control icons, list items), avoid easing functions that mathematically overshoot `1.0`:
+### Sequencing and text
 
-| Ease | Overshoot? | Use case |
-|:-----|:-----------|:---------|
-| `back.out(1.7)` | ✅ Yes — wobble | Playful/bouncy single elements |
-| `elastic.out` | ✅ Yes — springy | Attention-grabbing hero elements |
-| `power3.out` | ❌ No | **Crisp sequential fire** — recommended for staggered UI |
-| `power4.out` | ❌ No | Cinematic, slightly sharper deceleration |
+Choose easing from the product's motion language. `power3.out` is useful for a crisp stagger;
+`back` and `elastic` intentionally overshoot. Confirm that overshoot fits the space and intent.
+For independent multi-step sequences running together, add a child timeline per target at the
+same parent position. Unpositioned tweens append at the timeline end and can serialize work.
+Interrupt only the timeline/properties the current interaction owns.
 
-For staggered sequences, combine with tight timing:
+For typing with a stable leading edge, use logical start alignment rather than forcing left
+alignment in every language. Reserve line height for empty text. Size masks against the actual
+font, line height, glyphs and zoom; a fixed font-size ratio cannot guarantee descender clearance.
+
+If text-plugin matching gives the wrong deletion order, tween a count of grapheme clusters.
+Use this only on a dedicated text node whose content this controller owns:
+
 ```javascript
-tl.from(items, {
-  autoAlpha: 0,
-  y: 8,
-  stagger: 0.04,   // rapid sequential fire
-  duration: 0.35,
-  ease: 'power3.out',
-}, absoluteLabel);
+const clusters = [...new Intl.Segmenter(locale, { granularity: 'grapheme' })
+  .segment(originalText)].map(part => part.segment);
+const proxy = { length: clusters.length };
+rotationTl.to(proxy, {
+  length: 0, duration: 0.6, ease: 'none',
+  onUpdate: () => {
+    target.textContent = clusters.slice(0, Math.ceil(proxy.length)).join('');
+  },
+});
 ```
 
----
+Check [Intl.Segmenter support](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter)
+for supported runtimes; use an existing grapheme-aware utility or a static phrase if unavailable.
+Keep an accessible stable phrase and hide decorative character updates from assistive technology.
+If a completed phrase conveys a meaningful status change, announce the whole phrase without
+announcing every character. Restore owned text and SplitText DOM changes on teardown.
 
-## Principle 7: FOUC Prevention Architecture (Single Hook Rule)
+## Definition of done
 
-Elements that participate in GSAP intro timelines must be invisible *before* React hydration completes. For purely client-rendered components, use `gsap.set` inside `useGSAP` for the initial hidden state. For components that are also SSR-rendered (where CSS applies before JS loads), combine a CSS module default-hidden rule with a data-attribute CSS override — see the CSS + data-attribute pattern below.
-
-**CRITICAL**: Use a **single** `useGSAP` hook with `revertOnUpdate: true` for both initial hide and gated animation. Two hooks create independent GSAP contexts with independent cleanup cycles, allowing a rendered frame where elements flash visible — a "partial fade, then restart" double-animation glitch. `revertOnUpdate: true` ensures each dependency change gets a clean context; since `useGSAP` runs in `useLayoutEffect`, the revert + re-run is atomic before browser paint.
-
-```tsx
-// CORRECT: single hook — initial hide + gated animation in one context
-useGSAP(() => {
-  gsap.set([titleEl, descEl], { opacity: 0, y: 28, visibility: 'hidden' });
-
-  if (!isGateOpen) return; // wait for upstream signal
-
-  gsap.timeline()
-    .to(titleEl, { opacity: 1, y: 0, visibility: 'visible' })
-    .to(descEl, { opacity: 1, y: 0, visibility: 'visible' }, '-=0.3');
-}, { scope: containerRef, dependencies: [isGateOpen], revertOnUpdate: true });
-
-// INCORRECT: two hooks, no revertOnUpdate
-useGSAP(() => {
-  gsap.set([titleEl, descEl], { opacity: 0, visibility: 'hidden' });
-}, { scope: containerRef }); // ← separate context, separate cleanup
-
-useGSAP(() => {
-  if (!isGateOpen) return;
-  gsap.to([titleEl, descEl], { opacity: 1, visibility: 'visible' });
-}, { scope: containerRef, dependencies: [isGateOpen] });
-```
-
-### CSS + data-attribute override (SSR-safe gated animation)
-
-For components that render on the server with content already hidden by CSS, pair the hiding rule with a data-attribute override that GSAP or React sets when animation is skipped:
-
-```css
-/* Default: hidden for animation (applies on SSR before JS loads) */
-.root :global([data-hero-reveal]) { opacity: 0; visibility: hidden; }
-
-/* Override: visible when animation is skipped or complete (higher specificity) */
-.root[data-hero-revealed='true'] :global([data-hero-reveal]) { opacity: 1; visibility: visible; }
-```
-
-Set `el.dataset.heroRevealed = 'true'` in the non-animated code paths (reduced motion, post-intro navigation, tween `onComplete`). This means elements are visible via pure CSS even if the GSAP context is reverted externally — resilient to `revertOnUpdate` and unmount/remount cycles.
-
-**Why this is safe**: When `revertOnUpdate` causes `context.revert()`, GSAP inline styles are removed and elements fall back to their CSS state. Because the CSS default is hidden, there is no flash. The new callback then re-applies the hidden state and starts the tween.
-
----
-
-## Principle 8: Dynamic Text Masking & Typing Alignment
-
-Changing text content (via `TextPlugin` or manual swapping) causes the container's width to recalculate. If the container is centered (`margin: auto`, `justify-content: center`, or `text-align: center`), the **start** of the text will shift as characters are added/removed — creating a distracting "sliding" effect.
-
-**THE RULES:**
-1. **Anchor the Alignment**: For any dynamic text phrase, lock the parent container to the left edge using `display: grid` + `justify-items: start` or explicit `text-align: left`.
-2. **Maintain Vertical Presence**: Use an invisible zero-width character (e.g., `&nbsp;` with `width: 0`) or a `min-height` that matches the `line-height` to prevent the line from collapsing during empty states.
-3. **Proxy Property Backspacing (Mandatory)**: If `TextPlugin` exhibits non-linear deletion, use the **Proxy Property pattern** for 100% predictable right-to-left backspacing. This prevents "matching" heuristics from causing left-deletion:
-   ```javascript
-   const proxy = { len: originalText.length };
-   rotationTl.to(proxy, {
-     duration: 0.6,
-     len: 0,
-     ease: 'none',
-     onUpdate: () => {
-       target.innerText = originalText.substring(0, Math.ceil(proxy.len));
-     }
-   });
-   ```
-4. **Descender Clearance**: If using vertical masks (`overflow: hidden`), the mask height MUST be 1.25x - 1.5x the font size to accommodate descenders (g, y, p) without clipping. Adjust layout gaps using negative margins on the wrapper rather than shrinking the mask.
-
----
-
-## Checklist: Before Shipping Any GSAP Timeline
-
-- [ ] No inline `width`, `opacity`, `transform`, or `visibility` left on scroll-driven elements after timeline completes
-- [ ] All grid children have explicit `grid-column` if any sibling uses `display: none`
-- [ ] Grid `gap` scales with expansion proxy if container starts below gap threshold
-- [ ] `prefers-reduced-motion` short-circuits the timeline and fires the completion callback
-- [ ] No `max-width` in formulas where a scroll variable already provides responsive capping
-- [ ] Staggered entrances use `power3.out` or `power4.out` — no `back.out` or `elastic.out`
-- [ ] Dynamic text containers are anchored (left/start) to prevent horizontal "sliding" during content mutation
-- [ ] Masked containers provide sufficient bottom clearance for font descenders
+- The intended reveal endpoint is visible, including skip, changed-preference and gate-failure paths.
+- Resize, scroll and interruption preserve geometry and other writers' styles.
+- Cleanup removes owned animations, listeners and text wrappers without reviving loops.
+- Applicable browser checks cover compact layout, text clipping, focus and reduced motion.
+- Report actual evidence and any unrendered states under `foundation-testing.md`; a build alone
+  does not establish animation behavior.

@@ -2,29 +2,23 @@
 name: audit-docs
 description: Documentation drift detection and knowledge-base hygiene. Use after major changes or for periodic maintenance.
 tier: core
+required-tools: [agentkit]
 ---
 
 # Audit Docs Skill
 
 Logic for ensuring documentation integrity and preventing "Documentation Rot".
 
-## Role: REVIEWER — read-only, always
+## Role: REVIEWER — read-only
 
-This skill is the **first half** of a two-agent pass. It reads and writes a findings file. It does
-**not** edit a single doc — `maintain-docs` is the applier, and it re-verifies every finding before
-touching anything.
-
-**Why the split is not ceremony.** A reviewer is confidently wrong often enough to matter. In the
-live run this pattern comes from, verify-at-apply caught **three errors inside the review layer
-itself**: a false claim about where snapshot JSON exists, a cited path that had **never existed**
-(the reviewer assumed a deletion), and a "shipped" mark with no evidence behind it. A single agent
-doing both halves would have written all three into the docs as authoritative corrections. If you
-find yourself about to fix something you just found, stop — that is the failure mode.
+Read the scoped documents and return findings in the caller's requested report or conversation.
+Do not edit, move, archive or delete audited documents. `maintain-docs` applies authorized corrections
+and rechecks their premises. That transition does not require another agent or repeat approval when
+the user's existing request already authorizes maintenance.
 
 ## The finding schema (the handoff artifact)
 
-Every lens emits findings in this shape. It is what makes the output *appliable* rather than merely
-readable, and `maintain-docs` re-checks each field before acting:
+For each material finding, use this shape so `maintain-docs` can re-check it before acting:
 
 ```
 - file:        <path>
@@ -36,37 +30,46 @@ readable, and `maintain-docs` re-checks each field before acting:
 
 `uncertain` is a first-class verdict, not a failure. A finding you cannot evidence is still worth
 reporting — it just must not be dressed as a fact. Anchor `evidence` to symbols and sections;
-`governance/docs-standard.md` §(i) bars bare line numbers from durable docs for the same reason they
-are useless here: they rot under any edit.
+`governance/docs-standard.md` §(i) requires durable references to carry context. Line numbers need
+a source identity because they become ambiguous after an edit. Preserve useful
+historical citations with their exact source state.
 
 ## Instructions
 
 1. **Verify Spec Isolation**:
    - Check `docs/specs`.
-   - **MUST BE ABSENT OR EMPTY**. Durable specs belong in `docs/knowledge-base/specs/`. If files
-     exist in `docs/specs`, classify and move them into the four-directory model.
-   - Also check for loose `SPEC-*` files outside `docs/knowledge-base/specs/` (e.g., in `docs/working/`).
-     These should be moved to `docs/knowledge-base/specs/` or archived.
+   - Under the default layout it must be absent or empty. Durable specs belong flat in the
+     declared KB root (`docs.kbRoot`, default `docs/knowledge-base`). If files
+     exist in `docs/specs`, classify them and propose destinations under the artifact policy.
+     Respect declared layout exceptions.
+   - Check `SPEC-*` outside that root, including working drafts. Prospective requirements belong
+     in the accepted ticket, PLAN or PRD; current truth belongs in the KB. Preserve sanctioned
+     nested layouts and remaining work before proposing a destination.
 
 2. **Verify Rule Coverage**:
    - Trace recent `./CHANGELOG.md` entries or feature implementation plans.
-   - Check if new patterns (UI components, state management, API design) are documented in `.agent/rules/*.md`.
+   - Check whether changed behavior contradicts applicable rules or leaves a material documentation
+     gap. A new pattern does not automatically warrant a new rule.
    - Identify "Rule Drift" — where code behavior deviates from documented standards.
 
 3. **Link Integrity — delegate to the CLI; do not hand-roll it**:
    - Run `agentkit check --content`. It owns markdown links, backticked and bare repo paths,
      `npm run` script names, CI job names, `.agent` asset references, and `:line` citations, and it
      resolves each against the citing file's directory, then the repo root, then the kit.
-   - Run `agentkit check --taxonomy`. It owns **both** index directions: a README naming a doc that
-     no longer exists (renamed away), and a doc that exists but is named in no index.
-   - Residual prose-only work — the genuinely unmechanized part, and the only link checking you do
-     by hand: **external URLs** (is `https://…` still live?) and **in-page anchors** (`#section`
-     targets within a document).
-   - Do not re-run `rg` over what the CLI just resolved. A hand-rolled sweep that disagrees with the
-     checker is a second source of truth, and it will be the wrong one.
+   - Run `agentkit check --taxonomy`. Inspect its reported roots and both index directions:
+     missing index targets and unindexed files where that consumer supports them. Check the declared
+     KB root explicitly if the installed version omits it; missing coverage is not a clean scan.
+   - Check external URLs and in-page anchors where needed. Use targeted source/path checks for
+     suspicious results and known limitations, including old paths after a move. A lenient checker
+     can pass some non-code example tokens when their parent exists. Working/backlog bodies,
+     archive/evidence bodies, external URLs and anchors are not a universal content-check guarantee.
+   - Preserve evidence-backed disagreements with the checker and identify its coverage limit.
+     If the CLI is unavailable, report that gap and perform bounded direct checks. A green command
+     is not proof that prose, targets or status claims are true.
 
-4. **Backlog Index Integrity** (only if the project keeps a `docs/backlog/` directory — repos using
-   the ephemeral `backlog-status` view have no backlog dir; skip this check for them):
+4. **Backlog Index Integrity** (only where the project keeps an indexed backlog store):
+   - Discover the actual live stores. An ephemeral `backlog-status` view does not imply that a
+     backlog directory is absent. Skip index checks only for stores without an index contract.
    - `agentkit check --taxonomy` already enforces this mechanically in both directions
      (`unindexed-doc` and the dead-index lint). Read its output rather than re-deriving the list.
    - **Enumerate from the filesystem if you verify by hand.** Glob the directory; the index is the
@@ -74,14 +77,17 @@ are useless here: they rot under any edit.
      missed the one ticket that had never been indexed — which is the whole reason this lens exists.
 
 5. **Archival Integrity**:
-   - Verify that PRDs marked as "Implemented" in the changelog have been moved to `docs/archive/`.
+   - Check completion evidence and remaining acceptance before recommending archival of PRDs or
+     plans marked implemented. Pending work must remain discoverable or have an explicit successor.
+     Check incoming and outgoing navigation, including links from immutable source records.
 
 6. **Status-Drift Check**:
    - Plans and status docs carry point-in-time state that rots (a cover plan claimed "Phase 1
      complete on branch X (uncommitted)" long after that branch was merged and deleted).
-   - Flag any doc that asserts a branch exists when `git rev-parse --verify <branch>` fails, or
-     that claims an "uncommitted / on branch X / not yet merged" state for a branch already
-     merged or gone. Pair with the §i content-freshness scrub in `docs-standard.md`.
+   - Check present-tense branch and integration claims against the actual ref and ancestry.
+     A missing local ref does not prove remote deletion, integration or completed acceptance.
+     Preserve historical statements in their dated context. Pair with the content-freshness scrub
+     in `docs-standard.md`.
 
 7. **Self-contradiction Check**:
    - Flag any doc whose header/Status line contradicts its own body (e.g., header says "in
@@ -91,18 +97,19 @@ are useless here: they rot under any edit.
      against itself and needs no git.
 
 ## Constraints
-- **Read-only. This skill edits nothing.** Hand the findings file to `maintain-docs`.
+- Do not change audited documents. Return the report to the caller or authorized `maintain-docs` owner.
 - Use `rg --files` or `Get-ChildItem -Recurse` for isolation checks.
-- Link/path/index validation is the CLI's (step 3) — hand `rg` sweeps only for external URLs and
-  in-page anchors.
+- Reuse CLI coverage once; targeted checks may corroborate or challenge it with concrete evidence.
 - Any grep over `docs/` uses `--no-ignore`: `docs/archive/` and `docs/raw-research/` are
   `.ignore`-excluded, and an excluded tree's "no matches" is byte-identical to "searched, nothing
   there" (`governance/docs-standard.md` §(f)).
-- **NEVER** delete files without user confirmation; move to `docs/archive/` instead.
-- Raw command output goes to `docs/working/evidence/` (gitignored); findings docs cite the evidence file by name.
+- Propose destinations and preservation requirements; do not perform moves or deletions in an audit.
+- Keep necessary redacted evidence in the caller's approved location and cite its identity.
 
 ## Output
-Every lens ends in findings or an explicit clean attestation — name what was checked and state it came back clean; a lens with neither is an under-delivered audit, not a pass.
+Each selected lens is `finding | checked-clean | not-applicable | not-verified`, with scope,
+reason and a next check/owner for missing proof. Follow `foundation-testing.md` for evidence
+validity. Zero findings is valid; incomplete coverage cannot establish a full pass.
 Findings use the schema above (quote → correction → evidence → verdict) so `maintain-docs` can apply
 them directly. Findings report highlighting:
 - [ ] Stray specs found
@@ -111,3 +118,9 @@ them directly. Findings report highlighting:
 - [ ] Orphaned active PRDs
 - [ ] Status drift (dead branches, "uncommitted" claims for merged/deleted branches)
 - [ ] Self-contradiction (header/Status line disagrees with the body it heads)
+
+## Definition of Done
+
+The scoped claims have evidence-backed findings or explicit gaps. Proposed moves preserve useful
+content and navigation. No audited document was changed; the authorized maintenance owner receives
+the existing report identity.

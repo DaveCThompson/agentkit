@@ -1,122 +1,87 @@
-# Rendering Optimization Rules
+# Rendering patterns
 
-**Impact: MEDIUM**
+Use browser traces and the React Profiler to separate scripting, React rendering, DOM updates,
+layout and paint. A component invocation need not produce a DOM mutation.
 
-Optimizing the rendering process reduces the work the browser needs to do.
+## Static JSX and memoization
 
-## Hoist Static JSX Elements
+Hoisting a truly static element can preserve its identity across parent renders, but it may
+save negligible work. Keep it inside the component when it depends on props, context or local
+state. Check what the project's React Compiler already optimizes before adding manual caching.
+A component boundary is useful for structure; its spelling or namespace is not performance proof.
 
-Extract static JSX outside components to avoid re-creation.
+## Explicit conditional rendering
 
-**Incorrect (recreates element every render):**
-```tsx
-function LoadingSkeleton() {
-  return <div className="animate-pulse h-20 bg-gray-200" />
-}
+When a count of zero means no badge, make the condition boolean:
 
-function Container() {
-  return (
-    <div>
-      {loading && <LoadingSkeleton />}
-    </div>
-  )
-}
-```
-
-**Correct (reuses same element):**
-```tsx
-const loadingSkeleton = (
-  <div className="animate-pulse h-20 bg-gray-200" />
-)
-
-function Container() {
-  return (
-    <div>
-      {loading && loadingSkeleton}
-    </div>
-  )
-}
-```
-
-> **Note:** If your project has React Compiler enabled, this optimization is automatic.
-
-## Explicit Conditional Rendering
-
-Prefer ternary for explicit control over rendering.
-
-**Incorrect (may render falsy values):**
-```tsx
-{count && <Badge count={count} />}
-// Renders "0" if count is 0
-```
-
-**Correct:**
 ```tsx
 {count > 0 ? <Badge count={count} /> : null}
-// Never renders "0"
 ```
 
-## Defer Layout Reads
+`count && <Badge count={count} />` renders `0` when `count` is zero. This is a correctness issue
+when zero is unintended, independent of performance. Preserve a visible zero when the UI requires it.
 
-Avoid reading layout properties during render.
+## Layout reads
 
-**Incorrect:**
+Do not read DOM layout during React render. A ref may be unset or describe the previous commit,
+and a layout read can force style/layout calculation if preceding writes invalidated it. If a
+measurement must affect the same painted frame, measure after commit in `useLayoutEffect`:
+
 ```tsx
-function Component() {
-  const ref = useRef<HTMLDivElement>(null)
-  const width = ref.current?.offsetWidth ?? 0 // Forces layout
-  // ...
-}
-```
+import { useLayoutEffect, useRef, useState } from 'react';
 
-**Correct:**
-```tsx
-function Component() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(0)
-  
+function MeasuredBox() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
-    if (ref.current) {
-      setWidth(ref.current.offsetWidth)
-    }
-  }, [])
-  // ...
+    if (ref.current) setWidth(ref.current.getBoundingClientRect().width);
+  }, []);
+  return <div ref={ref}>{width === null ? 'Measuring…' : `Width: ${width}`}</div>;
 }
 ```
 
-## Content Visibility for Long Lists
+This example measures the border box once. It is not a resize subscription or free work: the
+effect and state update can delay paint. Prefer CSS when it can solve the layout. Use the
+project's observer pattern when dimensions can change, disconnect it on teardown, and avoid
+measurement/update feedback loops. Keep SSR fallback content usable; see [useLayoutEffect](https://react.dev/reference/react/useLayoutEffect).
 
-Use CSS to defer rendering of off-screen content.
+## Off-screen content
+
+`content-visibility: auto` can defer off-screen rendering. An estimated intrinsic size limits
+scroll shifts, but it must suit the real items:
 
 ```css
 .list-item {
   content-visibility: auto;
-  contain-intrinsic-size: 0 50px;
+  contain-intrinsic-size: auto 50px;
 }
 ```
 
-## Isolate Re-renders via Composition
+Check browser support, scroll geometry, focus, find-in-page and assistive-technology behavior.
+This does not remove React's cost to create a large list. Consider virtualization for measured
+DOM/render cost only with a plan for keyboard access and content discovery.
 
-Avoid "Monolithic" components that manage all state at the top level. Use Radix-style composition to isolate stateful logic.
+## Isolate frequently changing state
 
-**Anti-pattern (Rendering monolith):**
-Changing state in the Provider re-renders the entire subtree, including static parts like the Header.
-
-```tsx
-<ConfigurationProvider>
-  <HeavyHeader />
-  <Content state={state} />
-</ConfigurationProvider>
-```
-
-**Optimization (Composability):**
-By lifting the Provider or using composable sub-components, you can ensure only the components that *actually* need the state are re-rendered.
+Move state close to its consumers when that reduces the actual propagation path. For example,
+a local input update does not require its parent to render:
 
 ```tsx
-<Composer.Root>
-  <Composer.Header /> {/* Static part - doesn't re-render on input changes */}
-  <Composer.Input />  {/* Stateful part - re-renders on input */}
-</Composer.Root>
+import { useState } from 'react';
+
+function SearchInput() {
+  const [query, setQuery] = useState('');
+  return <input aria-label="Search" value={query}
+    onChange={event => setQuery(event.currentTarget.value)} />;
+}
+
+function SearchPanel() {
+  return <section><h2>Search</h2><SearchInput /></section>;
+}
 ```
 
-Benefit: Minimizes React's reconciliation work by reducing the number of children that need to be checked when state changes.
+This local state has no effect on the heading. In a real search, put result state/subscriptions
+where needed. A context change still reaches consumers even through memoized ancestors; inspect
+provider values, store selectors and prop identity. Passing stable children into a stateful
+wrapper may help, while creating those children on each parent render may not. Verify which
+components render in the Profiler instead of claiming a compositional API guarantees isolation.

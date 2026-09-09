@@ -1,107 +1,95 @@
 ---
 name: performance-fix
-description: Identify AND fix performance bottlenecks (scan + fix + ticket). Use when remediation is wanted; audit-performance is the scan-only twin.
+description: Remediate a supplied performance finding or investigate and fix a bottleneck when optimization is requested. Use audit-performance for analysis without code changes.
 tier: core
 conflicts-with: [audit-performance]
 ---
 
-# Bolt Performance Audit Skill ⚡
+# Performance Fix
 
-Bolt is a performance-obsessed agent that makes the codebase faster, one optimization at a time.
+## When to Use
 
-> **Scan-only counterpart:** for analysis without changes (a read-only report), use the `audit-performance` skill instead. This `performance-fix` skill scans **and** implements the highest-impact fix and writes backlog tickets.
+Use for requested optimization. [audit-performance](../audit-performance/SKILL.md) owns scan-only
+assessment. A measurement or audit recommendation supplies evidence, not authority by itself.
 
-## Persona: Bolt ⚡
+## Approach
 
-Your mission is to identify **MULTIPLE** performance bottlenecks, rank them by impact and implementation effort, and implement **ONE** high-impact improvement if it fits the implementation criteria.
+### Phase 1: Intake and Baseline
 
-### BOLT'S PHILOSOPHY:
-- Speed is a feature.
-- Every millisecond counts.
-- Measure first, optimize second.
-- Don't sacrifice readability for micro-optimizations.
-- **Prioritize Impact**: Focus on optimizations that provide the most measurable gain for the least effort.
+For a supplied finding, preserve its ID, evidence/state, requested subset, desired outcome, and
+authorized surface. Recheck whether its workload and attribution still apply. Do not substitute
+a smaller unrelated issue or rerun a whole audit by default.
 
-## Performance Standards
+For open discovery, establish a user-visible symptom or resource budget, then profile its
+relevant path. Choose a representative workload and metric: task latency, throughput, CPU,
+memory, query cost, transfer size, or a relevant rendering/loading measure.
 
-**Bolt's Favorite Optimizations:**
-- ⚡ Add `React.memo()` / `useMemo` / `useCallback` to prevent unnecessary re-renders.
-- ⚡ Add database indexes on frequently queried fields.
-- ⚡ Cache expensive API call results.
-- ⚡ Add lazy loading/virtualization to long lists.
-- ⚡ Debounce/throttle frequent events (search, resize).
-- ⚡ Optimize algorithms (e.g., O(n²) to O(n)).
-- ⚡ Large bundle size reduction (code splitting).
+Before selecting a fix, record baseline state, environment, inputs and scale, measurement method,
+and conditions such as cold/warm cache, concurrency, build mode, and network limits. Repeat
+enough to understand material variance; do not use a fixed run count or universal speed target.
+A missing measurement makes a proposed bottleneck a hypothesis, not a demonstrated gain.
 
-## Profile & Scan Process
+### Phase 2: Attribute and Select
 
-### 1. 🔍 PROFILE - Hunt for performance opportunities:
+Trace the expensive work to its cause. Distinguish time spent computing, waiting for I/O,
+transferring, rendering, or contending for a resource. A missing optimization pattern is not itself
+a performance defect.
 
-**Frontend Performance:**
-- Unnecessary re-renders in React components.
-- Missing memoization for expensive computations.
-- Large bundle sizes (opportunities for code splitting).
-- Unoptimized images (missing lazy loading).
-- Missing virtualization for long lists.
-- Synchronous operations blocking the main thread.
+Use techniques only where the evidence fits:
 
-**General Optimizations:**
-- Redundant calculations in loops.
-- Inefficient data structures for the use case.
-- Missing early returns in conditional logic.
-- Unnecessary deep cloning or copying.
+- Repeated computation: improve the algorithm or avoid repeated work before adding a cache.
+- Cache: define keys, invalidation, ownership, size limits, privacy boundaries, and freshness.
+- Database: inspect the actual query plan and selectivity; weigh read gains against write,
+  storage, and migration costs before adding an index.
+- Rendering: identify costly renders and unstable inputs before React memoization; measure its
+  overhead as well as saved work. Use virtualization when list cost warrants it while preserving
+  focus, navigation, and state.
+- Frequent events: debounce or throttle only when delayed/dropped intermediate work preserves
+  the interaction contract.
+- Transfer/startup: inspect payload and critical-path dependencies before splitting code,
+  deferring images, or changing loading behavior.
+- Hot loops: examine data structures, unnecessary copying, repeated parsing, and complexity
+  under representative input sizes.
 
-### 2. ⚡ SELECT & PRIORITIZE - Multiple Performance Findings:
-Rank ALL identified issues by plotting them on an Impact vs Effort matrix:
-- **High Impact / Low Effort**: (e.g., Memoizing a frequent re-render) -> **Priority 1** (Fix or ticket immediately).
-- **High Impact / High Effort**: (e.g., Implementing virtualization) -> **Priority 2** (Ticket for detailed work).
-- **Low Impact / Low Effort**: (e.g., Basic early return) -> **Priority 3** (Cleanup ticket).
-- **Low Impact / High Effort**: (Avoid unless critical bottleneck).
+Keep applicable project performance contracts. Verify version-sensitive tool/library behavior
+against primary docs. Select by evidenced impact, risk, and authorized scope, not a line limit
+or preferred technique. No useful finding is a valid outcome; costly important findings stay visible.
 
-### 3. 🔧 OPTIMIZE - Implement with precision:
-- Select the **Priority 1** finding that can be fixed in < 50 lines.
-- Write clean, understandable optimized code.
-- Add comments explaining the optimization.
-- Preserve existing functionality exactly.
+### Phase 3: Optimize
 
-### 4. ✅ VERIFY - Measure the impact:
-- **Lint code**: `npm run lint`.
-- **Run tests**: `npm run test`.
-- **Verify build**: `npm run build`.
-- Add performance metrics/benchmarks in comments if possible.
+Make a coherent change aimed at the measured cause. Preserve correctness, compatibility, ownership,
+and failure behavior. Explain non-obvious tradeoffs in the owning code or work item.
 
-### 5. 🎁 PRESENT - Share your speed boost:
+If the finding's premise is stale, record that disposition. If measurement is unavailable, name
+the missing evidence and owner. Continue a specifically authorized speculative change only with
+its impact explicitly unverified. Scope expansion follows existing action/target authority.
 
-**Option A: Implement Fix & Create PR**
-For the highest priority impact fixing: Title "⚡ Bolt: [performance improvement]".
+### Phase 4: Verify
 
-**Option B: Generate Backlog Tickets**
-For ALL other identified issues: Create tickets in `docs/backlog/` following the format: `PERF-{RANDOM}-{###}.md`.
-Rank findings sequentially by impact in the filenames if possible.
+Repeat the baseline workload and method on the changed state. Record before/after values,
+variability, environment differences, and regressions in other important metrics. A smaller
+microbenchmark does not establish an end-to-end improvement unless the attribution supports it.
 
-## Ticket Template (`docs/backlog/PERF-{RANDOM}-{###}.md`)
+Check correctness at the changed seam and apply
+[foundation-testing](../../../.agent/rules/foundation-testing.md), Lifecycle-Aware Verification Gate and
+Evidence identity and cite-or-run, for generic gates and state validity. Generic green checks
+cannot establish a speedup. No improvement or a regression is a valid result; revise or remove
+an unsuccessful owned optimization within scope and preserve its evidence.
 
-```markdown
----
-id: PERF-{RANDOM}-{###}
-category: performance
-priority: [high|med|low]
-status: open
-created: [YYYY-MM-DD]
-source: bolt
----
+### Phase 5: Report
 
-# PERF-{RANDOM}-{###}: [Concise Title]
+Use the caller's work item and finding identity. If follow-up tickets are warranted by the task,
+follow [pattern-docs-artifacts](../../../.agent/rules/pattern-docs-artifacts.md), Work Items and
+Status-of-Record Contract. Use its stable TICKET identity; severity and priority are fields,
+not filename order. Delegated authors return follow-ups to the assigned metadata owner.
 
-## Context
-[The performance problem or bottleneck discovered]
+Report measurements, attribution, actual changes, correctness proof, and remaining findings with
+their evidence/owner. Do not claim a speed boost from expectations or create a PR as an automatic
+reporting side effect.
 
-## Recommended Action
-[Specific steps to optimize, e.g., "Wrap component X in React.memo"]
+## Definition of Done
 
-## Expected Impact
-[e.g., "Reduces re-renders of the main list by 40%"]
-
-## Files Affected
-- [Paths]
-```
+The requested performance outcome has comparable evidence and applicable correctness proof, or
+the report states no finding, no improvement, stale premise, or missing measurement accurately.
+Pending required performance or runtime acceptance retains its owner and gated transition.
+End durable reports with "What we deliberately did NOT do."

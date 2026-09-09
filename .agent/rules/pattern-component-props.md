@@ -14,7 +14,9 @@ serialize/deserialize round-trip, an undo/redo replay). The compiler will not ca
 that a reducer simply forgets to copy.
 
 ## The rule
-Adding or renaming a propagated property is never a one-file change. Walk the whole chain:
+Adding or renaming a propagated property requires inspecting the whole chain, even if its stages
+are generated, share one file, or already carry the value generically. Change only stages that
+need it; preserve intentional projection/redaction and compatibility. Walk the applicable stages:
 
 1. **Type** — add the field to the component/entity interface.
 2. **Payload** — add it to the create/update action payload (creation-time values MUST be in the
@@ -24,6 +26,10 @@ Adding or renaming a propagated property is never a one-file change. Walk the wh
    point:* the handler builds the instance but forgets the optional styling/metadata props.
 5. **Extraction boundary** — at the DnD / serialization / hydration seam, destructure the field from
    the transported data and pass it into the commit payload.
+
+Test creation/update and the affected commit, serialization, hydration or undo/redo round-trip
+with a meaningful non-default value. Cover absence/default and deliberate omission where required;
+a compiler pass alone cannot prove an optional field survived.
 
 Any static source (a sidebar item, a preset, a seed) that supplies the property must include it in
 its own `data`/config object, and the transport interface must be able to represent it.

@@ -17,8 +17,8 @@ rule*; those are the *fill-in*.
 
 ## (a) The four-directory model and the five-store purity test
 
-Every project's `docs/` uses exactly four directories. No fifth, no nesting exceptions except those
-named below.
+The default layout has four documentation roles. Evidence may live alongside them under §(f).
+Use declared existing layout exceptions under §(g–h); do not relocate documents for cosmetic consistency.
 
 ```
 docs/
@@ -43,7 +43,7 @@ existed at all. If a project wants a convention doc, it **points** here; it does
 ### The five-store purity sentence — the test every promotion runs against
 
 > **Rules = what an agent must DO · KB = what IS true · CHANGELOG = what WAS done ·
-> working = what's IN FLIGHT · archive = what's FINISHED (disposable).**
+> working = what's IN FLIGHT · archive = what's FINISHED (retained history).**
 
 Before any file lands in the KB, run it against all five stores. It belongs in the KB **only if it
 is a durable statement of what is true** about the project. If it fails all five tests — it is not a
@@ -123,13 +123,30 @@ KB consulted: <docs read this session, or "none">
 Two blocks are load-bearing and distinguish this dialect from the rest of the fleet:
 - **`### Verification`** — near-universal in the exemplar (12 of 15 live entries; audit L173). It is
   what makes an entry trustworthy rather than a claim.
-- **`KB consulted:`** — zero-ceremony read telemetry (decision 21). Agents already write entries at
-  wrap-up; this one line lets `agentkit doctor` report never-cited KB docs. `none` is a valid,
-  honest value.
+- **`KB consulted:`** — a record of the guidance used. `none` is a valid, honest value.
+  Doctor does not consume this line or detect never-read documents.
+
+### Fragment assembly — finalize before consuming
+
+The coordinator may use assigned fragments or write the shared entry directly. Each fragment
+preserves its change summary, actual proof scope and limits, pending owner/transition, and consulted
+KB. Assemble one entry below the existing intro and archive pointer, with a meaningful title,
+summary, Verification block and `KB consulted:` line. Different worker checks do not establish
+combined-candidate proof; name its owner and pending gate.
+
+The assembly command retains fragments. Any later consumption is a separate scoped action after
+the finalized entry is checked and exact fragment content is recoverable.
+Assembly does not commit, harvest durable facts or enforce the rolling window. Inspect the installed
+`changelog-roll` help before using it. The assembly contract accepts `--title` (API `opts.title`)
+for the purposeful entry title. Without a title it must refuse or retain fragments for finalization;
+it must not consume their sole copy. A tool that only concatenates fragments has not verified the
+entry's semantics. Proof remains the caller's responsibility. Do not publish private evidence links
+merely because they appear in a local fragment.
 
 ### The hard roll rule — harvest, THEN archive
 
-When `CHANGELOG.md` exceeds **~400 lines**:
+Apply the rolling window in the shipped `pattern-docs-artifacts.md` rule. That rule owns the
+numeric retention threshold; do not maintain another value here. Before removing live entries:
 
 1. **HARVEST FIRST.** Read the entries about to be rolled and extract any durable fact into the KB
    (a spec update, a new `DECISION-`, a corrected truth). **Rolling without harvesting is truth
@@ -138,10 +155,9 @@ When `CHANGELOG.md` exceeds **~400 lines**:
 2. **THEN archive.** Move the rolled entries to `docs/archive/YYYY-MM/CHANGELOG-YYYY-MM.md` with a
    dated banner explaining the cut point (for example, "Changelog Archive (Pre-May 18, 2026)").
 3. **Leave a provenance backlink.** The live CHANGELOG keeps a one-line pointer to the archive chain;
-   the archive footer back-links to any prior-repo archive so the chain is never broken
-   so the chain is never broken.
+   the archive footer back-links to any prior-repo archive so the chain remains navigable.
 
-The live file is a rolling window (~400 lines / ~last month), never a permanent ledger.
+The live file is a rolling window, never a permanent ledger. Preserve archived history and navigation.
 
 ---
 
@@ -169,6 +185,12 @@ real alternative, it is not a `DECISION-` — small locked invariants stay one-l
 optional `Options` / `Revisit trigger` sections only when they add value. Immutable once
 `status: accepted` — supersede with a new file, never edit the rationale. (Rationale + weighted
 scoring: `ANALYSIS-2026-07-03-doc-taxonomy-industry-practice.md`, `REVIEW-taxonomy-recommendation.md`.)
+
+Use `status: proposed | accepted | superseded` in frontmatter as the authoritative decision status.
+Do not maintain an independent body status. Acceptance freezes the rationale. Record a replacement
+in a new decision with `supersedes:` and route readers to it from the index. Status/supersession
+metadata may be updated only within the assigned authority; an append-only historical record can
+remain unchanged while the new decision and router establish which policy applies.
 
 ### The full type registry
 
@@ -211,14 +233,26 @@ in `LOG-`/`RESEARCH-` tails.
 The KB root is **flat**: every durable doc carries a type prefix, so `ls SPEC-*` and glob routing
 never lie. Nesting is the **exception**, reserved for a genuinely large single-topic library (rule
 of thumb ≥10 docs of one type, e.g. a large runbook library) — and files **keep their prefix inside
-the subdir**. Every subdir carries a README trigger table (section d). **One-hop rule:** a KB doc
-reached from a router (README, `check --kb`, a skill pointer) must not require chasing a further
-doc — agents partial-read second-hop files (`head -100`), so a doc-chain silently truncates. Any KB
-doc over ~100 lines carries a table of contents so a partial read still reveals its full scope.
+the subdir**. Every subdir carries a README trigger table (section d). A routed document states
+its own contract and explicitly names any governing dependency and when it must be read. Reference
+the shared owner instead of copying requirements. Keep dependency routing bounded to the task;
+read each selected instruction fully. Add a contents list when it materially improves navigation.
 
 ---
 
 ## (d) The KB routing contract
+
+### One explicit KB root
+
+`.agentkit.json` may declare `docs.kbRoot`, one nonempty contained repository-relative directory
+string. The default is `docs/knowledge-base`; this kit uses `governance`. The value replaces the
+default KB root for routing, content and index checks. It is not an array of search roots or a
+general layout framework. Absolute paths, traversal outside the repository and non-string values
+are invalid. Preserve existing nesting within the declared root; the mapping does not waive hygiene.
+
+Read the declared root's README, then relevant documents. Installed CLI versions without this
+mapping need bounded direct checks of the declared root; state that missing automated coverage.
+Working/backlog/archive and evidence roles retain their existing locations and exclusions.
 
 The read side is the gap, not the write side (decision 20): fleet evidence shows KB *writes* happen
 but nothing routes an agent **to** a doc at the moment of need, so
@@ -232,7 +266,7 @@ it*** — like a skill description, not a bare title list. A list of titles is a
 ```
 | Doc | Read it when… |
 |---|---|
-| `SPEC-pagination.md` | before changing anything under `src/pdf/` or page-overflow logic |
+| `SPEC-pagination.md` | before changing anything under `<source-root>/pdf/` or page-overflow logic |
 | `DECISION-vendor-generation.md` | before proposing any change to how vendor files are produced |
 ```
 
@@ -259,9 +293,10 @@ last-verified: 2026-07-03
 ```
 
 - **`applies-to:`** — code globs. This is what makes routing mechanical.
-- **`last-verified:`** — the date the doc was last checked against the code. Feeds the one
-  staleness machinery (decision 35): `agentkit doctor` flags docs whose `applies-to` code churned
-  heavily since `last-verified`, and docs never named in a `KB consulted:` line for N weeks.
+- **`last-verified:`** — the date of the stated substantive check against relevant source.
+  Doctor's age threshold is an advisory review signal. It does not measure code churn or reads;
+  age alone establishes neither semantic drift nor correctness. Preserve an older date when the
+  current pass does not reverify the full document.
 
 ### Matching is mechanical, never remembered
 
@@ -271,9 +306,10 @@ plan/implement skills gain one standard step: match the files about to be touche
 This is the same principle as manifest `appliesTo` for skills: everything declares when it's relevant,
 so nothing depends on being remembered.
 
-Pair it with the **"read 1–3 KB docs" rule**: *"Read only the 1–3
-docs relevant to your task — not none, not all."* That rule is only honest because the trigger tables
-make the relevant 1–3 findable instantly.
+Read the governing matches needed for the task. Zero matches is valid, not a requirement to invent
+governing documents. If targets are unknown, start from repository routers and resolve likely surfaces.
+A missing checker falls back to scoped filesystem/index inspection with the limitation stated.
+Read each selected instruction file fully; a count is not a completion test.
 
 Rules link back to the KB with `> **Related Knowledge Base:** <path>` — cheap bidirectional drift
 detection.
@@ -288,11 +324,13 @@ Hundreds of superseded files can pollute every agent grep.
 Mechanism — a repo-root **`.ignore`** file (template: `templates/docs-scaffold/dot-ignore`):
 
 - `.ignore` is honored by ripgrep-based search, including Claude Code's Grep tool. It is **NOT
-  `.gitignore`** — the archive stays tracked in git; it just stops leaking into agent context.
+  `.gitignore`** — it changes discovery, not tracking. Preserve the project's existing tracking policy;
+  ignored/untracked archives and evidence need explicit preservation, not assumed Git recovery.
 - Add the codebase-mcp index-exclusion note so the knowledge-graph indexer skips the archive too.
 - The archive is still **explicitly searchable on demand** (`rg --no-ignore`, or pointing a tool at
   the path) when history is genuinely wanted.
-- `agentkit doctor` verifies each search surface actually honors the exclusion.
+- Verify the relevant search/index surface directly when its exclusion behavior matters.
+  Doctor does not test whether search clients or graph indexes honor these exclusions.
 
 Once the archive is out of the search path, the old "prune to 2–3 months" rule becomes optional —
 old work keeps its home without costing context.
@@ -332,11 +370,27 @@ Evidence is not one pile. It is three, ordered by ceremony, and each boundary is
 
 **Tier 1 exists because filing must cost nothing.** A capture step with rules is a capture step that
 gets skipped, and the source is then lost rather than merely untidy. A full inbox is unprocessed
-input, not a failure state. **Nothing may cite the inbox** — an `inbox/` path in any doc, ticket, or
-commit message is a defect.
+input, not a failure state. Contracts must not rely on an inbox claim as established truth.
+Forensic reviews and work records may identify the exact source location, content identity and
+capture status without endorsing its claims. A stable source citation does not require a filing-only
+move or a second report.
 
 **Only tier 3 may be cited by a contract.** A `docs/raw-research/` path in a `SPEC-`/`STRATEGY-` doc
 means either promote it or stop relying on it.
+
+The claim legend describes evidence, not approval:
+
+- **✅ Checked:** a stated check supports the exact proposition on the named source/state. Name
+  the method and limit; checking what a document says does not test the behavior it describes.
+- **📄 Attributed:** a retrievable source makes the claim, without independent confirmation of
+  that factual claim. Preserve the source and relevant context.
+- **⚠ Unresolved:** missing, conflicting or insufficient evidence. State the uncertainty and
+  next useful check. Label inference separately from source attribution.
+
+Reassess markers on promotion under `foundation-testing.md` §1A. Cite existing proof when the
+proposition, relevant source and environment premises still match; rerun only the changed or missing
+proof. A storage move alone does not invalidate a check. Curation may finish with stable provenance
+without promotion; neither storage tier nor marker accepts a proposed commitment.
 
 **Tier 2 types** — the one distinction that changes how far you trust a file is *did we write it?*
 
@@ -365,8 +419,9 @@ deep-research exports commonly carry opaque citation markers (`citeturn…`-styl
 URLs. Resolve citations **at export time, before the file is dropped** — that is the cheap moment;
 afterwards the links are gone. A `SOURCE-` whose citations arrive unresolvable is stamped
 `Status: Unpromotable`: it remains usable tier-2 context, but it is structurally barred from
-carrying a promotion (its own citations cannot be traced), and it must stop appearing as pending
-work. Individual claims from it may still reach tier 3 — only via independently found primary
+carrying a promotion (its own citations cannot be traced). Its filing may be complete, but required
+unanswered research stays in the caller's live work item with an owner and next action. Individual
+claims from it may still reach tier 3 — only via independently found primary
 sources, never by leaning on the opaque markers.
 
 **The `.ignore` exclusion has a silent failure mode — treat `--no-ignore` as a correctness
@@ -380,15 +435,26 @@ exactly this row.
 
 **Renaming evidence is not tidying it.** The older rule — *keep the original name, the value of an
 evidence corpus is that it was not tidied after the fact* — is right about **content** and wrong
-about **filenames**. A filename is a pointer; `Original filename:` preserves it losslessly. The
-immutability that matters is the `SOURCE-` body, and that is absolute.
+about **filenames**. An original-filename field preserves provenance, not working links or file
+content. A safe move needs verified recovery and navigation as well as that mapping. Preserve the
+externally authored `SOURCE-` body; changes to provenance must not misrepresent it.
 
-**Multi-source topics get a folder.** When a topic gains a *second* source, give it
-`docs/raw-research/<topic>/` with a `README.md` saying what each source claims **differently** —
-two models answering one prompt, where the disagreement is the finding. Flat by default; never a
-folder for a single file.
+Moves preserve incoming citations and relative links inside moved documents. For immutable sources,
+retain a resolution mapping in provenance or keep the source location when moving would break body
+links. Before retiring a location, establish ownership and compare preserved content; Git cleanliness
+cannot prove ignored evidence survived. Preserve ignore policy and confirm recipient access when
+handing local-only artifacts to another checkout.
 
-**The linter does not check tier 2, deliberately.** `taxonomyLint` never walks the evidence store.
+Promotion distinguishes source attribution from independently checked claims, inference and unresolved
+contradiction. Fetching a page verifies its contents, not every claim it makes. Promotion does not
+accept a product decision. Important difficult findings cannot be dropped for low feasibility.
+
+**Use folders only when navigation warrants them.** Two sources can stay flat, with their distinct
+claims and disagreement described in the existing index or analysis. Add a topic folder only when
+a prefixed flat layout cannot serve the corpus. Its README explains when to read each source.
+
+**Evidence filenames are outside lifecycle taxonomy, deliberately.** Capture names, including spaces,
+are exempt in the current and legacy evidence stores. This does not exempt real lifecycle files.
 Enforcing these prefixes would fire on every pre-existing corpus in the fleet and would have to
 special-case `inbox/` to avoid destroying what makes tier 1 work — a guard that cries wolf is worse
 than none (K10). The **`research-curate` skill** is the enforcement.
@@ -441,12 +507,19 @@ different reason, same principle: hold it to the standard's **hygiene**, waive o
   existing bare-kebab filenames are **waived** from the flat-prefix rule — renaming them would
   break inbound citations across every project for cosmetic gain. New `DECISION-` docs added to
   `governance/` **do** use the prefix (the waiver permits bare names, it does not forbid prefixes).
-- **Generated-artifact exemption.** Files a tool writes — `reports/inventory.{md,json}`,
-  `reports/doctor-last-run.json` — are prefix-exempt and carry a "generated — do not edit" note.
+  When this kit declares `docs.kbRoot: governance`, the prefix-only exception covers exactly the
+  published standards `audit-rubric.md`, `best-practices.md`, `canonical-manifest.md`,
+  `docs-standard.md`, `migration-checklist.md`, `mirror-contract.md`, `overlay-contract.md`,
+  `vendor-capability-matrix.md` and `verification-profiles.md`. It does not suppress their content,
+  index, status or store checks. README retains its normal index role. New governance documents use
+  sanctioned prefixes unless a later specific contract justifies another public name. Do not use
+  a broad `governance/**` taxonomy waiver to hide findings exposed by the mapping.
+- **Generated-artifact exemption.** Files a tool writes — `<kit>/reports/inventory.{md,json}`,
+  `<kit>/reports/doctor-last-run.json` — are prefix-exempt and carry a "generated — do not edit" note.
   `reports/` is retained **solely** as the CLI's output directory; it is no longer a docs store.
 - **Waiver mechanism (for the taxonomy lint).** A specific warning is suppressed by a one-line
-  waiver — in-file frontmatter `taxonomy-waiver: <reason>` or a `governance/` allowlist entry (exact
-  path, or a glob when the entry contains `*`, e.g. `docs/kb-fixture/**`). The per-project
+  waiver — in-file frontmatter `taxonomy-waiver: <reason>` or an entry in `.agentkit.json`
+  `taxonomyWaivers` (an exact path, or a glob containing `*`, e.g. `<project-kb>/**`). The per-project
   `taxonomyEnforce` ratchet flips from warn to error once every remaining warning is either fixed or
   explicitly waived, **or** once the project records a `taxonomyBaseline` (number): the ratchet then
   gates on regression — `findings > baseline` fails, `findings <= baseline` passes — and the baseline
@@ -459,11 +532,11 @@ Prefixing, indexing, and quarantine (sections a–f) fix *structure*. They do **
 migration — it is the difference between "the KB is well-filed" and "the KB is up to date." Proven
 during a prior project reconciliation; every item below caught a real defect there.
 
-### The lenient-pass move trap (the one automation misses)
-`agentkit check --content` **lenient-passes** a citation whose *parent directory* still exists (the
-target might be a legitimate example path). So a file **moved to a different directory with its
-basename unchanged** — e.g. `docs/archive/2026-05/Old-homepage.md` → `docs/raw-research/webflow-legacy/Old-homepage.md`
-— leaves every citation of the **old** path silently broken, and the resolve-check says "all clear."
+### Check exact targets after moves
+The content checker detects concrete missing Markdown and code-file citations in its scanned roots.
+Some non-code example tokens still allow an existing parent directory. Working/backlog bodies,
+archive and evidence bodies, external URLs and in-page anchors need separate scoped verification.
+An excluded document's broken link cannot be cleared by a green content check.
 
 - **Rule:** after any move/rename, grep the **old path** explicitly (`rg 'archive/2026-05/Old-' docs .agent`),
   don't trust `check --content` to catch a dir-only move.
@@ -474,7 +547,7 @@ basename unchanged** — e.g. `docs/archive/2026-05/Old-homepage.md` → `docs/r
 ### Freshness, not just presence, of `applies-to` / `last-verified`
 Section (d) requires the two keys exist. The scrub checks they are *true*:
 - **`applies-to` must resolve.** Every glob must match real code. A glob that matches nothing
-  (`lib/flags/**`, `components/**/sheet/**` when the primitives live in `src/ui/lib/` and no "sheet"
+  (`<old-root>/flags/**`, `<old-components>/**/sheet/**` when the primitives live in `<source-root>/ui/lib/` and no "sheet"
   exists) is drift — fix the glob or the doc. Verify mechanically: does `git ls-files` hit the glob?
 - **`last-verified` is a claim you must earn.** To bump it you must actually re-check the doc against
   current code — at minimum: its `applies-to` surfaces exist **and** the body is free of drift tokens
@@ -501,20 +574,26 @@ when two docs genuinely answer the *same* question.
 
 ### Index completeness
 Every `docs/backlog/*` file appears in the backlog README; every `docs/working/*` in the working
-README. A file that exists but is unlisted is invisible to the next agent — a routing hole the taxonomy
-lint does not cover.
+README. When either queue keeps Git-ignored work, its root may use a Git-ignored `README.local.md`
+companion for those rows. Keep public rows in `README.md`; route readers to the optional companion
+by name, not a link that breaks when it is absent. Both indexes use the same link and coverage
+checks when present. The companion adds navigation, not a second status record or another docs root.
+Preserve local rows and their targets before splitting an existing index. Verify the published
+file set separately: local files must not be needed to make public links resolve.
+The declared KB root and its nested indexes follow the same navigation contract, without companions.
+Taxonomy checks working/backlog index directions where an index exists. Use its reported coverage
+for KB checks; verify any unsupported root directly. A missing index is a routing gap, not proof
+that every file is indexed. Neither taxonomy nor content checks establish semantic truth.
 
 ### Volatile facts do not belong in durable docs
-Three classes of fact are **stale-by-construction** — they are wrong the moment anything moves, and
-correcting one buys days. Prefixing and indexing do not help; only not writing them does.
+Avoid duplicating changing implementation details as unqualified current truth. Dated reviews,
+measurements and historical test counts remain useful evidence when their source/state is explicit.
 
-- **Line numbers.** Cite a symbol, a heading, or a section — never `file.ts:164`. A line number may
-  ride along as a secondary hint, never as the primary anchor. (Live evidence: a spec's line
-  citations were off by ~160 lines.)
-- **Hand-maintained counts and ratios.** "12 of 28 files", "~500 entries", "exactly 79 characters" —
-  **delete on sight**, do not correct. Each of those three was wrong when checked (~29/61, 344, 77).
-  If a count matters, generate it; if it cannot be generated, it is not a fact a durable doc should
-  assert.
+- **Line numbers.** Prefer symbols, headings or sections for durable navigation. A review may
+  cite exact file:line evidence with its source revision; it must not imply those lines stay current.
+- **Hand-maintained counts and ratios.** Generate changing inventories when needed. Preserve
+  meaningful measured counts with their method and state; do not erase evidence merely because
+  it contains a number. Remove or replace unsupported live totals rather than perpetuating them.
 - **Hand-copied command and job expansions.** A script chain or CI job appears **by name only**
   (`npm run validate`, the `pdf-parity` job) — never with a prose expansion of what it runs. The
   expansion drifts from the real definition silently, and a *fictional* job name reads exactly like
@@ -529,21 +608,24 @@ over `docs/`, or the sweep silently skips the `.ignore`-excluded trees and repor
 files it never read.
 
 ### Sweep by ownership, not by recency
-Drift concentrates where **no program owns the docs**. In a full-tree review, 100% of runbooks and
-every doc ported in from another repo needed correction, while actively-worked specs were
-half-maintained — the surfaces nobody was assigned to were the ones nobody had fixed. A cadenced
-scrub therefore partitions by directory and takes the un-owned surfaces first: ported files,
-runbooks, strategy docs, anything with no live ticket pointing at it.
+Unowned or imported documentation is a useful drift lead, not proof that a document is wrong.
+Prioritize an authorized broad sweep by consequence, ownership, relevant source changes and known
+gaps. Corroborate findings against current evidence; age, file type or ticket absence is not a verdict.
 
-**The scrub's trigger is the session lifecycle, not a calendar.** It runs inside the existing wrap-up
-and land steps — a hygiene pass with its own schedule is a schedule nobody keeps, while a pass
-attached to a step already in the operator's habit actually runs.
+Routine lifecycle cleanup covers session-owned changes and affected references. Broader sweeps or
+scheduled maintenance run when requested or explicitly configured; wrap-up does not silently authorize
+repository-wide cleanup. Report adjacent findings separately from applying them.
 
 ## (j) Status-of-record contract
 
-**Status-of-record lives in exactly one place**: the ticket header **or** the backlog README index
-row. The other is derived or dropped — never duplicated. This eliminates the root cause of "status
-drifts from git reality."
+**Ticket frontmatter owns work status.** Existing prose-only tickets remain readable; when frontmatter
+exists, do not maintain a second manual status. Boards own scheduling, indexes point, and views derive
+from work items. Update the parsed field and `updated` date. `landed` means verified integration
+ancestry, not remote publication. Record publication target/result evidence separately.
+
+Reuse the accepted artifact through planning, implementation and resume, including embedded plans.
+Required pending proof and remaining acceptance stay discoverable in active work or an explicit
+successor before archival. Pausing or closing a conversation does not complete unfinished work.
 
 ### An index row points; it never restates
 
@@ -569,13 +651,13 @@ time. *The index that restates drifts; the index that points does not.*
 
 - **README = forward index** — tells an agent what exists and what's next.
 - **CHANGELOG/archive = historical record** — tells an agent what happened.
-- **Truth ranking when sources disagree**: code > status board > CHANGELOG narrative. A changelog
-  entry is a **point-in-time record** that a later entry supersedes; briefing an agent from the
-  changelog head carries whatever was true then into work happening now.
+- **Choose evidence by question:** source/runtime for current behavior, approved requirements for
+  intended behavior, Git for tracked state, and work records for coordination. A changelog is a dated
+  historical claim, not an override of later decisions or current evidence.
 - **ID number ≠ priority ordinal.** A stable single-writer-minted ID number in the filename
   (`TICKET-37-<slug>.md`) is an identity, like a GitHub issue number — minted once, never reused.
-  Priority/sequence is *separate derived metadata* (index column + ticket field); re-prioritizing is
-  a metadata edit, never a rename.
+  Priority belongs to the ticket and scheduling views derive sequence; do not copy those values
+  into a manually maintained index. Re-prioritizing is a metadata edit, never a rename.
 - **What IS forbidden** is a *priority-ordinal* prefix (`01-feature.md`) or a *parallel-minted*
   number (multiple workers grabbing IDs concurrently). An ID number is neither.
 
@@ -586,9 +668,7 @@ time. *The index that restates drifts; the index that points does not.*
   wrong, and §(f)'s three tiers replace it. Evidence has exactly one lifecycle — *drop → curate →
   promote* — and denying it is what produced corpora with no naming convention, no provenance, and no
   route into the KB. It is still not a **work** lifecycle: no ticket, no status board, no assignee.
-- Did **not** invent a new CHANGELOG dialect or "improve" the selected exemplar — the whole point was
-  to stop having four dialects. The `KB consulted:` line is the only addition, and it is telemetry,
-  not ceremony.
+- Did **not** add read telemetry or semantic-drift automation. `KB consulted:` records consulted guidance.
 - Did **not** mandate deleting the archive. `.ignore` removes it from the *search path*, not from git;
   the prune rule stays optional (decision 23). Truth deletion is the failure mode we are fixing, not
   adopting.

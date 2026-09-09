@@ -19,9 +19,11 @@ Projects may declare `verification.browser.profile` in `.agentkit.json`:
 - `human-only`: no automated browser lane is claimed; runtime evidence remains
   `needs-human-verify`.
 
-When the profile is absent, AgentKit resolves the browser lane conservatively to `human-only`. A
-profile is project capability metadata, not a fleet-wide tool requirement. The project must still
-name the target, fixture, flow, and owner in its verification contract.
+When the profile is absent, AgentKit's configuration default is `human-only`: no automated
+capability has been established. This absence is not an explicit project prohibition. A requested
+runtime flow may use a discovered, authorized capability as a recorded per-run choice without
+silently rewriting project configuration. An explicit human-only policy still controls its lane.
+The project must name the target, fixture, flow and owner in its verification contract.
 
 ## Decision order
 
@@ -33,7 +35,7 @@ name the target, fixture, flow, and owner in its verification contract.
 3. Inspect the actual session capabilities. An in-app browser, native browser control, Playwright,
    or a browser MCP is usable only when it is callable here; never infer capability from a mention
    in a plan or from another vendor's surface.
-4. If the profile permits the capability and the lane requires it, use it and record the exact flow,
+4. If project policy permits the capability and the lane requires it, use it and record the exact flow,
    capability, target environment, and evidence. If the capability is unavailable or the profile
    assigns the lane to a human, stop at `needs-human-verify` and name the exact check.
 
@@ -46,3 +48,6 @@ name the target, fixture, flow, and owner in its verification contract.
   when a project profile provisions it and a real Acceptance item needs it.
 - Browser use does not replace `lint`, `typecheck`, focused tests, the broad final-tree gate, or
   release validation.
+- Apply only project-relevant checks from `foundation-testing.md`; a non-browser task does not
+  acquire a browser lane. Record unavailable runtime proof with its owner and blocked transition,
+  not as a passing or implicitly waived check. A declared capability is not a grant to mutate a target.

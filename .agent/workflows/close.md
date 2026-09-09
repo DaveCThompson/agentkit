@@ -1,19 +1,14 @@
 ---
-description: Prepare a task for archive by resolving session state, finalizing durable work, and closing session-owned resources.
-skill: [close, implement-session-wrap-up, implement-session-land]
+description: Prepare a task for archive while preserving pending work and session-owned resources.
+skill: close
 ---
 
 # Close Workflow
 
-## Goal
+Use `close` for an explicit request to prepare this task for archive. Pass the latest scope,
+remaining work, resource ownership, existing grants and verification receipts.
 
-Leave the repository, documentation, resources, and task in an archive-ready state without deleting
-ambiguous or shared work.
-
-## Procedure
-
-1. Load `close` and run its session-state check.
-2. Route repository finalization through `implement-session-wrap-up`; when completion and push are
-   authorized, route final integration through `implement-session-land`.
-3. Run `close`'s resource cleanup only after repository state is known.
-4. Return its archive receipt. Do not archive the task automatically.
+The skill owns the choice between finished closeout and a recoverable pause, and invokes local
+wrap or landing only when applicable and authorized. Do not separately run every lifecycle skill.
+Return what is finalized, what remains, where it resumes, and which resources were closed or
+retained. Unknown ownership or pending acceptance must not be erased to make the task look complete.

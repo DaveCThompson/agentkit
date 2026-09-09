@@ -38,13 +38,18 @@ Three tiers (tier is **manifest metadata**, never folder nesting — `skills/` s
 - Overlay content lives in the project's git history — the kit repo never stores it.
 
 ## Moving a file between tiers
-- **Core → overlay** (project wants its own fork): add a glob to `.agentkit.json` overlay, remove
-  the file's lock entry (kit-contribute does this), rename to a `project-*`/`domain-*` name so the
-  collision lint stays clean.
+- **Core → overlay** (project wants its own fork): preserve the useful content under a distinct
+  `project-*`/`domain-*` routing name and declare the overlay claim. Preview restoration/removal of
+  the old managed path and generation of the new overlay through the tooling owner. Retain old
+  ownership until reconciled; never hand-edit or delete the lock. An overlay glob does not silently
+  retier explicitly core source. Unsupported transitions remain pending with their content preserved.
 - **Overlay → core** (a project skill deserves the fleet): generalize it (strip project paths and
   domain nouns), then `agentkit adopt <file>` — provenance lands in the kit CHANGELOG.
-- **Pins**: `.agentkit.json` `pins` freeze a core file at an older kit version. `doctor` lists every
-  pin so they don't rot. A pin is an exception with a reason, not a parallel fork.
+- **Coherent updates:** selected kit assets advance together on explicit sync from the chosen local
+  checkout. No per-file pins. Absent or empty legacy `pins` is compatible; nonempty or malformed pins
+  must refuse before mutation. Preserve them until the owner chooses to remain on the old installation
+  or removes them deliberately after reviewing the whole update. Capability opt-outs and project
+  overlays are distinct from version mixing. See [coherent updates](DECISION-coherent-kit-updates.md).
 
 ## Sync attribution
 The lock's full-ISO `syncedAt` timestamps the last sync for churn attribution — run sync at session

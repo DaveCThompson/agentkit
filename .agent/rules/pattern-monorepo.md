@@ -6,48 +6,58 @@ domain: tooling
 
 # Monorepo Awareness
 
-In a workspace/monorepo, respect package boundaries and the dependency direction — a boundary
-violation compiles fine today and becomes an import cycle, a broken tree-shake, or an
-un-releasable package later. Apply this rule whenever the repo has multiple workspaces; the
-repo's actual workspace layout, package names, and roots live in `project-invariants.md`.
+Respect the repository's actual workspace ownership, dependency graph and public package contracts.
+A successful local import can still break packaging or consumers. Discover roots, names and
+build orchestration from the configured workspace system and project guidance.
 
 ## 1. Dependency Direction Is One-Way
-- Apps and domain slices import shared/core packages. A shared/core package must **never**
-  import an app or domain slice — that inversion couples the kernel to one consumer and breaks
-  every other consumer's build graph.
-- **A kernel that grows consumer-specific branches is a defect.** The eject hatch: a consumer
-  that genuinely must diverge copies the shared file into its own slice and owns it. The shared
-  package never accepts a one-consumer branch.
-- New cross-package imports are architecture decisions, not conveniences — check the direction
-  before adding one.
+
+- Preserve the established dependency direction. In a layered app/shared-core design, importing
+  an app into core introduces unwanted coupling; inspect the actual graph rather than assuming
+  every repository uses those layers or that every such edge breaks all builds.
+- Prefer a suitable existing abstraction or a stable extension/composition contract. Consumer-specific
+  branching in a shared package deserves review, but copying a shared file is not the automatic
+  escape hatch. Justified local duplication needs semantic ownership and convergence reasoning
+  under `pattern-feature-scaffolding.md` and `pattern-refactoring.md`.
+- Check public exports, package dependencies, runtime versus type-only edges and cycles before
+  cross-package imports. Do not bypass package APIs with private source paths for convenience.
 
 ## 2. Per-Workspace Scripts & `sideEffects`
-- Every workspace `package.json` declares a `sideEffects` field so bundlers can tree-shake
-  unused exports. Set it when the package is created, not retrofitted after a bundle audit.
-- Run lint/typecheck/test/build **scoped to the affected workspaces**, not the whole tree —
-  full-tree runs on a leaf change waste time and bury the relevant failure.
-- **Exception:** when a shared package changes, run the whole downstream graph. A green build in
-  the shared package alone proves nothing about its consumers.
+
+- Use `sideEffects` only where the bundler/package contract supports it, with an accurate value.
+  `false` can remove needed CSS, polyfills, registrations or initialization. Match the emitted
+  files and test a minimal production consumer; do not set it mechanically on every workspace.
+  See [webpack tree shaking](https://webpack.js.org/guides/tree-shaking/).
+- Run focused checks on affected packages and consequential consumers during iteration. A shared
+  contract change can require wider downstream proof; inspect the affected graph and explain
+  exclusions. Local package success alone is insufficient for a consumer-compatibility claim.
+- The final integrated broad gate remains with its owner under `foundation-testing.md`.
+  Workspace scoping is not an exemption from final-tree acceptance.
 
 ## 3. Project References & Build Order
-- Use `tsc -b` (project references) for typecheck/build across packages so the compiler walks
-  the dependency graph in order instead of type-checking against stale output.
-- Understand build order: a shared-package change invalidates and forces rebuilds of everything
-  downstream. Stale `dist/` output from a skipped rebuild produces phantom type errors that
-  "fix themselves" later — rebuild, don't suppress.
+
+- When the TypeScript project uses references, use its actual build-mode/orchestrator contract.
+  `tsc -b` orders referenced projects and checks which need rebuilding; it does not universally
+  rebuild every downstream package after every upstream edit.
+- Other workspaces may use source imports, another language or a different build graph. Do not
+  impose TypeScript references merely because multiple packages exist.
+- Diagnose stale output against real input/output and cache contracts. Regenerate only through the
+  authorized owner, without broad cleanup or suppressing unexplained errors. Build mode/incremental
+  tooling can write outputs or caches even for verification; account for that scope.
+  See [TypeScript project references](https://www.typescriptlang.org/docs/handbook/project-references.html).
 
 ## 4. Path-Aware Edits
-- Know which workspace a file belongs to **before** editing. The same relative path (an index
-  barrel, a utils formatter) can exist in several packages; an edit landed in the wrong twin
-  passes review and silently changes the wrong surface.
-- Resolve ambiguity from the file's nearest `package.json`, not from the path fragment alone.
-- The same applies to design tokens: when you vendor or clone styling from another repo or design
-  system, an identical token name may resolve to a different value — or render invisibly — in the
-  target; verify rendered output in both themes, not just that names match.
+
+- Resolve a file's owning workspace before editing similarly named barrels/utilities. The nearest
+  `package.json` is a clue for Node, not a universal ownership oracle; check workspace membership,
+  nested package boundaries and explicit assignments.
+- When reusing styles, trace token semantics and values in the destination. Identical names do not
+  ensure identical meaning. Verify supported themes and relevant rendered states.
 
 ## 5. Verification
-- [ ] Edits stayed within the intended workspace (nearest `package.json` confirms ownership).
-- [ ] Dependency direction preserved — no shared/core file imports an app or domain slice.
-- [ ] Affected-workspace lint/typecheck/tests/build ran; full downstream graph ran if a shared
-      package changed.
-- [ ] Any new package declares `sideEffects` in its `package.json`.
+
+- [ ] Actual edits belong to the assigned workspace/surface.
+- [ ] Dependency direction, exports and required consumer compatibility are preserved.
+- [ ] Focused affected-graph checks ran with true results; wider required proof and its owner are named.
+- [ ] Any changed `sideEffects` declaration preserves required production imports and behavior.
+- [ ] Build/cache effects stayed inside authorization; no whole-tree cleanup was inferred.

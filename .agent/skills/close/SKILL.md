@@ -7,64 +7,94 @@ triggers: [close session, prepare archive, session cleanup]
 
 # Close
 
-Prepare a finished or paused task for archive without deleting ambiguous work or disrupting shared
-resources.
+Prepare a finished or paused task for archive while preserving resumable work and shared resources.
+Preparation is complete when its retained state and next action are usable, not when every proposal
+has shipped.
 
 ## When to Use
 
-- The user explicitly invokes `/close` or requests the full session-close procedure.
+Use only for an explicit `/close` or task archive-preparation request. Repository wrap-up and
+landing do not themselves request conversation archival.
 
 ## Approach
 
 ### 1. Resolve the session state
 
-1. Review the conversation and verified workspace state.
-2. List every unanswered question, approval, decision, blocker, and incomplete commitment owed by
-   the user or agent.
-3. If a missing user decision changes what would be committed, pushed, stopped, or archived, stop
-   and ask for it before final cleanup.
+Read the conversation and relevant current workspace state. Separate answered/superseded questions
+from actual remaining commitments. Classify unresolved items by what they block, what can be safely
+deferred, and what is optional.
+
+For a required decision, finish independent authorized preparation and stop only the dependent
+action. Existing authority carries through delegation. Do not ask again merely because wrap or land
+is the next skill; ask when a consequential missing decision or new target remains unresolved.
+
+For paused work, retain the accepted outcomes/exclusions, completed work, remaining Acceptance,
+branch/diff or artifact identity, useful failed proof, pending lanes/owners, active writers, and
+actual external effects. Put the resumption pointer in the existing active work item. Do not archive
+the only pointer to unfinished work.
 
 ### 2. Finalize durable work
 
-1. Route repository verification, changelog, and document lifecycle work through
-   `implement-session-wrap-up`.
-2. When the work is complete and the user authorized landing or pushing, route branch integration,
-   stale-worktree cleanup, and remote verification through `implement-session-land`.
-3. Update an existing wiki, knowledge-base, or status Markdown file only when the session established
-   durable truth or changed active status. Keep event history in the changelog. Do not create a
-   duplicate session summary.
+Use `implement-session-wrap-up` as a bounded local record operation, passing finished versus paused
+intent, existing evidence, ownership, and remaining proof. Failed implementation proof does not bar
+preservation of a paused task and does not become a verified-repair claim.
+
+Call `implement-session-land` only when the requested scope and existing grants cover integration
+or publication and its proof prerequisites hold. Pass completed wrap steps so they are not repeated.
+A retained unpublished branch is a valid close outcome.
+
+Update owned durable knowledge/status only when the session changed that truth. Route shared-file
+corrections and flowback to their owner. Preserve explained deferred/candidate/sync-pending work;
+do not force a new document or adoption to close the conversation.
 
 ### 3. Close session-owned resources
 
-- **Servers and processes:** stop only instances started by this task and proven unused. Retain and
-  report shared, unknown, or externally managed instances.
-- **Transient memory:** clear disposable task notes, caches, and temporary agent state only when
-  ownership and recoverability are known. Never erase account memory or durable project knowledge.
-- **Worktrees:** enumerate with Git. Remove only clean, inactive worktrees whose branches are merged
-  or gone. Retain dirty or ambiguous worktrees with the exact reason.
-- **Browser sessions:** close only tabs or sessions opened by this task that contain no unsaved user
-  state. Never close the user's unrelated tabs.
-- If a required control surface is unavailable, report the resource as retained instead of guessing.
+Resolve exact target, authority, ownership, inactivity, and preservation before cleanup. Use the
+shared Git/resource safety in `git-protocol.md` and external-effect recovery in
+`pattern-external-mutation.md`.
+
+- Servers/processes: stop only task-started instances verified unused by other work. Retain shared,
+  unknown, or externally managed instances.
+- Transient notes/caches: remove only disposable task-owned state after preserving useful evidence.
+  Do not erase durable project knowledge or account memory.
+- Worktrees/branches: inspect actual HEAD preservation and tracked, untracked, and useful ignored
+  contents. A clean Git status or vanished branch name alone is insufficient. Use Git-native
+  non-force removal for eligible inactive targets; retain everything uncertain.
+- Browser sessions: close task-opened tabs/sessions only after confirming they contain no unsaved
+  user state. Preserve unrelated tabs.
+- Unavailable controls: report the resource retained rather than guessing or using an unrelated
+  control surface.
+
+On partial cleanup or unknown publication, record observed effects and exact retained targets.
+Resume from those facts; do not repeat a destructive/external action blindly.
 
 ### 4. Prepare the archive receipt
 
-Report unresolved decisions, landed or retained work, resources closed, resources retained,
-documentation updated, verification evidence, and the next action. State that the task is ready for
-archive. Do not archive the conversation unless the user explicitly asks for that final action.
+State one supported outcome: prepared, prepared with retained work, or not ready with the precise
+preservation/decision blocker. These are receipt descriptions, not new ticket-status values.
+
+Report material unresolved commitments, local/integrated/published state, proof limits,
+resumption pointer and next owner/action, plus resources removed or retained with reasons.
+Keep routine receipts concise. Do not declare ready when the only useful partial work is
+unrecoverable or a required preservation check is unresolved.
+
+Do not archive the conversation unless the user explicitly requested that final action. If archive
+is authorized and its control is available, apply it only after preparation and report its real result.
 
 ## Definition of Done
 
-- [ ] Outstanding decisions and incomplete work are explicit.
-- [ ] Durable repository and wiki state are current.
-- [ ] Only verified session-owned resources were closed.
-- [ ] The archive receipt identifies every retained resource and reason.
-- [ ] The task is prepared for archive but not silently archived.
+- Remaining decisions and accepted work are preserved with a usable resumption pointer.
+- Repository records reflect verified state without inventing integration or publication.
+- Cleanup affected only authorized, inactive, session-owned resources with preservation established.
+- The receipt distinguishes prepared-with-retention from blocked preparation and names the next action.
+- Conversation archival occurred only under its explicit grant.
 
 ## Evidence and Provenance
 
-T3 direct kit-owner request. Producer: staff · GPT-5.
+Original capability: T3 direct kit-owner request. Producer: staff · GPT-5.
+The lifecycle procedure follows the shared authority, preservation, and evidence contracts.
 
 ## What we deliberately did NOT do
 
-We did not delete dirty worktrees, stop shared services, erase durable memory, or archive the task
-without explicit authorization.
+We did not discard ambiguous work, stop shared services, erase durable memory, or infer that closing
+a conversation completes its unfinished acceptance.

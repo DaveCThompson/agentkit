@@ -1,87 +1,139 @@
 ---
 name: tailscale-private-serve
-description: Configure and diagnose tailnet-only HTTPS access to a local personal service using Tailscale Serve on Windows. Use when enabling PC or phone browser/PWA access, checking Serve status, confirming the proxy targets the intended loopback port, troubleshooting tailnet reachability, or verifying that Funnel and public exposure remain disabled.
+description: Use when configuring or diagnosing tailnet-only HTTPS access to a local service through Tailscale Serve on Windows, including listener identity and route reachability.
 tier: kind:agent-infra
+required-tools: [tailscale]
 ---
 
 # Tailscale Private Serve
 
-<!--
-Graduated from an earlier project-tier overlay skill and an agent-infrastructure review. That source is the sole
-authority for every claim below; project-specific service names, ports, compose files, and
-`doctor.ps1` references have been stripped. The bundled references/scripts/agents subfiles
-were deliberately NOT carried over — see the P4 report for why (non-frontmatter sibling files
-default to `tier: core` under the current selection engine and would ship to every repo
-regardless of kind gating).
--->
+## When to use
 
-Keep a personal service reachable from your own tailnet devices without exposing it to the
-public internet.
+Use for private browser/PWA access to an intended Windows-hosted service. Choose diagnosis or
+authorized configuration from the request. A missing route in a diagnosis is a finding, not
+permission to create it, change a base URL or restart a service. Existing action/target grants
+carry through under `pattern-external-mutation.md`.
 
 ## Guardrails
 
-- Use Tailscale Serve, never Funnel, for a personal service. Funnel adds public internet
-  exposure; Serve stays tailnet-only.
-- Keep the service's listener bound to loopback (`127.0.0.1`) on the host; Serve should be the
-  only thing terminating tailnet traffic in front of it.
-- Proxy Serve to the service's actual local port — confirm the real port before wiring Serve,
-  don't assume a default.
-- Use the generated `https://<host>.<tailnet>.ts.net` URL for browser and PWA access from other
-  tailnet devices; never a raw tailnet IP and never `localhost` from a remote device.
-- Do not change ACLs, grants, DNS, HTTPS settings, or public exposure without explicit user
-  approval — this skill diagnoses and configures Serve only, nothing broader in the tailnet.
+- Serve provides tailnet access; Funnel provides public internet access. Keep the intended
+  service private. Do not turn on Funnel or public/LAN binding to resolve connectivity.
+- Verify the actual listener address, port and process identity. A successful localhost request
+  does not prove exclusive loopback binding or that the intended service answered.
+- Preserve unrelated Serve/Funnel routes. If the intended route is publicly exposed, report it
+  and correct it only within the authorized target. An unrelated Funnel service is not authority
+  to disable or reset the host's configuration.
+- Scope access by the actual tailnet grants/ACLs and service authentication. Membership alone
+  does not prove access is limited to the operator's own devices.
+- Changes to grants/ACLs, DNS, HTTPS enablement, public exposure or another service require authority
+  covering that change. Do not repeat an approval already granted for the same action/target.
 
-## Verify The Current Route
+## Verify the current route
 
-Tailscale CLI status/serve queries can require an elevated PowerShell prompt on Windows even
-for read-only checks against the local service pipe:
-
-```powershell
-& "C:\Program Files\Tailscale\tailscale.exe" status --json
-& "C:\Program Files\Tailscale\tailscale.exe" serve status
-& "C:\Program Files\Tailscale\tailscale.exe" funnel status
-```
-
-Confirm: the backend is running, Serve reports a route to the expected local port, and Funnel
-reports no active configuration (or explicitly "tailnet only"). A Funnel route serving a
-non-tailnet-only `https://` URL is a policy violation for this pattern — treat it as a finding
-to fix, not a config choice to leave alone.
-
-Then confirm the service itself answers on loopback:
+Use an available shell and installed Tailscale CLI. Try ordinary read-only access first; seek
+required elevation only if a permission error prevents a needed check and the runtime permits it.
+Resolve the executable from PATH or verify its installed location, rather than assuming one path:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:<local-port>/" -TimeoutSec 5
+$tsExe = (Get-Command tailscale.exe -ErrorAction Stop).Source
+& $tsExe version
+& $tsExe status --json
+& $tsExe serve status
+& $tsExe funnel status
+& $tsExe serve --help
 ```
+
+Inspect each command's result/exit before relying on it. Use the installed version's help for
+supported flags and status formats. Record the backend state and the intended hostname,
+HTTPS port, mount path and backend target. Check for overlapping routes and public exposure
+on that same listener. Keep private hostnames and configuration evidence out of published files.
+
+For the verified service port, inspect listeners and owning processes. In this diagnostic snippet,
+`$servicePort` is an integer discovered from the service's actual configuration:
+
+```powershell
+$listeners = Get-NetTCPConnection -State Listen -LocalPort $servicePort -ErrorAction Stop
+$listeners | Select-Object LocalAddress, LocalPort, OwningProcess
+$listeners.OwningProcess | Sort-Object -Unique | ForEach-Object {
+  Get-Process -Id $_ -ErrorAction Stop | Select-Object Id, ProcessName, Path
+}
+Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:$servicePort/" -TimeoutSec 5
+```
+
+Check all returned addresses, including IPv6. Wildcard (`0.0.0.0`/`::`), LAN or tailnet bindings
+are not exclusive loopback. Correlate the executable/service identity and expected health response;
+authentication challenges may be expected on a protected root endpoint. Use a documented safe
+health endpoint when available. If a container publishes the service, inspect its host binding
+and approved private backend path too. Do not print process command lines that may contain secrets.
 
 ## Configure Serve
 
-Run from an elevated PowerShell prompt only when the route is missing or needs to be replaced:
+Proceed when configuration of the identified route is authorized and prerequisites are satisfied.
+Capture its previous state, the exact proposed route delta and a targeted rollback. A new route's
+rollback removes that route; a replacement restores the captured target/flags. Preserve other
+routes and reconcile unexpected changes before writing. Do not use host-wide `serve reset`.
+
+For a verified free/owned HTTPS listener and an application that supports the selected mount
+path, the following shape enables a persistent proxy. `$httpsPort`, `$mountPath` and `$servicePort`
+are resolved task values, not guessed defaults:
 
 ```powershell
-& "C:\Program Files\Tailscale\tailscale.exe" serve --bg <local-port>
-& "C:\Program Files\Tailscale\tailscale.exe" serve status
+& $tsExe serve --bg --https=$httpsPort --set-path=$mountPath "http://127.0.0.1:$servicePort"
+& $tsExe serve status
+& $tsExe funnel status
 ```
 
-Record the reported `https://...ts.net` URL wherever the service reads its own public/base URL
-from (an env var, a config file, etc.), then restart or recreate the service if it needs to pick
-up that change.
+Check the mutation's exit/result before subsequent verification. Do not suppress an interactive
+prompt that proposes a broader settings or exposure change. If the installed version requires
+HTTPS/DNS setup not covered by the request, finish the read-only diagnosis and identify that
+specific prerequisite. Path-mounted apps may need routing/asset support; choose a compatible
+route instead of assuming every service works under an arbitrary prefix.
 
-## Diagnose In Order
+Record the reported `https://<host>.<tailnet>.ts.net` URL, including the chosen port/path when
+applicable. Other devices must use that service URL, not their own `localhost`. Change the app's
+external/base URL only when the application requires it and the request covers that configuration.
+Restart only the identified service when necessary to apply the authorized change.
 
-1. `tailscale status` — confirm the backend is running and the device is on the tailnet.
-2. `tailscale netcheck` — confirm network conditions aren't blocking connectivity.
-3. `tailscale ping <peer>` — when one tailnet device can't reach another.
-4. `tailscale serve status` — confirm the route and its target port.
-5. Check the service's own health or root endpoint on `127.0.0.1:<local-port>` from the host.
-6. Open the Serve HTTPS URL from the affected desktop or phone.
+For a newly added route, the current CLI supports targeted removal with the original flags and
+`off`; consult the installed help before applying the recorded rollback:
 
-If shell access is unavailable, ask the user to run these read-only commands and share the
-output.
+```powershell
+& $tsExe serve --bg --https=$httpsPort --set-path=$mountPath off
+```
+
+A replaced route needs its captured prior target restored, not merely removal. Re-read status
+before rollback so concurrent owners' changes are not overwritten. See the [Serve CLI](https://tailscale.com/docs/reference/tailscale-cli/serve)
+for version-specific port/path targeting and disable semantics.
+
+## Diagnose the failing boundary
+
+Use the checks that distinguish the observed failure:
+
+- Service unavailable locally: inspect listener/process and safe health evidence before changing Serve.
+- Wrong route/response: compare intended host, port/path and backend with actual Serve/Funnel state.
+- Peer unreachable: use `tailscale status`, `tailscale netcheck` and `tailscale ping <peer>` as
+  appropriate. Peer reachability does not establish HTTPS or application access.
+- HTTPS/name/auth problem: inspect certificate/name resolution, route and relevant redacted errors.
+  Do not disable certificate or application authentication checks to make the request succeed.
+- Device-specific browser/PWA failure: open the intended HTTPS URL on the affected device and
+  inspect that response. Consider stale PWA/cache behavior after verifying the network path;
+  do not clear user storage as a routine diagnostic step.
+
+If the affected device is unavailable, report local success and remote verification pending.
+If shell/Tailscale access is unavailable, request the relevant read-only commands and redacted
+outputs from the operator. Missing CLI access does not authorize installation, elevation or
+configuration elsewhere.
+
+## Definition of done
+
+The diagnosis identifies the observed failing boundary or an explicit evidence limit. Authorized
+configuration changes only the owned route and necessary service settings, retains a targeted
+rollback, and rechecks listener, Serve/Funnel state and local response. End-to-end access is
+verified on the affected device or remains pending. State each result separately.
 
 ## References
 
-- [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)
-- [Serve CLI](https://tailscale.com/kb/1242/tailscale-serve)
-- [Tailscale CLI](https://tailscale.com/kb/1080/cli)
-- [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) — intentionally not
-  used by this pattern; Funnel exposes a service to the public internet.
+- [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) — private ingress and access controls.
+- [Serve CLI](https://tailscale.com/docs/reference/tailscale-cli/serve) — flags, status and targeted changes.
+- [Tailscale CLI](https://tailscale.com/docs/reference/tailscale-cli) — available diagnostics.
+- [Tailscale Funnel](https://tailscale.com/docs/features/tailscale-funnel) — distinguish public exposure.

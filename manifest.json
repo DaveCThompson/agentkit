@@ -1,14 +1,14 @@
 {
-  "kitVersion": "0.3.1",
-  "compiledAt": "2026-09-04",
-  "note": "COMPILED by agentkit sync/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
+  "kitVersion": "1.0.0",
+  "compiledAt": "2026-09-09",
+  "note": "COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
     {
       "path": ".agent/hooks.json",
       "type": "other",
       "name": "hooks",
       "tier": "core",
-      "sha256": "eec67606e509b5a59e3ae02a776d846abc2ab65051415e7b4c1a373d6c161260",
+      "sha256": "d6d0bac3106b5f71a9c33935f3cc72f40a0aac8d6a1e72a8dbbc3e2978d91846",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -20,7 +20,7 @@
       "type": "rule",
       "name": "foundation-accessibility",
       "tier": "kind:app",
-      "sha256": "868e47666c12937d6396e9fe9cc9ce0d061d6c77d4998d60f427b69f9e212ef8",
+      "sha256": "c0de41e08fc348a0a6d897911a71c4488c64c7f96a77d94bd304888365cf36c5",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -36,7 +36,7 @@
       "type": "rule",
       "name": "foundation-browser-usage",
       "tier": "core",
-      "sha256": "618ed809961766cd16e4bd4d11d85a447bc35ff03d0f58f2d1ae9b22eb8939d8",
+      "sha256": "b6bbd8f41e945a860e5ee8aef84c02a2d28d1702385347f4c9c8064c2ad8c097",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -52,7 +52,7 @@
       "type": "rule",
       "name": "foundation-communication",
       "tier": "core",
-      "sha256": "007e846e62a06d8d54a6edbc3fb261bb8dec7d4c0cc896a626d510b2c07a70b1",
+      "sha256": "0f525fe1f0823981d2628411c31e7158b3acfb06c3179a8a4c7e45c383d82bd2",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -68,7 +68,7 @@
       "type": "rule",
       "name": "foundation-design-system",
       "tier": "kind:app",
-      "sha256": "68c4f07346a53c5ca6375eb14b3e08f65da0229d807a85ffa508f6126fc0374d",
+      "sha256": "bb4f4ae02ebdf93128a82afb2a41204a576b65666d35f294732904f6df86ec59",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -84,7 +84,7 @@
       "type": "rule",
       "name": "foundation-design-tokens",
       "tier": "kind:app",
-      "sha256": "2462aa7ec3608189d9ab4867c317cd18abdb7e4715451d153633f1d158d1ecb1",
+      "sha256": "e8bc53e97156ede9fdf6638e09660cdd91ed5fd227eda629fb89a0506b5349a0",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -100,7 +100,7 @@
       "type": "rule",
       "name": "foundation-performance",
       "tier": "kind:app",
-      "sha256": "cb99956b01cbc5cb6061ce97fc6810bad7d5c3593210d2f1919f7f636577c051",
+      "sha256": "9133d7c24e7923598a91c76a4d346deee44b782a65e244c23b5e5867ac6ebf44",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -116,7 +116,7 @@
       "type": "rule",
       "name": "foundation-pwa",
       "tier": "tech:pwa",
-      "sha256": "834f4fadda35d219813e189274d58c9a429cd4a945e4a976e8616cefbdeeb832",
+      "sha256": "c610e80b77f37b56b4d947ab687fd01412426d1e525e838b43ee89ccf8010b36",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -132,7 +132,7 @@
       "type": "rule",
       "name": "foundation-security",
       "tier": "core",
-      "sha256": "7410c8f5a55c82ff0e2c0d724f46bf891e9a5576aad2add56d9a91bd2efbd3fb",
+      "sha256": "9381f89f10bbc35664d1c27fce775bd1a8fb44dd04c846238be4434b67e4d36d",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -148,7 +148,7 @@
       "type": "rule",
       "name": "foundation-testing",
       "tier": "core",
-      "sha256": "15281d6960fd584983e86c8dcd81d20482b27539be88909b88b1fe2592ce1a89",
+      "sha256": "9200284f565a39a1ea2e7ce31f58210eb674ebcf3f8aba59c59cf46444e83c36",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -164,7 +164,7 @@
       "type": "rule",
       "name": "git-protocol",
       "tier": "core",
-      "sha256": "e24ca21744faeb5bddc08e248f9a195b6681559c8603f7ac4ea5ea18e7c4fd94",
+      "sha256": "c6c7917e127d4e979f55d216b9ab604c1fd215e3e390a4b1c5f9726bcc936969",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -180,7 +180,7 @@
       "type": "rule",
       "name": "kind-service-containers",
       "tier": "kind:service",
-      "sha256": "47c3afad1491db5730b9a2559ead0e8a09bfc85e2092acd8d886befde73b4c5b",
+      "sha256": "7c48110f525dcefa5cd9aed32c0a288df8617e53efcf10f66fc26c94e8504f04",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -196,7 +196,7 @@
       "type": "rule",
       "name": "pattern-agent-orchestration",
       "tier": "core",
-      "sha256": "cdbd323c1bf067278823aea8e7cea633f3c4b89367301ef0ea91c378205eccee",
+      "sha256": "91fea259b8b07ec7230515a53c09b7fa24d53ab2f97810df32372dd9e852c871",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -212,7 +212,7 @@
       "type": "rule",
       "name": "pattern-assets",
       "tier": "tech:web",
-      "sha256": "f09a0148cd7edbc7f34fb9cdbdf6d877c4f18e3f57cff87a51dfe08a764bbcc6",
+      "sha256": "6b5c065d0681dcf3102e14f778fa466873f4933c140bcebaa44377b6d283c914",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -228,7 +228,7 @@
       "type": "rule",
       "name": "pattern-code-standards",
       "tier": "core",
-      "sha256": "d99ee4c48fced9d8816e93279da775e9ca5e885249c2d1aead2d9f0633444c45",
+      "sha256": "e2223a7c888e1d170d4f629e21613624c1d5e2b8e513b86562dc7b5d03b0eebc",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -244,7 +244,7 @@
       "type": "rule",
       "name": "pattern-command-shape",
       "tier": "core",
-      "sha256": "29cfdd9f8d678bfab7d40d2c562fc33c4ff68d4f709b6902f139373c68a876e9",
+      "sha256": "f17cf2356729426fe47571169b7257cac6306257edb1cdac2ec664898adda3d7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -260,7 +260,7 @@
       "type": "rule",
       "name": "pattern-component-props",
       "tier": "kind:app",
-      "sha256": "18bc1029866b72b780eec4dadc6645b6c984f38fcf0654e6afa22f1311bce312",
+      "sha256": "353476b102f337b514bd2d40bef984d47f41b9a0dfd44eeb2ad975a66eb2b2cb",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -276,7 +276,7 @@
       "type": "rule",
       "name": "pattern-design-parity",
       "tier": "kind:app",
-      "sha256": "7ee570aede8ffce710dc3f27b80f42c78765b508e9d591a927c4a3e20e79c8af",
+      "sha256": "a73c7bca7e05b85d0b461116b7b2b33dda402fa768931e4848b7dbdabd26d5e5",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -292,7 +292,7 @@
       "type": "rule",
       "name": "pattern-docs-artifacts",
       "tier": "core",
-      "sha256": "65148f01b35b01ae7d88adcd737c44c7b78c58155e763d0afdf3f81f91b9b772",
+      "sha256": "c97d0a422f979db6c9e979de8db43dc79db449d60e9e7343bc97cf9aede1f7ec",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -308,7 +308,7 @@
       "type": "rule",
       "name": "pattern-error-handling",
       "tier": "kind:app",
-      "sha256": "d07e9e1bc5802e66e9ffdac164b3e91991bf374a802800e899797f098011e263",
+      "sha256": "47d9e8daef8352bc31cbde6e45d505090d18c41418ed31e43742e9cb2490a230",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -324,7 +324,7 @@
       "type": "rule",
       "name": "pattern-external-mutation",
       "tier": "core",
-      "sha256": "0700db0b3cf8de295867e986cf97e4ddc8ff884ce9e59e559ff748b7779ee4ee",
+      "sha256": "fa688b8417618f1d4fdee2978658a5ca555a72ec7145f0c18f7c3c5fbcdaaafe",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -340,7 +340,7 @@
       "type": "rule",
       "name": "pattern-feature-scaffolding",
       "tier": "kind:app",
-      "sha256": "165c59f5fcd2868567739b6ddafd72c80ad4995bbe3fa83c8c9545430398003d",
+      "sha256": "6964df7deb7c0e4b3ebc5535774a189f2fc0a0e14995033467d5f9379830f991",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -356,7 +356,7 @@
       "type": "rule",
       "name": "pattern-inputs",
       "tier": "kind:app",
-      "sha256": "3a649e5951daf28449ef984be18aff2356a1563e0b29e686d083c7987a231de8",
+      "sha256": "4fcce64e082dd3ece4ef524f346457ea930b058a40eb486df06536be7d615d89",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -372,7 +372,7 @@
       "type": "rule",
       "name": "pattern-interactions",
       "tier": "kind:app",
-      "sha256": "bd8657de28155a7bb4d0652c4a720d5c5c4cc057bbbeef7b765a6da4b8ba7f98",
+      "sha256": "4dc1d1c54d15fe95d14584b7e701f665089721859cdd7355d06411b496387a16",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -388,7 +388,7 @@
       "type": "rule",
       "name": "pattern-monorepo",
       "tier": "core",
-      "sha256": "753efd8e02fae8b182ab810ae0a1595c2e53d1b943f3670b6b410d4e7bd861a8",
+      "sha256": "5893cca370f8d77afdfa53a8e5e13bd38bc97db4ace059f2d675dfc997946826",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -404,7 +404,7 @@
       "type": "rule",
       "name": "pattern-motion",
       "tier": "tech:gsap",
-      "sha256": "9e96922a11c62b4da5a9a97725d8823a64bc41f22b946b9a6ea91bf6a150666b",
+      "sha256": "fefd7f34319475be43d6e2773cdb1144b5baaa8c64c00fe46cbad4d63fe3d49b",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -420,7 +420,7 @@
       "type": "rule",
       "name": "pattern-navigation",
       "tier": "kind:app",
-      "sha256": "88b93d5d02562a2c9efee7598ff104222b1e2c7e977a4e9efa5cb83bf0c4c9de",
+      "sha256": "87db0b84635eb594ef1db7da2e768138221f848df9fe19965b6a73864e1b687a",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -436,7 +436,7 @@
       "type": "rule",
       "name": "pattern-refactoring",
       "tier": "core",
-      "sha256": "814a85f4c631e85cbfbffb31729d8a65189136adb714edc116d1668becbe9142",
+      "sha256": "c2dba93e3088fc687ecb534fad074c214f40bd25a02675612b920fa295ca01db",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -452,7 +452,7 @@
       "type": "rule",
       "name": "pattern-state",
       "tier": "kind:app",
-      "sha256": "7ec383717e314bf78efaa8a118de200df5fea843d31061957dbd612e141ec0db",
+      "sha256": "40e92dd34dc7fda3dda19553f0f080d10492913c5b1b69864ece77d774ae6a8a",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -468,7 +468,7 @@
       "type": "rule",
       "name": "pattern-structure",
       "tier": "kind:app",
-      "sha256": "33d150c2e95262f469e412cddbcbbb9c033643ce4f0f4655d074267559ce597a",
+      "sha256": "73e16ea5c496280cbcb73b77f680ace98d62abc7eee85254debb610778ce12b4",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -500,7 +500,7 @@
       "type": "rule",
       "name": "tech-canvas-rendering",
       "tier": "tech:canvas",
-      "sha256": "fa65513f8e5d29b0b28f124a9213eb5c1301e1d4d115b3b863805d7edc38cca2",
+      "sha256": "4682876b001d82ced066a95a0c94e884ef007fd58b6fd0ac331c1a1a65b0e65c",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -516,7 +516,7 @@
       "type": "rule",
       "name": "tech-framer-motion",
       "tier": "tech:framer-motion",
-      "sha256": "9e1298c3606b44c405f5b1f906fb9e5a177fcfefcd0df2c09fe783716347080e",
+      "sha256": "b4d60ab847c122a65dd9d9277288cdb7a5bfdc89e82086cf3ec2a20fb02def32",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -532,7 +532,7 @@
       "type": "rule",
       "name": "tech-node-gate",
       "tier": "kind:app",
-      "sha256": "9b698cfbf45931bc5b1832b7725e0c0f5a77f822c0c1c0e4297a2b89fa95d837",
+      "sha256": "1e7bf1fdcf851bf49c5f4d1966f9c41c33bf14b60ef114fdd4095e34d8504d3d",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -548,7 +548,7 @@
       "type": "rule",
       "name": "tech-python-gate",
       "tier": "tech:python",
-      "sha256": "33664fddb6fe6898138a1dd3ca67be2b26f5fd22957f1acb6d4402b6d4606796",
+      "sha256": "37e26b9ac04f2f71050070aa89d1914679df3ecbe9aea30fc5564bd178d68704",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -564,7 +564,7 @@
       "type": "rule",
       "name": "tech-react",
       "tier": "tech:react",
-      "sha256": "59b49acfba2ceaa71247b8de09f637783b15ae21e13829f285e8bc3e01ca3a3d",
+      "sha256": "abff0d4790365ed11b56c0c73deadde0d299d26c8d30cc799bb5e49089ff4eea",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -580,7 +580,7 @@
       "type": "rule",
       "name": "tech-supabase-auth",
       "tier": "tech:supabase",
-      "sha256": "297f445c3b01a03a93e89266710c44285edf603c3b58e2eacd7535e559a5d816",
+      "sha256": "ddf166caf985402c0aa1a3a7d65a53d9ddcb1aba8b26d9cadb12d8443150a4ca",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -596,7 +596,7 @@
       "type": "rule",
       "name": "tech-supabase-migrations",
       "tier": "tech:supabase",
-      "sha256": "0ec2d8583fb1f8f93ba33955e4508074640e3d8fa139324ad862523d29cf38b9",
+      "sha256": "e42c4bc902fa4321f97409f580fc2301a9c90f24d3df228faf8b0026ad60711b",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -612,7 +612,7 @@
       "type": "rule",
       "name": "tech-supabase",
       "tier": "tech:supabase",
-      "sha256": "3b2a1a7b3ff6a537d6a74a473317b5c1bf8d45057a3650d9195407664ff7e108",
+      "sha256": "e5c5ad0c474d0a5cc7d70351896b719e72556c7833cb46fe308988cd61852fe5",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -628,7 +628,7 @@
       "type": "rule",
       "name": "tech-typescript",
       "tier": "tech:typescript",
-      "sha256": "42110d256b16ee6c79646f1f546f5325b0497dab234cb6b5011ebcabc917d1da",
+      "sha256": "48786d36e7ba7420823860545472f77eb2705dd211dd8f497229f46c6103225e",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -644,7 +644,7 @@
       "type": "skill",
       "name": "_templates",
       "tier": "core",
-      "sha256": "3361eababcdf2aac422b88481cc5ba2e9877ae70840659575684478be164f7a6",
+      "sha256": "989709a0c6aa6839b62fcc3a03824327c902668183d53a9057f516cffe9b1e28",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -656,6 +656,9 @@
         "codex": [
           ".agents/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
         ],
+        "gemini": [
+          ".gemini/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
+        ],
         "opencode": [
           ".opencode/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
         ]
@@ -666,7 +669,7 @@
       "type": "skill",
       "name": "_templates",
       "tier": "core",
-      "sha256": "f7d09385854d187181034b24b7e26fd459deac47a6e2303a4b398581c0613449",
+      "sha256": "005f2bac0a421a539b51706ca0e825e30c2032a92e394998ede0bf6f3a3d0930",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -677,6 +680,9 @@
         ],
         "codex": [
           ".agents/skills/_templates/SKILL-TEMPLATE.md"
+        ],
+        "gemini": [
+          ".gemini/skills/_templates/SKILL-TEMPLATE.md"
         ],
         "opencode": [
           ".opencode/skills/_templates/SKILL-TEMPLATE.md"
@@ -693,24 +699,14 @@
       "appliesTo": null,
       "requiredTools": null,
       "conflictsWith": null,
-      "generatedTargets": {
-        "claude": [
-          ".claude/skills/_templates/SKILL.md"
-        ],
-        "codex": [
-          ".agents/skills/_templates/SKILL.md"
-        ],
-        "opencode": [
-          ".opencode/skills/_templates/SKILL.md"
-        ]
-      }
+      "generatedTargets": {}
     },
     {
       "path": ".agent/skills/audit-accessibility/SKILL.md",
       "type": "skill",
       "name": "audit-accessibility",
       "tier": "kind:app",
-      "sha256": "adc078a9de5e720c0d29ed86b55936303904879e0080eb8ab4c428de40c98935",
+      "sha256": "b04bf1eb80c75a5cdada66c91f88fab4d8d2817755c6033e784b7a057f5ba8cc",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -722,6 +718,9 @@
         "codex": [
           ".agents/skills/audit-accessibility/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-accessibility/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-accessibility/SKILL.md"
         ]
@@ -732,7 +731,7 @@
       "type": "skill",
       "name": "audit-auth-db",
       "tier": "tech:supabase",
-      "sha256": "2d26894a279c95847644ee96f787d32cca0c0ca028a12c54600ab4853a8707a3",
+      "sha256": "f88edf2274d8db5082ac99f74e374d2da179334d86a8f4b0b78b2ba17a5d8dc0",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -744,6 +743,9 @@
         "codex": [
           ".agents/skills/audit-auth-db/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-auth-db/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-auth-db/SKILL.md"
         ]
@@ -754,7 +756,7 @@
       "type": "skill",
       "name": "audit-code",
       "tier": "core",
-      "sha256": "94b4e4c4658c1ac0483321c36200554ca7751634412c28549c0151cfdabf329d",
+      "sha256": "6037e875ea92955e85825e0d06117fa48a4323a1729a0861afeb7d44a8e56f8b",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -766,6 +768,9 @@
         "codex": [
           ".agents/skills/audit-code/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-code/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-code/SKILL.md"
         ]
@@ -776,7 +781,7 @@
       "type": "skill",
       "name": "audit-design-system",
       "tier": "kind:app",
-      "sha256": "f1404f9cd399c8de511881783ccb2f423bec3c350d6aff6bbb5cb5d30eb5141a",
+      "sha256": "5256b9f2f92b2f302022856d2164b92a2941ee530c1f030c9f123091b6c1dc18",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -788,6 +793,9 @@
         "codex": [
           ".agents/skills/audit-design-system/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-design-system/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-design-system/SKILL.md"
         ]
@@ -798,10 +806,12 @@
       "type": "skill",
       "name": "audit-docs",
       "tier": "core",
-      "sha256": "906e9056d90e4c333b16592c7b729f5991d3bc1f6a1950a12046991f5f075a95",
+      "sha256": "7c1ff2df4711614f747334faa5de94b60132c8de5defe2b208fb5e7535d068fc",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "agentkit"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -809,6 +819,9 @@
         ],
         "codex": [
           ".agents/skills/audit-docs/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-docs/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-docs/SKILL.md"
@@ -820,10 +833,12 @@
       "type": "skill",
       "name": "audit-hygiene-enforcement",
       "tier": "core",
-      "sha256": "1704899813e677ce232c6a5b98a0f0c6abc4d9dbb82b6e41a47f303c4ea3caf8",
+      "sha256": "53ccdb7bfda3cbe2f2d683a5ffa79c0c2b244521114cc0c7462b3f94345ad9fc",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "agentkit"
+      ],
       "conflictsWith": [
         "maintain-docs"
       ],
@@ -833,6 +848,9 @@
         ],
         "codex": [
           ".agents/skills/audit-hygiene-enforcement/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-hygiene-enforcement/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-hygiene-enforcement/SKILL.md"
@@ -844,7 +862,7 @@
       "type": "skill",
       "name": "audit-layout",
       "tier": "kind:app",
-      "sha256": "8fa544de6b843b9a5598d265252d11edbf39472392fb3e88eaecf59ed553f41a",
+      "sha256": "2db51b0eeeb94cde75e3086dc0b3c476ca09c85e10c4080ae0a422abfe8656d4",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -856,6 +874,9 @@
         "codex": [
           ".agents/skills/audit-layout/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-layout/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-layout/SKILL.md"
         ]
@@ -866,7 +887,7 @@
       "type": "skill",
       "name": "audit-performance",
       "tier": "core",
-      "sha256": "c7403aaa1a749eed8ec8a7f58360120912aed0c1b969082b1c98648383522607",
+      "sha256": "0142bf8766b4718ebb06ac14a3f552afa6a867d04f277ae9fc709c554ea7ffb9",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -880,6 +901,9 @@
         "codex": [
           ".agents/skills/audit-performance/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-performance/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-performance/SKILL.md"
         ]
@@ -890,7 +914,7 @@
       "type": "skill",
       "name": "audit-refactor-opportunities",
       "tier": "core",
-      "sha256": "8dbde3a05112fda2a18c7c12e6085a27b6f1efd4977c834c89f9fb0c0ed94aeb",
+      "sha256": "34c2986e8a1a0f55d196be559117b19b3789105dd405ea152c7a137993fd3173",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -904,6 +928,9 @@
         "codex": [
           ".agents/skills/audit-refactor-opportunities/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-refactor-opportunities/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-refactor-opportunities/SKILL.md"
         ]
@@ -914,7 +941,7 @@
       "type": "skill",
       "name": "audit-security",
       "tier": "core",
-      "sha256": "549f7518ddc5e58bcd428d4b3308a6638dd1e7068ae2cd2388add5aec44f9bb1",
+      "sha256": "87764c598eb29fd445f8eb0e4a35bae41981dd9a6a8d573ca18436ae15782673",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -928,6 +955,9 @@
         "codex": [
           ".agents/skills/audit-security/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-security/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-security/SKILL.md"
         ]
@@ -938,7 +968,7 @@
       "type": "skill",
       "name": "audit-typography",
       "tier": "kind:app",
-      "sha256": "0b107ac70847756bbecba4c2a1e43fed4bd6073abfbdfd0c3bb90c5a3fde63f1",
+      "sha256": "7c0347e18e49de124c7d3ef7b4175f0eed85c587ad8b1506ba0ddc70205cc699",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -950,6 +980,9 @@
         "codex": [
           ".agents/skills/audit-typography/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-typography/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-typography/SKILL.md"
         ]
@@ -960,7 +993,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "44f84412cc65af832d9365fb3336e10dd6b99010da11c89d2fea4e12225f7799",
+      "sha256": "56ee5bd038b7eac076e7737d834d4a5e2dc6182190e25e1be33b7221683f5b94",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -972,6 +1005,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/SKILL.md"
         ]
@@ -982,7 +1018,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "88496752cdf647e220a7b450956d5768645de5eefb290d9b8e0b0a6653431bcf",
+      "sha256": "f233cd84e896571d4eb4c482372bf7e8e58e867e7efe199aacda56a5ecd9e88d",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -994,6 +1030,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/accessibility.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/accessibility.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/accessibility.md"
         ]
@@ -1004,7 +1043,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "4ea2733f8e86dfb99b5a6bd53f02e73dc25815f46eedbf7577f3649799a097cf",
+      "sha256": "c595a44ff32536241ce58f77eedd0dba85b597d9e9ecccf1527c6a966b8c5aae",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1016,6 +1055,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/animation.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/animation.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/animation.md"
         ]
@@ -1026,7 +1068,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "979e6fdc69ff83fa1bcf2dfdefcc8f16d039503bb81a4cb9f424151ef9053f90",
+      "sha256": "e24fa54f6c071f93128756c9c734857dca13241f6479b7fbef3c4bf9d98258f3",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1037,6 +1079,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/composition.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/composition.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/composition.md"
@@ -1060,6 +1105,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/forms.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/forms.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/forms.md"
         ]
@@ -1070,7 +1118,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "8bd16f1e21441ec854ce8743af1d13746fa0b0f7e52d601b64d02daf79e85bdf",
+      "sha256": "191111064f21a3a4d0f04fd53535f028d5148626a17bd3a6929347aa10a932d2",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1081,6 +1129,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/hydration.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/hydration.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/hydration.md"
@@ -1104,6 +1155,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/images.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/images.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/images.md"
         ]
@@ -1126,6 +1180,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/interactive-states.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/interactive-states.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/interactive-states.md"
         ]
@@ -1136,7 +1193,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "665e9ae4102ef6ea7328f9c863e1852546fa0b666c00d69f86a761f3a96d772f",
+      "sha256": "ebac3e443851066e5e3ad5e2bcbb685f1f16bf657bd3c194b56b39179651eaba",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1148,6 +1205,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/performance.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/performance.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/performance.md"
         ]
@@ -1158,7 +1218,7 @@
       "type": "skill",
       "name": "audit-web-interface",
       "tier": "tech:web",
-      "sha256": "6e02df799a9f3d8810d7aa2b727e56acc29a03672af9452e8698a4a79d9fedc6",
+      "sha256": "389af7e3c799e27c4884a7350b2747a30c6e3bc99188d85052c94a6552a1235c",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1170,6 +1230,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/typography.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/typography.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/typography.md"
         ]
@@ -1180,7 +1243,7 @@
       "type": "skill",
       "name": "blindspot-pass",
       "tier": "core",
-      "sha256": "883eb689f32402bf16b6d0d8a1cb983c7c7eea0665c0ddfdde34da1b89b1edbe",
+      "sha256": "3fb4882cd5ad08a396fe05fe40d07f570504ce472627965db02c6f32036c2fb1",
       "triggers": [
         "blindspot",
         "unknown unknowns",
@@ -1189,7 +1252,9 @@
         "recon"
       ],
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -1197,6 +1262,9 @@
         ],
         "codex": [
           ".agents/skills/blindspot-pass/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/blindspot-pass/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/blindspot-pass/SKILL.md"
@@ -1208,7 +1276,7 @@
       "type": "skill",
       "name": "close",
       "tier": "core",
-      "sha256": "44c86589bef83d0732353527a9df47e385f7888a28a4518a57b91ef0d5e59765",
+      "sha256": "bb62afe47a216dadaee5f7cd8075f1b907bbbe7544266dbaa77d979291e1bb81",
       "triggers": [
         "close session",
         "prepare archive",
@@ -1224,6 +1292,9 @@
         "codex": [
           ".agents/skills/close/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/close/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/close/SKILL.md"
         ]
@@ -1234,7 +1305,7 @@
       "type": "skill",
       "name": "debug-deep",
       "tier": "core",
-      "sha256": "403e8ffe29ec78db47e6500dfcea21de20e0dafce4e0d27c03c9a06a1e0ddf00",
+      "sha256": "563725e30a1eb017ecbae072480978ab897cc522b96bfd1e56563c25e894e19d",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1248,6 +1319,9 @@
         "codex": [
           ".agents/skills/debug-deep/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/debug-deep/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/debug-deep/SKILL.md"
         ]
@@ -1258,7 +1332,7 @@
       "type": "skill",
       "name": "debug-standard",
       "tier": "core",
-      "sha256": "8b44608ba3cf7f4bda5e280d8c335a0a047bd4983a9d51f31e98ea040fa2dda5",
+      "sha256": "d34496941b940b925fcbf6499c2bbd2c17eef8cb7f60c79f5940a2b59a7bae4b",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1272,6 +1346,9 @@
         "codex": [
           ".agents/skills/debug-standard/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/debug-standard/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/debug-standard/SKILL.md"
         ]
@@ -1282,7 +1359,7 @@
       "type": "skill",
       "name": "explore-concept",
       "tier": "core",
-      "sha256": "fb8042f6e1f8fbd8a30021deac858ac494eba491f6cb24e032442037402c264a",
+      "sha256": "16ed0c6082ef7e5a3ac30e88404cc0f55cdb8e4d071eb41d588a29bdb265c474",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1294,6 +1371,9 @@
         "codex": [
           ".agents/skills/explore-concept/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/explore-concept/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/explore-concept/SKILL.md"
         ]
@@ -1304,7 +1384,7 @@
       "type": "skill",
       "name": "explore-tech",
       "tier": "core",
-      "sha256": "d08cf21e99a62cee7ab835400c7a3c156d0a5ac291a90ebaf6a41d952abcd47a",
+      "sha256": "300efa0d7338843aba4a1cea1ca42126d63a674f4bb115c7e32e9f68c84483d5",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1318,6 +1398,9 @@
         "codex": [
           ".agents/skills/explore-tech/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/explore-tech/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/explore-tech/SKILL.md"
         ]
@@ -1328,7 +1411,7 @@
       "type": "skill",
       "name": "explore-ui-design",
       "tier": "kind:app",
-      "sha256": "bd5d0de2295335e36c5ca20036f2ff6c4cc619ad1f5f9d559f3f2a0601289f08",
+      "sha256": "d1a405dd5c5e394868b071fd9b9f9bb837e7d729fb2147b5905a5a34ae8fc135",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1340,6 +1423,9 @@
         "codex": [
           ".agents/skills/explore-ui-design/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/explore-ui-design/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/explore-ui-design/SKILL.md"
         ]
@@ -1350,7 +1436,7 @@
       "type": "skill",
       "name": "explore-ux",
       "tier": "kind:app",
-      "sha256": "a8795641d299d993348e817905749c4edbc0c2fa47fffe3850ff52bbb784b2ac",
+      "sha256": "1e35c6f3bdcaf6c190b0fdefb959dacf8d7d2c82040707cd0626b494fe2c6b39",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1362,6 +1448,9 @@
         "codex": [
           ".agents/skills/explore-ux/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/explore-ux/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/explore-ux/SKILL.md"
         ]
@@ -1372,7 +1461,7 @@
       "type": "skill",
       "name": "gsap-css-layout",
       "tier": "tech:gsap",
-      "sha256": "015b0f6942a593fe1486ea811b063df79a8a80a09604e9c779a9281e69d24504",
+      "sha256": "041db7362a370b96d8fb13ab5249c6cbb496683853062f01a684c6766d429cf7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1384,6 +1473,9 @@
         "codex": [
           ".agents/skills/gsap-css-layout/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/gsap-css-layout/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/gsap-css-layout/SKILL.md"
         ]
@@ -1394,7 +1486,7 @@
       "type": "skill",
       "name": "handoff",
       "tier": "core",
-      "sha256": "e005717e438c6c8913e69a790957eb203f2e2b45cd6f501f97c63d3531e6364a",
+      "sha256": "17797a03b08348862a8607216636b2acd11aaf9844ff15d5e27de61fb2ed3089",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1406,6 +1498,9 @@
         "codex": [
           ".agents/skills/handoff/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/handoff/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/handoff/SKILL.md"
         ]
@@ -1416,7 +1511,7 @@
       "type": "skill",
       "name": "health-agent",
       "tier": "core",
-      "sha256": "dc937c6125ea01196c8fd8f45addd601bd962fd9339586b2cb557fca425b854b",
+      "sha256": "3433240df800c033531c0b4fa2c642ceeade47283228b4bee5a2f401a3de0e03",
       "triggers": [
         "agent health",
         "drift",
@@ -1424,7 +1519,9 @@
         "vendor mismatch"
       ],
       "appliesTo": null,
-      "requiredTools": [],
+      "requiredTools": [
+        "agentkit"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -1432,6 +1529,9 @@
         ],
         "codex": [
           ".agents/skills/health-agent/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/health-agent/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/health-agent/SKILL.md"
@@ -1443,7 +1543,7 @@
       "type": "skill",
       "name": "huh",
       "tier": "core",
-      "sha256": "014cf410341d4a76e6237004e3cd234556c7e95f66ea078279e290ecb0636032",
+      "sha256": "4bfc87dfe357aff7060cbfa2934996e0db9a0a95740ba8a7b451386b72e28a96",
       "triggers": [
         "huh",
         "simple English",
@@ -1459,6 +1559,9 @@
         "codex": [
           ".agents/skills/huh/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/huh/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/huh/SKILL.md"
         ]
@@ -1469,7 +1572,7 @@
       "type": "skill",
       "name": "implement-component-scaffold",
       "tier": "tech:react",
-      "sha256": "e4a1e353d6091a884a0d4b0ef3330785efa119cfa9ceff0043faf07b63c7bdf2",
+      "sha256": "7526e970a80811b89a785047845df81f23472c3c5b9cf67c260ed5148cc82c46",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1481,6 +1584,9 @@
         "codex": [
           ".agents/skills/implement-component-scaffold/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-component-scaffold/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-component-scaffold/SKILL.md"
         ]
@@ -1491,7 +1597,7 @@
       "type": "skill",
       "name": "implement-feature",
       "tier": "core",
-      "sha256": "57ffe777dc5e42ed2cbbebeed9178b8a2f67e5fb253c5041f2b1f7789313c511",
+      "sha256": "ed6dd562c9a9f57817be34610b276df52ea4baeb0dfe9b8087fe5fd4c7add6af",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1505,6 +1611,9 @@
         "codex": [
           ".agents/skills/implement-feature/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-feature/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-feature/SKILL.md"
         ]
@@ -1515,7 +1624,7 @@
       "type": "skill",
       "name": "implement-flight-check",
       "tier": "core",
-      "sha256": "12724d46424824395594711ab2526af4398658d301aaab4a76bf77d6fb1f5235",
+      "sha256": "b48fb4262264c21c00779a3b05f313e507cc560b2004368e8314fc6921af9815",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1527,6 +1636,9 @@
         "codex": [
           ".agents/skills/implement-flight-check/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-flight-check/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-flight-check/SKILL.md"
         ]
@@ -1537,7 +1649,7 @@
       "type": "skill",
       "name": "implement-quick-fix",
       "tier": "core",
-      "sha256": "cbc1d4e2cf9a6c0970eedc7344dddcce6298b4b4f97b5ffabd0dd00fae045a87",
+      "sha256": "236c983838b0ca33f2d8e3cad6489dfd908fb2e38be057e48e2e9f3da1a26046",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1551,6 +1663,9 @@
         "codex": [
           ".agents/skills/implement-quick-fix/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-quick-fix/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-quick-fix/SKILL.md"
         ]
@@ -1561,7 +1676,7 @@
       "type": "skill",
       "name": "implement-refactor",
       "tier": "core",
-      "sha256": "ce6932bbba9d1dfe6db9d2b2ad0f540949a716783f46953cb35fb73e85fae0fe",
+      "sha256": "2d93108224caac863b656e08e6912d2d150ad8179f75803fdb1d983262c12183",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1576,6 +1691,9 @@
         "codex": [
           ".agents/skills/implement-refactor/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-refactor/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-refactor/SKILL.md"
         ]
@@ -1586,7 +1704,7 @@
       "type": "skill",
       "name": "implement-session-land",
       "tier": "core",
-      "sha256": "466347e9ce641e415f509612e1d365358ea0f22145ac8d803975b1bc232a0b47",
+      "sha256": "6788eae708a200480296adfa4bff389d5ff08aa6f0ca5f5dd019ac0dcb7cf588",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1598,6 +1716,9 @@
         "codex": [
           ".agents/skills/implement-session-land/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-session-land/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-session-land/SKILL.md"
         ]
@@ -1608,7 +1729,7 @@
       "type": "skill",
       "name": "implement-session-wrap-up",
       "tier": "core",
-      "sha256": "852c82c927d214f554d8292b43a1c655a6e37145faf2cfc82dc18d148d30f48d",
+      "sha256": "9c16de5fdc7a34b6d728b426963502440233eebe52e99c364f7fbdc5236075e2",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1620,6 +1741,9 @@
         "codex": [
           ".agents/skills/implement-session-wrap-up/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-session-wrap-up/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-session-wrap-up/SKILL.md"
         ]
@@ -1630,7 +1754,7 @@
       "type": "skill",
       "name": "implement-test",
       "tier": "core",
-      "sha256": "7d4cdb4b3adf4f60608cf216782c06ff4cffca78c745725e788fc91eaf771699",
+      "sha256": "6fae2753b7b1867f0d9e241514468a0d5a5f12145e9b1fe1f9a51bf4bbcdc8f7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1642,6 +1766,9 @@
         "codex": [
           ".agents/skills/implement-test/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-test/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-test/SKILL.md"
         ]
@@ -1652,7 +1779,7 @@
       "type": "skill",
       "name": "kit-contribute",
       "tier": "core",
-      "sha256": "3493f7091dcef28d708f75fa3aa14be87fe3718e21e2a6770c72f698442312c2",
+      "sha256": "444953422ae7bc6b3cda48027e4716483e6ae22f87605aac56b99b2e76044be4",
       "triggers": [
         "wrap-up",
         "flowback",
@@ -1661,7 +1788,9 @@
         "locally-edited"
       ],
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "agentkit"
+      ],
       "conflictsWith": [
         "pattern-codify"
       ],
@@ -1671,6 +1800,9 @@
         ],
         "codex": [
           ".agents/skills/kit-contribute/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/kit-contribute/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/kit-contribute/SKILL.md"
@@ -1682,10 +1814,12 @@
       "type": "skill",
       "name": "maintain-docs",
       "tier": "core",
-      "sha256": "f8588cc4dbaf37fd3d4ac53359b90d02526b53b34934be904e41c510537ac706",
+      "sha256": "742acc1acb6cd335b84f604dc43e74970c9b85e0f07585a27234007afa6f35ba",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "agentkit"
+      ],
       "conflictsWith": [
         "audit-hygiene-enforcement"
       ],
@@ -1695,6 +1829,9 @@
         ],
         "codex": [
           ".agents/skills/maintain-docs/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/maintain-docs/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/maintain-docs/SKILL.md"
@@ -1706,10 +1843,10 @@
       "type": "skill",
       "name": "mcp-server-ops",
       "tier": "kind:agent-infra",
-      "sha256": "c2b9ae5505d41009781eb730816b18dbb4cd10e2cf4c16d273568196a305f0fa",
+      "sha256": "0513437c62f0102c324880e7ff8dcba1e9c3ed66f037019a7782aea2b18d2c80",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -1717,6 +1854,9 @@
         ],
         "codex": [
           ".agents/skills/mcp-server-ops/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/mcp-server-ops/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/mcp-server-ops/SKILL.md"
@@ -1728,7 +1868,7 @@
       "type": "skill",
       "name": "optimize-agent",
       "tier": "core",
-      "sha256": "4c5c5175013151279ff7583ddd32806de879307290bbd854119d588637ccc964",
+      "sha256": "f627a1f21ed03e94c497cbbe302ffbf3f8869334c149e1e4d22152518e45f3d2",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1740,6 +1880,9 @@
         "codex": [
           ".agents/skills/optimize-agent/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/optimize-agent/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/optimize-agent/SKILL.md"
         ]
@@ -1750,7 +1893,7 @@
       "type": "skill",
       "name": "orchestrate-decompose",
       "tier": "core",
-      "sha256": "8089597f2b67abc82f83c6897a1436b63781e25d6afa861b571a73707cdbdfd0",
+      "sha256": "de56e1c39acdb099e2392cd9b7acfcc14e430363953d8362f9ee71e9f0ae3eab",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1762,6 +1905,9 @@
         "codex": [
           ".agents/skills/orchestrate-decompose/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-decompose/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-decompose/SKILL.md"
         ]
@@ -1772,7 +1918,7 @@
       "type": "skill",
       "name": "orchestrate-kickoff",
       "tier": "core",
-      "sha256": "8f61cd5274c8b1e40088ad65a69aff49f44f2347a0eed2aaa13b410f8869c117",
+      "sha256": "f442484caa5db219e708cb0fda5f31e0ae9ecd6b8da5fc9547bc1a2ef3de2bd2",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1784,6 +1930,9 @@
         "codex": [
           ".agents/skills/orchestrate-kickoff/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-kickoff/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-kickoff/SKILL.md"
         ]
@@ -1794,7 +1943,7 @@
       "type": "skill",
       "name": "orchestrate-merge-train",
       "tier": "core",
-      "sha256": "45a322220fd422e853f838b07c130433c0f813e434a84230dafbad1e0a4c8d36",
+      "sha256": "c8e5d948bd1a192ecf4349d0d02313812b17b6d5f7b04ae11a0a5b1ed8c6fcd7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1806,6 +1955,9 @@
         "codex": [
           ".agents/skills/orchestrate-merge-train/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-merge-train/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-merge-train/SKILL.md"
         ]
@@ -1816,7 +1968,7 @@
       "type": "skill",
       "name": "orchestrate-partition",
       "tier": "core",
-      "sha256": "165081b17b2c3f5f8e32ef0e223b4318516aa8d5a050da3a3b40decfc8c42efb",
+      "sha256": "d365663a98f4ef5b636891f7e3d495d11ede438c2265d43c051db8f6e639325a",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1828,6 +1980,9 @@
         "codex": [
           ".agents/skills/orchestrate-partition/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-partition/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-partition/SKILL.md"
         ]
@@ -1838,7 +1993,7 @@
       "type": "skill",
       "name": "orchestrate-sequence",
       "tier": "core",
-      "sha256": "8fd35a13d6ec0477cbe3f0573933a6e365fbf10a0c7fa6a2d8166b3ad4274a90",
+      "sha256": "4aafe655768ab2ccd87ff83068f319fec28059098f3dc7444f9bfdb3859fe993",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1850,6 +2005,9 @@
         "codex": [
           ".agents/skills/orchestrate-sequence/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-sequence/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-sequence/SKILL.md"
         ]
@@ -1860,7 +2018,7 @@
       "type": "skill",
       "name": "performance-fix",
       "tier": "core",
-      "sha256": "73f09adcf24b0205f7fdf87ff35db29e3cb8b10632ac8798d986e74ea89100b9",
+      "sha256": "51576a80e389be93ec7881911439a8ec014a2cdf5a8320e8da4e011879e06ae8",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1874,6 +2032,9 @@
         "codex": [
           ".agents/skills/performance-fix/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/performance-fix/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/performance-fix/SKILL.md"
         ]
@@ -1884,7 +2045,7 @@
       "type": "skill",
       "name": "plan-architecture",
       "tier": "core",
-      "sha256": "7c83ffc7e1fb1a5cf9e16ee45cca2574b545a3af0670f608088f52c56d9dc586",
+      "sha256": "183c1815c5ef499b23a60020b5ab7421bfd6cb7e3d687db12d75f27e4e8fa9ac",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1899,6 +2060,9 @@
         "codex": [
           ".agents/skills/plan-architecture/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/plan-architecture/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/plan-architecture/SKILL.md"
         ]
@@ -1909,7 +2073,7 @@
       "type": "skill",
       "name": "plan-feature",
       "tier": "core",
-      "sha256": "3c2cdc356e3427aa0bb8c333d9632948c44fce15fe8d08f234b2027532d8a6ea",
+      "sha256": "144827f8fea487b08c8709a1a565efab0fba582c6dee762dbc56257ff3c0b7fa",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -1924,6 +2088,9 @@
         "codex": [
           ".agents/skills/plan-feature/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/plan-feature/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/plan-feature/SKILL.md"
         ]
@@ -1934,7 +2101,7 @@
       "type": "skill",
       "name": "plan-prd",
       "tier": "core",
-      "sha256": "5556341135e52830bce2d8713abb1b3cfcf2a8df527a44adec1eeb9628f17774",
+      "sha256": "8f2152d30285bc82e6261c7a1eaa0cc3af65dd9d3f311ab0a59fe13db5eee2a0",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1946,6 +2113,9 @@
         "codex": [
           ".agents/skills/plan-prd/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/plan-prd/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/plan-prd/SKILL.md"
         ]
@@ -1956,10 +2126,13 @@
       "type": "skill",
       "name": "project-onboard",
       "tier": "core",
-      "sha256": "8fd02326e6b52aa05c41dbe7ecaee165f7466d302d8554a5852f54a5e78adef7",
+      "sha256": "9eb0fef8e212d41f9f5a30b4eb8099f714c0d2d51909d9ba4d79e9a05721ea30",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "codebase-mcp",
+        "agentkit"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -1967,6 +2140,9 @@
         ],
         "codex": [
           ".agents/skills/project-onboard/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/project-onboard/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/project-onboard/SKILL.md"
@@ -1978,7 +2154,7 @@
       "type": "skill",
       "name": "react-flow-architect",
       "tier": "tech:react-flow",
-      "sha256": "d5296e0c19c009df8b25833ae4610a2342627bac2c27476649fc1b2c0c9ca81f",
+      "sha256": "e9919ef3cbbe889f03df997a541294ed491badc164caf6ec3d1a8f5305c24a5b",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1990,6 +2166,9 @@
         "codex": [
           ".agents/skills/react-flow-architect/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-flow-architect/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/react-flow-architect/SKILL.md"
         ]
@@ -2000,7 +2179,7 @@
       "type": "skill",
       "name": "react-performance",
       "tier": "tech:react",
-      "sha256": "4af33c19f22a9e826a2fffb594ab5873f1f58affc843b83bb12cb1246119ae26",
+      "sha256": "ae7bd10c7bcae412e30ba2f5c94f5ca458df5c825996ec7372bc28e10d78f874",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2012,6 +2191,9 @@
         "codex": [
           ".agents/skills/react-performance/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/SKILL.md"
         ]
@@ -2022,7 +2204,7 @@
       "type": "skill",
       "name": "react-performance",
       "tier": "tech:react",
-      "sha256": "8108bbd14897716231efe97638eb2b126ec2fc3adbe2895b93894a04f1a26e19",
+      "sha256": "394d295257dd5b07d726576e0b9196b0b3f2ff71ec3d8ef291c037625fc6e2ad",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2034,6 +2216,9 @@
         "codex": [
           ".agents/skills/react-performance/references/async-patterns.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/async-patterns.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/async-patterns.md"
         ]
@@ -2044,7 +2229,7 @@
       "type": "skill",
       "name": "react-performance",
       "tier": "tech:react",
-      "sha256": "9ebb9c1633c5461cd0646732dd200ad7594e9337d66e4b218d5fc0b5846ed1e3",
+      "sha256": "9e85c83893ddf0b33e9211318e0cc6a9549ee2a8e0f6d6c393565b9f160a8127",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2056,6 +2241,9 @@
         "codex": [
           ".agents/skills/react-performance/references/bundle-optimization.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/bundle-optimization.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/bundle-optimization.md"
         ]
@@ -2066,7 +2254,7 @@
       "type": "skill",
       "name": "react-performance",
       "tier": "tech:react",
-      "sha256": "4788678307df4f7e80a9051de8d653400b70ccd4ba0b5e1870afbae4cd604b7b",
+      "sha256": "e186457c07386bbfdc48376c8669d0703c8bc422de70810c85482801c15edec0",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2078,6 +2266,9 @@
         "codex": [
           ".agents/skills/react-performance/references/js-micro-optimizations.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/js-micro-optimizations.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/js-micro-optimizations.md"
         ]
@@ -2088,7 +2279,7 @@
       "type": "skill",
       "name": "react-performance",
       "tier": "tech:react",
-      "sha256": "93486b27a00ea466919bf80d0d017f9e657f4c62848a5fc813d6d56c33bcccca",
+      "sha256": "739522a3639fc440cb9626d1ba115b894e6db60f5ec8a3b7043352722984cffa",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2100,6 +2291,9 @@
         "codex": [
           ".agents/skills/react-performance/references/rendering-patterns.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/rendering-patterns.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/rendering-patterns.md"
         ]
@@ -2110,7 +2304,7 @@
       "type": "skill",
       "name": "react-performance",
       "tier": "tech:react",
-      "sha256": "27269c3558b0ba88495f8283583d59b1f70205415bbd54ea476f6edc5dce30c2",
+      "sha256": "c5ae656ae697461a26babc12d3961e314f79feac62258a369fa0d0addc700237",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2122,6 +2316,9 @@
         "codex": [
           ".agents/skills/react-performance/references/rerender-patterns.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/rerender-patterns.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/rerender-patterns.md"
         ]
@@ -2132,7 +2329,7 @@
       "type": "skill",
       "name": "reference-hunt",
       "tier": "core",
-      "sha256": "83360a26a8bd7a9bd94add01083a4ca5e04f2d13565238150cc2ce648c4e2edd",
+      "sha256": "0a30c56b248de9a0c65a002d5bd6e18e7b7e539bb41457c499c9b17c4cdc7941",
       "triggers": [
         "reference",
         "build something like this",
@@ -2141,7 +2338,9 @@
         "code as spec"
       ],
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -2149,6 +2348,9 @@
         ],
         "codex": [
           ".agents/skills/reference-hunt/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/reference-hunt/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/reference-hunt/SKILL.md"
@@ -2160,7 +2362,7 @@
       "type": "skill",
       "name": "refine-code",
       "tier": "core",
-      "sha256": "b01e494821732a6d98250dd9f8fe54c8467d91098d45feb7187880fb21300525",
+      "sha256": "1042891bde8cd00736be699d279703babb50e60582563b26c2b368cd110fed2e",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2174,6 +2376,9 @@
         "codex": [
           ".agents/skills/refine-code/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/refine-code/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/refine-code/SKILL.md"
         ]
@@ -2184,7 +2389,7 @@
       "type": "skill",
       "name": "remind",
       "tier": "core",
-      "sha256": "cf245076d137a3f1ec90902516155acf7aeba2196335fae6b34b2b3dc02fcc5f",
+      "sha256": "7ead63ffd97356712a0d8dfa5d1ea7737fe0a2215e1d081971757fb4e96b38a5",
       "triggers": [
         "remind",
         "session recap",
@@ -2200,6 +2405,9 @@
         "codex": [
           ".agents/skills/remind/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/remind/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/remind/SKILL.md"
         ]
@@ -2210,7 +2418,7 @@
       "type": "skill",
       "name": "research-curate",
       "tier": "core",
-      "sha256": "a5ec58876d976cad23bf860eb12407af1c350735b4456d18bb05cd78eb563efb",
+      "sha256": "a463f03440d77c92e11c31aecbc55bd2d4a1a16efa04c3834f3a5f23e3921c60",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2222,6 +2430,9 @@
         "codex": [
           ".agents/skills/research-curate/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/research-curate/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/research-curate/SKILL.md"
         ]
@@ -2232,7 +2443,7 @@
       "type": "skill",
       "name": "research-deep",
       "tier": "core",
-      "sha256": "9212180ca22cf402fe573ba5d303767ecda4203ecbc441b17a665225c17828c3",
+      "sha256": "08bdebb8892ecdcfd24de55cb8d16f64dd76a2373874cdb3fc5912d1bc3e2670",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2244,6 +2455,9 @@
         "codex": [
           ".agents/skills/research-deep/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/research-deep/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/research-deep/SKILL.md"
         ]
@@ -2254,7 +2468,7 @@
       "type": "skill",
       "name": "research-synthesize",
       "tier": "core",
-      "sha256": "b875a64b25dfa7284d5b62936ef2f7a243942a6ab597fa946c752ad7b9ea6f60",
+      "sha256": "e3ecb303f39bc89c8c12a45049b6813051e6cc119e34c203851ce12dabb00403",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
@@ -2268,6 +2482,9 @@
         "codex": [
           ".agents/skills/research-synthesize/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/research-synthesize/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/research-synthesize/SKILL.md"
         ]
@@ -2278,7 +2495,7 @@
       "type": "skill",
       "name": "review-peer",
       "tier": "core",
-      "sha256": "6916609b5aea2249c6544bb1ef18d2c2801ada7860a4decf73133c8f86e43cbe",
+      "sha256": "4575e9fecadd3d17e5f8b6476c9a7d1ba3902ecebbae92daa554a604a645f5ba",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2290,6 +2507,9 @@
         "codex": [
           ".agents/skills/review-peer/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/review-peer/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/review-peer/SKILL.md"
         ]
@@ -2300,7 +2520,7 @@
       "type": "skill",
       "name": "review-raise-bar",
       "tier": "core",
-      "sha256": "cf788dd6d0e613884ab50aa1feeb6384b0759d5cc3f1cc3ad3096f430aa04a98",
+      "sha256": "952356b024aab448481171b070ef04f2efc43bbbeb3c7bb5e28e19763257d312",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2312,6 +2532,9 @@
         "codex": [
           ".agents/skills/review-raise-bar/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/review-raise-bar/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/review-raise-bar/SKILL.md"
         ]
@@ -2322,7 +2545,7 @@
       "type": "skill",
       "name": "security-fix",
       "tier": "core",
-      "sha256": "8540e0cff05886e24debecd0e7174bc78f991a47e0f0f5e9db828a1843e8d589",
+      "sha256": "a8db13c49c790f0ff118788ab34c7e6194afb4aad28043ce69e772a9c934b353",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2336,6 +2559,9 @@
         "codex": [
           ".agents/skills/security-fix/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/security-fix/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/security-fix/SKILL.md"
         ]
@@ -2346,11 +2572,12 @@
       "type": "skill",
       "name": "sweep-codebase",
       "tier": "core",
-      "sha256": "b9972d407ea926b32ad7243d00d0a57b8618cae486de061c0b7d9534e3737470",
+      "sha256": "2b86ce37bb0714b7eaefaf0360cf4cad52f1992b79355af3e53f162f66e634fa",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": [
-        "fallow"
+        "fallow",
+        "agentkit"
       ],
       "conflictsWith": null,
       "generatedTargets": {
@@ -2359,6 +2586,9 @@
         ],
         "codex": [
           ".agents/skills/sweep-codebase/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/sweep-codebase/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/sweep-codebase/SKILL.md"
@@ -2370,10 +2600,12 @@
       "type": "skill",
       "name": "tailscale-private-serve",
       "tier": "kind:agent-infra",
-      "sha256": "9b06fa97c3b3fcfae4b49d53f660ae35e16b7f0c2e6816ea6a766f57228750ca",
+      "sha256": "c0f254c68870e8e4eb47a9ae748f2a83b8c7dfeeecfd2f78486ee89ef595c4b9",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "tailscale"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -2381,6 +2613,9 @@
         ],
         "codex": [
           ".agents/skills/tailscale-private-serve/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/tailscale-private-serve/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/tailscale-private-serve/SKILL.md"
@@ -2392,7 +2627,7 @@
       "type": "skill",
       "name": "tldr",
       "tier": "core",
-      "sha256": "8015b548f617b3d7b251a3722c8f4d9dc06d064efb4749fc32e31bdcb165a6bb",
+      "sha256": "3443dff608b4eb0eec88f959229018533a1702dcc356bedfd4fdcaa6d156e80a",
       "triggers": [
         "tldr",
         "short recap",
@@ -2408,6 +2643,9 @@
         "codex": [
           ".agents/skills/tldr/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/tldr/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/tldr/SKILL.md"
         ]
@@ -2418,7 +2656,7 @@
       "type": "skill",
       "name": "todo",
       "tier": "core",
-      "sha256": "156a73c728edc3b529b7f2a55dfacef00809b1c19a1916b430aa9e454486cad7",
+      "sha256": "4b3563e93bb0a8b15f38b01a03fe2f150c69156cac857e5bf19bd20c2e572dab",
       "triggers": [
         "todo",
         "progress checklist",
@@ -2434,6 +2672,9 @@
         "codex": [
           ".agents/skills/todo/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/todo/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/todo/SKILL.md"
         ]
@@ -2444,10 +2685,12 @@
       "type": "skill",
       "name": "use-codegraph",
       "tier": "core",
-      "sha256": "38545f0d84c3284761d38285fcd202e88bff775af61d318cca0e6f0203036699",
+      "sha256": "f923752872cc3260d9df1a1784e0d53c63925ccae79d970a3ce32ed76a2d3565",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "codebase-mcp"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -2455,6 +2698,9 @@
         ],
         "codex": [
           ".agents/skills/use-codegraph/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/use-codegraph/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/use-codegraph/SKILL.md"
@@ -2478,6 +2724,9 @@
         "codex": [
           ".agents/skills/use-codegraph/agents/openai.yaml"
         ],
+        "gemini": [
+          ".gemini/skills/use-codegraph/agents/openai.yaml"
+        ],
         "opencode": [
           ".opencode/skills/use-codegraph/agents/openai.yaml"
         ]
@@ -2488,7 +2737,7 @@
       "type": "skill",
       "name": "verify-rls-policies",
       "tier": "tech:supabase",
-      "sha256": "395b1a363c23d1f4adc6158b17f4c28a60601d3a0a1a397c774ac69008cc6ba8",
+      "sha256": "97aa9188e0f015987c1a8c0e1145ed1a18b63b5def075afec39a6295a23e75de",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2500,6 +2749,9 @@
         "codex": [
           ".agents/skills/verify-rls-policies/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/verify-rls-policies/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/verify-rls-policies/SKILL.md"
         ]
@@ -2510,10 +2762,12 @@
       "type": "skill",
       "name": "verify-rules",
       "tier": "core",
-      "sha256": "412d9b14f28d8cf68ab2372e21942a6dd8c5bcb7ecd97b16e6329ac424550bc9",
+      "sha256": "92425439c6eb0fe7bce97435b4430a53dcc19ae896bf25062f4becdeca9278b7",
       "triggers": null,
       "appliesTo": null,
-      "requiredTools": null,
+      "requiredTools": [
+        "agentkit"
+      ],
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
@@ -2521,6 +2775,9 @@
         ],
         "codex": [
           ".agents/skills/verify-rules/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/verify-rules/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/verify-rules/SKILL.md"
@@ -2532,7 +2789,7 @@
       "type": "skill",
       "name": "vet-hard",
       "tier": "core",
-      "sha256": "f1a06b6021ada631d5e0e2582d92e772a52f04323086cfc463fccd9878c4d7dd",
+      "sha256": "d0d862951e2a74915700c1703ee91d3c4a30a5dc1ad283200ef48d8d43f78b2f",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2544,6 +2801,9 @@
         "codex": [
           ".agents/skills/vet-hard/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/vet-hard/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/vet-hard/SKILL.md"
         ]
@@ -2554,7 +2814,7 @@
       "type": "skill",
       "name": "vet-simple",
       "tier": "core",
-      "sha256": "1912422f51580065d6c3d6f027d0667912950274717a47fa931a281972aab590",
+      "sha256": "52072f11fdd1a5366e77808dab39c5fba33bad5aa7228bea9339c4df236b1b3c",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2566,6 +2826,9 @@
         "codex": [
           ".agents/skills/vet-simple/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/vet-simple/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/vet-simple/SKILL.md"
         ]
@@ -2576,7 +2839,7 @@
       "type": "skill",
       "name": "walk",
       "tier": "core",
-      "sha256": "391b4c4ed3ef284f77a36dc042199ddb0d2dc1fb660b66d2cf9e2690271db4e0",
+      "sha256": "58d4e75121e3e0d7e93b0ad1e34159c49ae84b16628b2469edbd0ed38969782c",
       "triggers": [
         "walk",
         "walkthrough",
@@ -2593,6 +2856,9 @@
         "codex": [
           ".agents/skills/walk/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/walk/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/walk/SKILL.md"
         ]
@@ -2603,7 +2869,7 @@
       "type": "skill",
       "name": "worker-bootstrap",
       "tier": "core",
-      "sha256": "8354ff72907d955e2901dce65ed0323bb63af67efbdb09af44242796002c9f48",
+      "sha256": "f6edf5cf0ea53224b292d2ff6b65d54e544e6eb7ff32628854f5d71994d65578",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2615,6 +2881,9 @@
         "codex": [
           ".agents/skills/worker-bootstrap/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/worker-bootstrap/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/worker-bootstrap/SKILL.md"
         ]
@@ -2625,7 +2894,7 @@
       "type": "skill",
       "name": "worker-execute",
       "tier": "core",
-      "sha256": "6c67b84b571b484a11cf80c9bb239de308a93f9d509320be4054254beb92caec",
+      "sha256": "2da87e431d6ae78d2a4bed6a2f5aab85371191662e55beeb0ecce526c74cd4e7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2637,6 +2906,9 @@
         "codex": [
           ".agents/skills/worker-execute/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/worker-execute/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/worker-execute/SKILL.md"
         ]
@@ -2647,7 +2919,7 @@
       "type": "skill",
       "name": "worker-report",
       "tier": "core",
-      "sha256": "0b979b9004b8127d22ae43a0bf857f28e346e2c30337566ded41a928b9a82266",
+      "sha256": "3043b4facce4acd7e683e7a5063d5e077843cdf17c317766b3f37e1a90905438",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2659,6 +2931,9 @@
         "codex": [
           ".agents/skills/worker-report/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/worker-report/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/worker-report/SKILL.md"
         ]
@@ -2669,7 +2944,7 @@
       "type": "skill",
       "name": "write-clear",
       "tier": "core",
-      "sha256": "f3f0a452840ba05b65a1d603a3f2bc59c7c19f85d049942cdd7caf70e215de62",
+      "sha256": "89f04a18f1126e44b9130cc1f6cf8d7f7ed4d889489fda4f86885215cd5b3479",
       "triggers": [
         "clear writing",
         "concise writing",
@@ -2689,6 +2964,9 @@
         "codex": [
           ".agents/skills/write-clear/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/write-clear/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/write-clear/SKILL.md"
         ]
@@ -2699,7 +2977,7 @@
       "type": "workflow",
       "name": "architect",
       "tier": "core",
-      "sha256": "e546c7aee76f3cc5d353d1b46f32621717e538af8eeb806edc1d9ddf7846a5aa",
+      "sha256": "0eec1f803d53a251a4fcd326f13214d072e262c6d54a31af6e7e7cda0aa78456",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2724,7 +3002,7 @@
       "type": "workflow",
       "name": "async-maint",
       "tier": "core",
-      "sha256": "522631145b718d198e4e5a6ffe0001dd5be24cdb40bbd7754f753ab12e0efda5",
+      "sha256": "2dec54c6568e80169bdb72e90bb5610648031e6b51e2b7911c138c50e0a2b759",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2746,7 +3024,7 @@
       "type": "workflow",
       "name": "audit",
       "tier": "core",
-      "sha256": "b6d293d3a88dba37d92cd4c58e3778a10990c0c9d51de7d7b0c4cb1b7ebc5fc5",
+      "sha256": "4f32d94cadb157d243f8ec3d11baf6c0e8643fe6bcc0f7c2112109d5191460f5",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2771,7 +3049,7 @@
       "type": "workflow",
       "name": "backlog-status",
       "tier": "core",
-      "sha256": "419337c6631a621f4037a99befed3c2246c744a3f631761589ddfd20f058343b",
+      "sha256": "553e00084493bffb6ba696e4fe29c7723cdfc727ea3413521bbd695863da9a6b",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2796,7 +3074,7 @@
       "type": "workflow",
       "name": "build",
       "tier": "core",
-      "sha256": "57d64d3617d71f4055a44ac19f2ac21e3c94b759569e1524f96dac63dac67ffa",
+      "sha256": "7b940a29c4b8821f8301ebb1bb3dbeb1db79666a7ee1efbed16cd9f14ad841b2",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2821,7 +3099,7 @@
       "type": "workflow",
       "name": "close",
       "tier": "core",
-      "sha256": "d4a3c9aea580f68f372fed91b3db7e4e56417c6e2c651caf5fb310232070e6a5",
+      "sha256": "a030d0399ac7242d0ae8c54ffd312ec5e85b1bce95756ed315333d7419b4b642",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2846,7 +3124,7 @@
       "type": "workflow",
       "name": "debug",
       "tier": "core",
-      "sha256": "152488cb71a5dfd32b23bcc1714a0d86550323fb4d9573a7f4c2a1037cf48bfe",
+      "sha256": "16d997a4ed0e654ca70bd7aa8fa0ef34780f7180858598f0073e58bf619a6343",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2871,7 +3149,7 @@
       "type": "workflow",
       "name": "explore",
       "tier": "core",
-      "sha256": "07612f6080f6f1963b2ab81fbb1b849b2d2c2d922180c33784e0ba0b51d3df22",
+      "sha256": "c5138368a24212a4f82a8bec321300e10cfbfb676c6f0edf0617d33fcc24a5ea",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2921,7 +3199,7 @@
       "type": "workflow",
       "name": "land",
       "tier": "core",
-      "sha256": "68ba8ce6289bf17b4cca146a399986a9308bc2b31a386ae0b81b6937c4871658",
+      "sha256": "580b34aabbecff9ab3905d49ef25b62229607e283f6ff2520850554469f4c688",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2946,7 +3224,7 @@
       "type": "workflow",
       "name": "onboard",
       "tier": "core",
-      "sha256": "803c17119f65a1e9cf315d0eb3eea4df44d93c1156be98cda779305e2d5c95e0",
+      "sha256": "c031b71ef59c3a41dfca70d24b01e64cf5affd0a099d4e157dbeb0f53f22caa7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2971,7 +3249,7 @@
       "type": "workflow",
       "name": "plan",
       "tier": "core",
-      "sha256": "20eb9206a2683443c5217252d4e3536c8dce603fcea87c8bcd712685e9ac7d14",
+      "sha256": "0a360949e37e612f5012a572ebfdabfe42ee8b62a5c600ec2ca7e3a32fe263e1",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2996,7 +3274,7 @@
       "type": "workflow",
       "name": "prd",
       "tier": "core",
-      "sha256": "572a25fa18f580828a7ab5d1ba25eef1cd781017aa68333a1c54b36c41a18f29",
+      "sha256": "bfcfb251ec080a8d3faebf3a0f315a6ec0affa9abf492a88d2a1550be1f7c431",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3021,7 +3299,7 @@
       "type": "workflow",
       "name": "quick-fix",
       "tier": "core",
-      "sha256": "c6a4c5ab90a44a8b610221a2fb543ae73f4c95c6c45642fa862fe887b5fc5c8d",
+      "sha256": "24476749881553a9548b4e85d536d380f68bae4f01c82f08ae965ed1b30414b1",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3046,7 +3324,7 @@
       "type": "workflow",
       "name": "refactor",
       "tier": "core",
-      "sha256": "864791f1c4d52001ee6976bee6d534a58ef757a73bed8b3872b39aabcd44b85f",
+      "sha256": "441cfae191d7e535f960a00574b707223612da3dd20ce046b49d19f6595608d1",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3096,7 +3374,7 @@
       "type": "workflow",
       "name": "research",
       "tier": "core",
-      "sha256": "162d6896cd9d716020b2d5027dc5eea265f0bc9633b3e1e46f23b3814089ba82",
+      "sha256": "9fa35d47cacbad64a4ad4b1665a2b2e1f182d32724b70a53b190e88b5fb501be",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3121,7 +3399,7 @@
       "type": "workflow",
       "name": "ship",
       "tier": "core",
-      "sha256": "ef34ba63754fab0eab154b89f7c8d91fa2af0a52df51b473a9c1f66876f96dc0",
+      "sha256": "73d0ee5144c0017a452176736338bf87ad80e1762b8b041100cf7383a464f6ee",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3146,7 +3424,7 @@
       "type": "workflow",
       "name": "test",
       "tier": "core",
-      "sha256": "de7d9ac5953b19477100601e51583fbd8665a9c7a24ce11022872d7e562d4889",
+      "sha256": "15f661db6630a00bb9ecf7b0447e4287d360d05cf2b361d2589d624754189bfe",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3221,7 +3499,7 @@
       "type": "workflow",
       "name": "verify-pre-deploy",
       "tier": "core",
-      "sha256": "f658ec232d21a928e38f39c27fe789710739f5bb04809c200177e70cd312748a",
+      "sha256": "1b900c5b994b53e552802989a1287ef6e6b42467b637e5f98309eb5817949abc",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3246,7 +3524,7 @@
       "type": "workflow",
       "name": "walk",
       "tier": "core",
-      "sha256": "578b8f780d49658aca979c34e643377a5c341398219eb77a239de6283cfe4761",
+      "sha256": "2a8503da9ae75aa1f2c1b2d05102888ec2e0ce36efe897811f6a3bd21617cc1d",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3271,7 +3549,7 @@
       "type": "workflow",
       "name": "wrap-up",
       "tier": "core",
-      "sha256": "d226d7d370ed00f558c73d9cf349c585e3dd468458a437a112f9e5cec02fa2c1",
+      "sha256": "18188077b3af74dc5cfbe19ba95df5001c6665011717b0a513501bdc9eaccfe3",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,

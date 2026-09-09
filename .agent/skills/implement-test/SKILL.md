@@ -1,76 +1,82 @@
 ---
 name: implement-test
-description: Generate unit/integration tests following project patterns. Use when adding test coverage for existing or new components.
+description: Add unit, integration, or reproduction tests using the project's existing runner. Use for test coverage or a failing bug reproduction; test-only work does not authorize production refactoring.
 tier: core
 ---
 
 # Implement Test
 
-Generate tests following established project patterns. Node-first: test decisions, not wiring.
-
-Use the project's existing runner in single-run (non-watch) mode — never introduce a new test
-framework. The verification gate itself lives in `foundation-testing.md`; this skill covers how to
-write the tests that feed it.
-
 ## When to Use
-- Adding test coverage for new features
-- Writing reproduction tests for bugs
-- Extending coverage after refactoring
-- TDD implementation
+
+Use for coverage, characterization, TDD tests, or a requested reproduction. Resolve whether the
+deliverable is passing coverage or an intentional behavioral failure before choosing the test.
+
+[foundation-testing](../../../.agent/rules/foundation-testing.md) owns runner collection, evidence validity,
+and lifecycle gates. This skill owns selection of assertions, seams, and fixtures.
 
 ## Approach
 
-### Phase 0: Extract Before You Test (Node-First)
-Prefer pure-function tests over rendered-component tests:
-1. If the logic under test lives inside a hook/component (decision, math, formatting, bucketing),
-   **extract it into a sibling pure module first**, then unit-test that module directly with the
-   project's runner in a node environment — no DOM harness.
-2. Leave only orchestration (timers, subscriptions, DOM/pointer events) in the hook/component;
-   cover that thin seam with an integration test or manual QA.
-3. WHY: node-environment pure tests are fast, deterministic, and survive UI refactors; DOM-harness
-   tests are slow and couple assertions to markup that changes for unrelated reasons.
-
 ### Phase 1: Test Discovery
-1. Identify the unit under test; read sibling test files for the project's style and helpers.
-2. **Confirm collection**: check the runner's config and verify its `include` globs will actually
-   collect the new file's path + name. A test outside the globs silently never runs — a false
-   sense of coverage (`foundation-testing.md` §5).
-3. Confirm the environment the file needs (node vs DOM) and how the project declares it
-   (per-file pragma, config glob, separate config).
-4. For state-heavy components, note the state library and plan store seeding via its test
-   provider/factory pattern.
 
-### Phase 2: Test Planning
-Plan per file:
-- **Happy path**: core behavior works.
-- **Edge cases**: empty states, boundary values, null/undefined inputs.
-- **Error cases**: invalid inputs, failures, timeouts.
-- **Accessibility** (UI only): keyboard access, role-based queries.
-- Table-driven cases for contract-style suites (one `it.each`-style table beats N copies).
+Read the unit and sibling tests. Confirm runner configuration, filename/path collection, and
+required environment. Use the existing runner in single-run mode; do not introduce a framework
+to satisfy a testing preference.
 
-### Phase 3: Implementation
-- **Naming**: follow the project's conventions (co-located `*.test.*`; a temporary repro-marked
-  file for bug reproductions, renamed into its owning suite once the fix lands).
-- **Determinism — time**: anchor time-dependent logic to a fixed baseline date with fake timers
-  (`setSystemTime` or the runner's equivalent) so fixtures and the runner share one clock —
-  prevents bucketing drift (`foundation-testing.md` §7).
-- **Mocks match production schemas**: build fixtures from the real types with `Partial<T>`-style
-  helpers so a test states only the fields it cares about; update centralized fixtures first when
-  a schema changes. Mock external service seams, not internal modules.
-- Prefer role/behavior queries over test-ids for UI tests.
+Consume any supplied reproduction identity, intended behavior, unfixed state, and result.
+An applicable existing repro need not be recreated. A no-edits request does not authorize writing
+tests; provide the requested analysis from available evidence.
 
-### Phase 4: Verification
-1. Run the new file with the project's runner in single-run mode and see it pass. For repro
-   tests: see it FAIL first against the unfixed code — that failure is the point.
-2. Close with the Graduated Verification Gate (`foundation-testing.md` §1) at the tier the
-   surrounding change demands.
+### Phase 2: Select the Behavioral Seam
 
-## Constraints
-- Framework-agnostic discipline, project-specific commands: adapt to the repo's runner and
-  scripts; do not restate or replace the gate in `foundation-testing.md`.
-- Follow existing test patterns in the codebase before inventing new ones.
-- Do not use snapshot tests unless explicitly requested.
-- Keep exactly one active bug-repro file in the tree at any stable point.
+Prefer an existing public seam. Pure decision, math, formatting, and bucketing functions are good
+unit-test targets. Event ordering, rendering, subscriptions, and lifecycle ownership need the
+integration seam where the defect occurs; a pure helper test cannot establish those behaviors.
 
-## Output
-- Test file(s) created, confirmed collected by the runner, and passing
+Do not extract production logic for a test-only assignment. Where an authorized refactor makes
+extraction justified, first capture behavior against the existing seam and verify extraction
+separately. A preference for a node environment is not authority to change the system under diagnosis.
+
+Plan meaningful assertions for core behavior, consequential boundaries, invalid input, errors,
+and timeouts. For UI, prefer role/behavior queries and relevant keyboard checks. Table-driven
+cases help when they express the same contract across inputs; do not multiply equivalent cases.
+
+### Phase 3: Build Fixtures
+
+Use the project's fixture/provider/factory patterns to seed state without bypassing the boundary
+being tested. Match production schemas and construct complete valid objects; partial overrides
+are useful when the factory supplies the remaining required fields. Avoid type assertions that
+hide invalid fixtures.
+
+Anchor time-sensitive tests to a shared fixed clock and control scheduling or random seeds when
+they affect the contract. Restore test-owned timers, stores, and mocks between cases. Mock an
+external service seam when isolation is required, while keeping the policy or transformation
+under test real.
+
+Use existing suites for regressions when practical. A temporary reproduction file belongs to
+this issue and owner, not to a global singleton slot. Preserve other owners' repro files.
+Rename or retire only owned temporary evidence when the task authorizes it and useful proof
+remains discoverable; keep the assertion's identity through the move.
+
+### Phase 4: Verify and Handoff
+
+Confirm actual collection and assertion execution in single-run mode.
+
+- Ordinary coverage: report the relevant passing assertions and remaining coverage limits.
+- Reproduction-only: report the collected test's intended behavioral failure on the unfixed
+  state and stop. Red is the requested deliverable; do not repair production to turn it green.
+- Tests accompanying an authorized repair: pair the same assertion and intended outcome across
+  unfixed/fixed states under Evidence identity and cite-or-run in the shared testing rule.
+
+Setup/import failures are blocked proof, not behavioral red. Explain material oracle/fixture
+changes from the intended contract; do not weaken expectations to obtain a pass. Re-establish
+applicable before/after evidence when assertion meaning changes.
+
+Use the shared Lifecycle-Aware Verification Gate for applicable checks. Do not duplicate it or
+promise broad final-tree validation from a focused test run.
+
+## Definition of Done
+
+The requested test output is collected and exercises the intended seam. Return its identity,
+behavioral assertion, fixture/input, relevant state, actual result, and evidence limits.
+For a reproduction handoff, include the failing outcome and next repair owner without implying
+new authority. Intentional red remains visible until an authorized repair satisfies it.

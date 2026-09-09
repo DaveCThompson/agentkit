@@ -12,6 +12,10 @@ node_modules/
 
 # --- Local tool state ---
 .orchestrator.lock
+.orchestrator.lock.guard
+# Pending operations retain private preimages and prepared settings. Never publish them.
+.agentkit.pending.json
+*.agentkit-stage-*
 .fallow/
 .tmp-test/
 
