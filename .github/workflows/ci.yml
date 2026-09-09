@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   test:
+    name: test-matrix
     strategy:
       fail-fast: false
       matrix:
@@ -24,7 +25,19 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm test
 
+  test-required:
+    name: test
+    if: ${{ always() }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every test matrix job to pass
+        if: ${{ needs.test.result != 'success' }}
+        run: exit 1
+      - run: echo "test matrix passed"
+
   self-sync:
+    name: self-sync-matrix
     strategy:
       fail-fast: false
       matrix:
@@ -41,3 +54,14 @@ jobs:
         run: node agentkit.mjs check . --quick
       - name: Content integrity
         run: node agentkit.mjs check . --content
+
+  self-sync-required:
+    name: self-sync
+    if: ${{ always() }}
+    needs: [self-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every self-sync matrix job to pass
+        if: ${{ needs.self-sync.result != 'success' }}
+        run: exit 1
+      - run: echo "self-sync matrix passed"
