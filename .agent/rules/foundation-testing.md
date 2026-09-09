@@ -72,6 +72,13 @@ Label proposed paths as new. Confirm all relevant consumers before claiming univ
 A successful fetch establishes what a source says, not independent verification of its claims.
 An empty, excluded, malformed or skipped scan cannot substantiate a complete invariant pass.
 
+A cited path beginning `governance/`, `integrations/`, `templates/` or `reports/` is relative to the
+selected AgentKit checkout, not to the current project. Consumer projects do not contain those
+directories. Locate the checkout from the existing agentkit launcher or configured vendor hook and
+read the file there. If the checkout is unavailable, say so, use the shipped rule or skill text you
+already have, and name the detail that still needs the source. Do not report the citation as broken,
+copy a governance tree into the project, or invent a project-local path to satisfy it.
+
 #### 1C. Red-Proof (Detection Proof)
 
 When claiming a new or changed gate detects a violation, exercise a meaningful violating fixture

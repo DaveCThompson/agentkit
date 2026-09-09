@@ -1,4 +1,4 @@
-# Repo-root .ignore — installed by `agentkit sync` as `.ignore` (NOT `.gitignore`).
+# Repo-root .ignore (NOT `.gitignore`). Copy it into a project by hand; sync does not write it.
 # Honored by ripgrep-based search, including Claude Code's Grep tool. Keeps finished/inert
 # material OUT of the default agent search path while it stays TRACKED in git.
 # Canonical spec: governance/docs-standard.md §(e),(f).

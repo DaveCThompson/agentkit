@@ -63,3 +63,4 @@ changelog.d/*.md
 
 # External / copyrighted source material never belongs in the public repo.
 ai-advantage/
+.writing/

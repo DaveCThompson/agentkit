@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.1.1] — 2026-09-09 — Let existing consumers take a release
+
+### Fixed
+- Refresh a `borrowed` managed block when the on-disk bytes still match the lock record. Previously
+  only `introduced` blocks were compared against the recorded value; a `borrowed` block was compared
+  against the new desired content, so every release refused and the block was permanently wedged. An
+  edited block still refuses, and a legacy `unresolved` block still refuses by design: that record
+  proves membership only, so the kit must not overwrite content it cannot show it wrote. The operator
+  removes that one contribution to re-establish introduction, which the message and the migration
+  checklist now state plainly.
+- Compare object settings contributions by value rather than by serialization. Key order alone no
+  longer conflicts, so a project whose `opencode.json` already declares the same MCP server with
+  reordered keys is no longer refused, and reordering an adapter's object literal is not a breaking
+  change for consumers.
+- Report the value the kit wanted alongside the current value in a settings conflict, and describe
+  the disposition that matches the actual ownership. The message previously printed two identical
+  hashes and told the operator to restore an edited introduced value that did not exist.
+- Add `.writing/` to the ignore lines sync maintains in a consumer. The writing store's own ignore
+  file lives inside the ignored directory and is therefore never committed.
+- Report one `OWNERSHIP-UNRESOLVED` verdict per native file instead of one per record.
+
+### Changed
+- State once, in an always-loaded rule, that `governance/`, `integrations/`, `templates/` and
+  `reports/` citations resolve against the selected kit checkout rather than the consumer project,
+  with an explicit fallback when that checkout is unavailable. 24 of 25 shipped citations previously
+  gave a consumer's agent no way to resolve them, and `check --content` cannot detect this because it
+  resolves those roots against `kitRoot`.
+- Correct the `.ignore` header: sync does not install it.
+
+### Evidence and provenance
+- Need: an independent downstream-readiness review judged 1.1.0 not consumable by a 0.3.x project.
+  Reproduced on synthetic consumers built from the kit's own historical shapes, not on either real
+  project.
+- New suite `agentkit.downstream.test.mjs`: six tests, all failing before these repairs except the
+  preservation control. The control was additionally verified to fail against a deliberately weakened
+  guard, so it detects a regression rather than passing vacuously.
+- Not covered: no native client was launched, and neither real consumer has been migrated. Vendor
+  surface claims remain file-shape evidence.
+
 ## [1.1.0] — 2026-09-09 — Reconcile project upgrades and writing styles
 
 ### Added
