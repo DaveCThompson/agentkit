@@ -1025,15 +1025,20 @@ function preflightTomlMerge(before, after, action, prior) {
   if (userClaims(old) !== userClaims(next)) throw settingsFailure(action, prior, 'document', before, 'replacement would change the semantic location of project-owned settings');
 }
 
-function settingsFailure(action, prior, key, current, reason = 'contribution differs from the required or retained value') {
+function settingsFailure(action, prior, key, current, reason = 'contribution differs from the required or retained value', desired = undefined) {
   const p = prior.find(r => r.kind === action.merge && r.key === key);
   const ownership = p?.ownership || 'unowned';
   const safeKey = action.merge === 'claude-permissions' ? 'allow-entry' : /^[a-zA-Z0-9_. -]+$/.test(String(key)) ? String(key) : 'redacted-key';
   const digest = value => rawHash(Buffer.from(JSON.stringify(value) ?? 'null'));
-  const nextAction = 'Inspect only this native contribution. Preserve unrelated settings. Restore an edited introduced value, or explicitly remove the named ambiguous contribution only after choosing its disposition, then rerun sync. Do not edit the machine lock or bulk-clear settings.';
+  // The operator needs the disposition that actually applies. A contribution the kit never introduced
+  // cannot be "restored", and reporting only current/prior hides the value the kit wanted instead.
+  const nextAction = ownership === 'introduced'
+    ? 'Inspect only this native contribution. Preserve unrelated settings. Restore the edited introduced value, or explicitly remove it after choosing its disposition, then rerun sync. Do not edit the machine lock or bulk-clear settings.'
+    : 'Inspect only this native contribution. Preserve unrelated settings. The kit did not introduce this value, so choose whether to keep the project value or accept the kit value, then remove the named contribution from the native file and rerun sync. Do not edit the machine lock or bulk-clear settings.';
   const context = { file: action.file || '(unspecified native file)', kind: action.merge, key: safeKey,
     ownership, state: ownership === 'introduced' ? 'edited' : ownership,
-    hash: digest(current), priorHash: p ? digest(p.value) : null, keyHash: digest(key), action: nextAction };
+    hash: digest(current), priorHash: p ? digest(p.value) : null,
+    desiredHash: desired === undefined ? null : digest(desired), keyHash: digest(key), action: nextAction };
   const error = new Error(context.file + ': settings conflict (' + context.kind + ', key ' + context.key + ', ownership ' + ownership + '): ' + reason + '; ' + nextAction);
   error.settingsConflict = context;
   return error;
@@ -1048,8 +1053,13 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
   const prior = lockKeys.filter(x => x && typeof x === 'object' && x.kind === kind);
   const records = [];
   const record = (key, value, ownership) => records.push({ kind, key, value, ownership });
-  const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const conflict = (key, current) => { throw settingsFailure(action, prior, key, current); };
+  // Compare by value, not by serialization. Object key order carries no meaning in these settings,
+  // so an order-only difference is the same contribution; array order is preserved because it does.
+  const canonical = value => Array.isArray(value) ? value.map(canonical)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])]))
+    : value;
+  const equal = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+  const conflict = (key, current, desired) => { throw settingsFailure(action, prior, key, current, undefined, desired); };
   if (kind === 'toml-block' || kind === 'md-block') {
     const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
     const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
@@ -1060,12 +1070,18 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     const current = starts ? text.slice(text.indexOf(start), text.indexOf(end) + end.length) : null;
     const desired = action.data ? start + '\n' + action.data + '\n' + end : null;
     const p = prior[0];
-    if (p && p.ownership === 'introduced' && current !== p.value) conflict('block', current);
-    if (current !== null && (!p || p.ownership !== 'introduced') && current !== desired) {
+    // Ask whether the on-disk block is exactly what the lock recorded. A block the kit provably
+    // wrote (`introduced`), or verified byte-identical when it adopted it (`borrowed`), may be
+    // refreshed while unedited — every release changes block content, so testing it against
+    // `desired` instead wedges it permanently. A legacy `unresolved` record proves membership only:
+    // the kit cannot show it wrote that block, so it must not overwrite it. The operator removes the
+    // contribution to re-establish introduction.
+    if (p && p.ownership !== 'unresolved' && current !== p.value) conflict('block', current, desired);
+    if (current !== null && (!p || p.ownership === 'unresolved') && current !== desired) {
       // Empty explicit Markdown markers are an enrollment request. Nonempty blocks are not.
       const emptyOptIn = kind === 'md-block' && !text.slice(text.indexOf(start) + start.length, text.indexOf(end)).trim() && !legacy.length;
       if (!emptyOptIn) {
-        if (desired !== null) conflict('block', current);
+        if (desired !== null) conflict('block', current, desired);
         if (p) records.push(p);
         return { content: null, managedKeys: records, unresolved: legacy };
       }
@@ -1087,7 +1103,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     let allow = [...(perms.allow || [])];
     const desired = action.data || [];
     for (const p of prior) {
-      if (p.ownership === 'introduced' && !allow.includes(p.value)) conflict(p.key, null);
+      if (p.ownership === 'introduced' && !allow.includes(p.value)) conflict(p.key, null, p.value);
       if (!desired.includes(p.value) && p.ownership === 'introduced') allow = allow.filter(x => x !== p.value);
       else if (!desired.includes(p.value) && allow.includes(p.value)) records.push(p);
     }
@@ -1109,7 +1125,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     for (const p of prior) {
       const groups = hooks[p.key] || [];
       const exact = groups.findIndex(g => equal(g, p.value));
-      if (p.ownership === 'introduced' && exact < 0) conflict(p.key, groups);
+      if (p.ownership === 'introduced' && exact < 0) conflict(p.key, groups, p.value);
       if (!desired.some(d => d.key === p.key && equal(d.value, p.value))) {
         if (p.ownership === 'introduced') {
           groups.splice(exact, 1);
@@ -1131,7 +1147,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     if (json[key] !== undefined && (!json[key] || typeof json[key] !== 'object' || Array.isArray(json[key]))) throw new Error('invalid MCP object');
     const servers = json[key] || {};
     for (const p of prior) {
-      if (p.ownership === 'introduced' && !equal(servers[p.key], p.value)) conflict(p.key, servers[p.key]);
+      if (p.ownership === 'introduced' && !equal(servers[p.key], p.value)) conflict(p.key, servers[p.key], p.value);
       if (!Object.hasOwn(action.data, p.key)) {
         if (p.ownership === 'introduced') delete servers[p.key]; else if (Object.hasOwn(servers, p.key)) records.push({ ...p, value: servers[p.key] });
       }
@@ -1139,7 +1155,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     for (const [name, value] of Object.entries(action.data)) {
       const p = prior.find(x => x.key === name);
       const exists = Object.hasOwn(servers, name);
-      if (exists && !equal(servers[name], value) && p?.ownership !== 'introduced') conflict(name, servers[name]);
+      if (exists && !equal(servers[name], value) && p?.ownership !== 'introduced') conflict(name, servers[name], value);
       record(name, value, exists ? (p?.ownership || (legacy.includes(name) ? 'unresolved' : 'borrowed')) : 'introduced');
       servers[name] = value;
     }
@@ -1261,7 +1277,9 @@ export function checkProject(projectRoot, opts = {}) {
     try {
       const settings = prepareSettings(projectRoot, plan.settingsActions, lock);
       for (const effect of settings.effects) results.push({ rel: effect.rel, verdict: 'SETTINGS-STALE' });
-      for (const item of settings.unresolved) results.push({ rel: item.file, verdict: 'OWNERSHIP-UNRESOLVED' });
+      // One verdict per native file. Ownership is reconciled per file, so a row per record only
+      // repeats the same required action.
+      for (const file of new Set(settings.unresolved.map(item => item.file))) results.push({ rel: file, verdict: 'OWNERSHIP-UNRESOLVED' });
     } catch (error) {
       results.push({ rel: error.settingsConflict?.file || '(settings)', verdict: 'SETTINGS-CONFLICT', detail: error.message, ...(error.settingsConflict ? { settingsConflict: error.settingsConflict } : {}) });
     }
@@ -1717,7 +1735,9 @@ function mutationInputs(projectRoot, plan) {
 }
 function recoveryIgnoreEffect(projectRoot) {
   const existing = fileBytes(projectRoot, '.gitignore')?.toString('utf8') ?? '';
-  const needed = ['.agentkit.pending.json', '*.agentkit-stage-*'];
+  // `.writing/` holds project-local writing samples. Its own inner ignore file is never committed,
+  // so the consumer's root ignore is what actually keeps samples out of the repository.
+  const needed = ['.agentkit.pending.json', '*.agentkit-stage-*', '.writing/'];
   const missing = needed.filter(line => !existing.split(/\r?\n/).includes(line));
   return missing.length ? snapshotEffect(projectRoot, '.gitignore',
     existing + (existing && !existing.endsWith('\n') ? '\n' : '') + missing.join('\n') + '\n') : null;

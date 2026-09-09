@@ -124,6 +124,17 @@ relocation mechanics, not a second device, cloud service, offline hydration or a
      remove only the superseded old hook from native settings, retaining unrelated hooks and policy,
      then sync and check again. Verify one intended kit SessionStart check remains. Do not bulk-clear
      settings, rewrite generated skill files, or restore machine-specific paths as fleet policy.
+   - **Managed blocks:** a release changes the `AGENTS.md` and `.codex/config.toml` managed blocks.
+     Sync refreshes an `introduced` or `borrowed` block whose bytes still match the lock record. It
+     refuses a block edited inside the markers, and refuses a legacy `unresolved` block because that
+     record cannot show the kit wrote it. Expect one refusal per managed block when upgrading from a
+     0.3.x lock. For each: compare the reported current and desired hashes, decide whether to keep
+     the local content, then remove that one contribution from the native file — leave the empty
+     markers in place to stay enrolled — and sync again to establish new introduction. Reconcile one
+     block at a time. Do not empty the whole native file, use `--force`, or hand-edit the lock.
+   - **Existing writing data:** sync adds `.writing/` to the project ignore file. That does not
+     untrack a `.writing` path a project already committed. Check `git ls-files .writing` before the
+     first writing operation and decide explicitly whether to untrack or keep those files.
    - **References and local work:** resolve active kit governance citations in the selected kit
      checkout; keep project truth in the declared project KB. Repair migration-created broken routing
      at its canonical owner. Separate pre-existing documentation warnings from upgrade regressions.

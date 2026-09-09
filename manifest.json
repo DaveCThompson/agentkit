@@ -1,5 +1,5 @@
 {
-  "kitVersion": "1.1.0",
+  "kitVersion": "1.1.1",
   "compiledAt": "2026-09-09",
   "note": "COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
@@ -148,7 +148,7 @@
       "type": "rule",
       "name": "foundation-testing",
       "tier": "core",
-      "sha256": "9200284f565a39a1ea2e7ce31f58210eb674ebcf3f8aba59c59cf46444e83c36",
+      "sha256": "814c94088b20dd4c3d7bc7083f82b8bcf103fa204d4f2dd24421aacfde49113c",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
