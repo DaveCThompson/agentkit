@@ -221,6 +221,13 @@ test('injectHeader after frontmatter; stripHeader removes it', () => {
   assert.equal(stripHeader(out), SKILL_MD.replace(/\r\n/g, '\n'));
 });
 
+test('injectHeader preserves executable shebangs before the generated header', () => {
+  const source = '#!/usr/bin/env node\nconsole.log("ok");\n';
+  const out = injectHeader(source, '.agent/scripts/example.mjs', '.mjs');
+  assert.ok(out.startsWith('#!/usr/bin/env node\n// AGENTKIT GENERATED'));
+  assert.equal(stripHeader(out), source);
+});
+
 test('tomlMultiline escapes backslashes and triple quotes', () => {
   const s = tomlMultiline('a\\b """ c');
   assert.ok(s.includes('a\\\\b'));
@@ -373,6 +380,8 @@ test('sync generates per-vendor native files (golden)', () => {
   assert.ok(toml.includes('description = "Plan a feature end to end."'));
   assert.ok(toml.includes('prompt = """'));
   assert.ok(!exists(proj, '.gemini/commands/internal.toml'));
+  assert.ok(exists(proj, '.gemini/skills/implement-feature/SKILL.md'), 'gemini emits Agent Skills mirror');
+  assert.ok(exists(proj, '.gemini/skills/implement-feature/references/notes.md'), 'gemini mirrors skill resources');
 
   // opencode: skills + native workflow commands + package.json created
   assert.ok(exists(proj, '.opencode/skills/implement-feature/SKILL.md'));
@@ -401,6 +410,16 @@ test('sync generates per-vendor native files (golden)', () => {
   const lock = JSON.parse(read(proj, '.agentkit.lock'));
   assert.equal(lock.kitVersion, '0.1.0');
   assert.ok(Object.keys(lock.files).length > 10);
+});
+
+test('gemini adapter mirrors canonical skills and retains workflow commands', () => {
+  const skill = { srcRel: '.agent/skills/write-content/SKILL.md', subPath: 'skills/write-content/SKILL.md', type: 'skill', name: 'write-content', owner: 'core', fm: { name: 'write-content', description: 'Write sustained content.', tier: 'core' }, body: '# Content\n', raw: '---\nname: write-content\ndescription: Write sustained content.\ntier: core\n---\n\n# Content\n' };
+  const reference = { srcRel: '.agent/skills/write-content/references/guide.md', subPath: 'skills/write-content/references/guide.md', type: 'skill', name: 'write-content', owner: 'core', fm: null, body: '# Guide\n', raw: '# Guide\n' };
+  const workflow = { srcRel: '.agent/workflows/writing-style.md', subPath: 'workflows/writing-style.md', type: 'workflow', name: 'writing-style', owner: 'core', fm: { description: 'Manage writing style.' }, body: '# Workflow\n', raw: '---\ndescription: Manage writing style.\n---\n\n# Workflow\n' };
+  const out = adapters.gemini([skill, reference, workflow], { hooks: [], mcpServers: {} });
+  assert.ok(out.files.some((file) => file.rel === '.gemini/skills/write-content/SKILL.md'));
+  assert.ok(out.files.some((file) => file.rel === '.gemini/skills/write-content/references/guide.md'));
+  assert.ok(out.files.some((file) => file.rel === '.gemini/commands/writing-style.toml'));
 });
 
 test('workflow routing: opencode→command, codex→wf-skill, claude→command-only', () => {
@@ -520,6 +539,8 @@ test('tech-tier selection: react skill ships only when stack declares react', ()
 // Communication-writing update (2026-08-10, reviewed addition): the three new core assets below
 // intentionally join the default selection. They are not a re-tiering or an accidental selection
 // change: they provide the requested session, ticket, and UI-copy guidance.
+// Writing-quality update (2026-08-30, reviewed addition): the rule and skill below intentionally join
+// the default selection as core guidance for reader-facing content.
 const PRE_KINDS_SNAPSHOT = [
   '.agent/hooks.json',
   '.agent/rules/foundation-accessibility.md',
@@ -548,6 +569,7 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/rules/pattern-state.md',
   '.agent/rules/pattern-structure.md',
   '.agent/rules/pattern-ui-copy.md',
+  '.agent/rules/pattern-writing-quality.md',
   '.agent/rules/tech-node-gate.md',
   '.agent/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md',
   '.agent/skills/_templates/SKILL-TEMPLATE.md',
@@ -579,6 +601,9 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/skills/implement-session-wrap-up/SKILL.md',
   '.agent/skills/implement-test/SKILL.md',
   '.agent/skills/kit-contribute/SKILL.md',
+  '.agent/skills/manage-writing-style/SKILL.md',
+  '.agent/skills/manage-writing-style/references/style-schema.md',
+  '.agent/skills/manage-writing-style/scripts/writing-style.mjs',
   '.agent/skills/maintain-docs/SKILL.md',
   '.agent/skills/optimize-agent/SKILL.md',
   '.agent/skills/orchestrate-decompose/SKILL.md',
@@ -608,7 +633,9 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/skills/worker-bootstrap/SKILL.md',
   '.agent/skills/worker-execute/SKILL.md',
   '.agent/skills/worker-report/SKILL.md',
-  '.agent/skills/write-clear/SKILL.md',
+  '.agent/skills/respond-clearly/SKILL.md',
+  '.agent/skills/write-content/SKILL.md',
+  '.agent/skills/write-ui-copy/SKILL.md',
   '.agent/workflows/architect.md',
   '.agent/workflows/async-maint.md',
   '.agent/workflows/audit.md',
@@ -627,6 +654,7 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/workflows/test.md',
   '.agent/workflows/verify-pre-deploy.md',
   '.agent/workflows/wrap-up.md',
+  '.agent/workflows/writing-style.md',
 ].sort();
 
 test('D2 snapshot: kinds-absent config selects byte-identically to the pre-kinds baseline (real kit sources)', () => {

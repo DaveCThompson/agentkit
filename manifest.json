@@ -1,6 +1,6 @@
 {
-  "kitVersion": "0.2.6",
-  "compiledAt": "2026-08-21",
+  "kitVersion": "0.3.0",
+  "compiledAt": "2026-08-31",
   "note": "COMPILED by agentkit sync/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
     {
@@ -544,6 +544,25 @@
       }
     },
     {
+      "path": ".agent/rules/pattern-writing-quality.md",
+      "type": "rule",
+      "name": "pattern-writing-quality",
+      "tier": "core",
+      "sha256": "e48f1c636bf509f4ca2a0a40eb28b037f3079dd71ce4c917d3ea203a377ba279",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-writing-quality/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/rule-pattern-writing-quality/SKILL.md"
+        ]
+      }
+    },
+    {
       "path": ".agent/rules/tech-canvas-rendering.md",
       "type": "rule",
       "name": "tech-canvas-rendering",
@@ -713,6 +732,9 @@
         "codex": [
           ".agents/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
         ],
+        "gemini": [
+          ".gemini/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
+        ],
         "opencode": [
           ".opencode/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md"
         ]
@@ -734,6 +756,9 @@
         ],
         "codex": [
           ".agents/skills/_templates/SKILL-TEMPLATE.md"
+        ],
+        "gemini": [
+          ".gemini/skills/_templates/SKILL-TEMPLATE.md"
         ],
         "opencode": [
           ".opencode/skills/_templates/SKILL-TEMPLATE.md"
@@ -757,6 +782,9 @@
         "codex": [
           ".agents/skills/_templates/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/_templates/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/_templates/SKILL.md"
         ]
@@ -778,6 +806,9 @@
         ],
         "codex": [
           ".agents/skills/audit-accessibility/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-accessibility/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-accessibility/SKILL.md"
@@ -801,6 +832,9 @@
         "codex": [
           ".agents/skills/audit-auth-db/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-auth-db/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-auth-db/SKILL.md"
         ]
@@ -822,6 +856,9 @@
         ],
         "codex": [
           ".agents/skills/audit-code/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-code/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-code/SKILL.md"
@@ -845,6 +882,9 @@
         "codex": [
           ".agents/skills/audit-design-system/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-design-system/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-design-system/SKILL.md"
         ]
@@ -866,6 +906,9 @@
         ],
         "codex": [
           ".agents/skills/audit-docs/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-docs/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-docs/SKILL.md"
@@ -891,6 +934,9 @@
         "codex": [
           ".agents/skills/audit-hygiene-enforcement/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-hygiene-enforcement/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-hygiene-enforcement/SKILL.md"
         ]
@@ -912,6 +958,9 @@
         ],
         "codex": [
           ".agents/skills/audit-layout/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-layout/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-layout/SKILL.md"
@@ -937,6 +986,9 @@
         "codex": [
           ".agents/skills/audit-performance/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-performance/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-performance/SKILL.md"
         ]
@@ -960,6 +1012,9 @@
         ],
         "codex": [
           ".agents/skills/audit-refactor-opportunities/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-refactor-opportunities/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-refactor-opportunities/SKILL.md"
@@ -985,6 +1040,9 @@
         "codex": [
           ".agents/skills/audit-security/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-security/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-security/SKILL.md"
         ]
@@ -1006,6 +1064,9 @@
         ],
         "codex": [
           ".agents/skills/audit-typography/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-typography/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/audit-typography/SKILL.md"
@@ -1029,6 +1090,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/SKILL.md"
         ]
@@ -1050,6 +1114,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/accessibility.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/accessibility.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/accessibility.md"
@@ -1073,6 +1140,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/animation.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/animation.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/animation.md"
         ]
@@ -1094,6 +1164,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/composition.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/composition.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/composition.md"
@@ -1117,6 +1190,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/forms.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/forms.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/forms.md"
         ]
@@ -1138,6 +1214,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/hydration.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/hydration.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/hydration.md"
@@ -1161,6 +1240,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/images.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/images.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/images.md"
         ]
@@ -1182,6 +1264,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/interactive-states.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/interactive-states.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/interactive-states.md"
@@ -1205,6 +1290,9 @@
         "codex": [
           ".agents/skills/audit-web-interface/references/performance.md"
         ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/performance.md"
+        ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/performance.md"
         ]
@@ -1226,6 +1314,9 @@
         ],
         "codex": [
           ".agents/skills/audit-web-interface/references/typography.md"
+        ],
+        "gemini": [
+          ".gemini/skills/audit-web-interface/references/typography.md"
         ],
         "opencode": [
           ".opencode/skills/audit-web-interface/references/typography.md"
@@ -1255,6 +1346,9 @@
         "codex": [
           ".agents/skills/blindspot-pass/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/blindspot-pass/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/blindspot-pass/SKILL.md"
         ]
@@ -1278,6 +1372,9 @@
         ],
         "codex": [
           ".agents/skills/debug-deep/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/debug-deep/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/debug-deep/SKILL.md"
@@ -1303,6 +1400,9 @@
         "codex": [
           ".agents/skills/debug-standard/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/debug-standard/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/debug-standard/SKILL.md"
         ]
@@ -1324,6 +1424,9 @@
         ],
         "codex": [
           ".agents/skills/explore-concept/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/explore-concept/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/explore-concept/SKILL.md"
@@ -1349,6 +1452,9 @@
         "codex": [
           ".agents/skills/explore-tech/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/explore-tech/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/explore-tech/SKILL.md"
         ]
@@ -1370,6 +1476,9 @@
         ],
         "codex": [
           ".agents/skills/explore-ui-design/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/explore-ui-design/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/explore-ui-design/SKILL.md"
@@ -1393,6 +1502,9 @@
         "codex": [
           ".agents/skills/explore-ux/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/explore-ux/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/explore-ux/SKILL.md"
         ]
@@ -1415,6 +1527,9 @@
         "codex": [
           ".agents/skills/gsap-css-layout/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/gsap-css-layout/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/gsap-css-layout/SKILL.md"
         ]
@@ -1436,6 +1551,9 @@
         ],
         "codex": [
           ".agents/skills/handoff/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/handoff/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/handoff/SKILL.md"
@@ -1464,6 +1582,9 @@
         "codex": [
           ".agents/skills/health-agent/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/health-agent/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/health-agent/SKILL.md"
         ]
@@ -1485,6 +1606,9 @@
         ],
         "codex": [
           ".agents/skills/implement-component-scaffold/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/implement-component-scaffold/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/implement-component-scaffold/SKILL.md"
@@ -1510,6 +1634,9 @@
         "codex": [
           ".agents/skills/implement-feature/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-feature/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-feature/SKILL.md"
         ]
@@ -1531,6 +1658,9 @@
         ],
         "codex": [
           ".agents/skills/implement-flight-check/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/implement-flight-check/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/implement-flight-check/SKILL.md"
@@ -1555,6 +1685,9 @@
         ],
         "codex": [
           ".agents/skills/implement-quick-fix/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/implement-quick-fix/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/implement-quick-fix/SKILL.md"
@@ -1581,6 +1714,9 @@
         "codex": [
           ".agents/skills/implement-refactor/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-refactor/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-refactor/SKILL.md"
         ]
@@ -1602,6 +1738,9 @@
         ],
         "codex": [
           ".agents/skills/implement-session-land/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/implement-session-land/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/implement-session-land/SKILL.md"
@@ -1625,6 +1764,9 @@
         "codex": [
           ".agents/skills/implement-session-wrap-up/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/implement-session-wrap-up/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/implement-session-wrap-up/SKILL.md"
         ]
@@ -1646,6 +1788,9 @@
         ],
         "codex": [
           ".agents/skills/implement-test/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/implement-test/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/implement-test/SKILL.md"
@@ -1677,6 +1822,9 @@
         "codex": [
           ".agents/skills/kit-contribute/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/kit-contribute/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/kit-contribute/SKILL.md"
         ]
@@ -1701,8 +1849,98 @@
         "codex": [
           ".agents/skills/maintain-docs/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/maintain-docs/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/maintain-docs/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/manage-writing-style/SKILL.md",
+      "type": "skill",
+      "name": "manage-writing-style",
+      "tier": "core",
+      "sha256": "dcdf7d7f8901aadacd569c8b526f002a8d751da89eb420cffbd92f6acad2f4d4",
+      "triggers": [
+        "add to my writing style",
+        "learn from this sample",
+        "update writing style",
+        "refresh voice profile",
+        "inspect writing style",
+        "approve exemplar"
+      ],
+      "appliesTo": null,
+      "requiredTools": [
+        "node"
+      ],
+      "conflictsWith": [
+        "write-content",
+        "write-ui-copy"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/manage-writing-style/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/manage-writing-style/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/manage-writing-style/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/manage-writing-style/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/manage-writing-style/references/style-schema.md",
+      "type": "skill",
+      "name": "manage-writing-style",
+      "tier": "core",
+      "sha256": "e35984c0bd3ff59246bd0a974de0c4ba5aa39e9b82b120136c24dc518c9a1f91",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/manage-writing-style/references/style-schema.md"
+        ],
+        "codex": [
+          ".agents/skills/manage-writing-style/references/style-schema.md"
+        ],
+        "gemini": [
+          ".gemini/skills/manage-writing-style/references/style-schema.md"
+        ],
+        "opencode": [
+          ".opencode/skills/manage-writing-style/references/style-schema.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/manage-writing-style/scripts/writing-style.mjs",
+      "type": "skill",
+      "name": "manage-writing-style",
+      "tier": "core",
+      "sha256": "b8f3cfadda0c9832a7f455fbfcdf19809b916c92b1962e383aa9a36074ed0d58",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/manage-writing-style/scripts/writing-style.mjs"
+        ],
+        "codex": [
+          ".agents/skills/manage-writing-style/scripts/writing-style.mjs"
+        ],
+        "gemini": [
+          ".gemini/skills/manage-writing-style/scripts/writing-style.mjs"
+        ],
+        "opencode": [
+          ".opencode/skills/manage-writing-style/scripts/writing-style.mjs"
         ]
       }
     },
@@ -1722,6 +1960,9 @@
         ],
         "codex": [
           ".agents/skills/mcp-server-ops/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/mcp-server-ops/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/mcp-server-ops/SKILL.md"
@@ -1745,6 +1986,9 @@
         "codex": [
           ".agents/skills/optimize-agent/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/optimize-agent/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/optimize-agent/SKILL.md"
         ]
@@ -1766,6 +2010,9 @@
         ],
         "codex": [
           ".agents/skills/orchestrate-decompose/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/orchestrate-decompose/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/orchestrate-decompose/SKILL.md"
@@ -1789,6 +2036,9 @@
         "codex": [
           ".agents/skills/orchestrate-kickoff/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-kickoff/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-kickoff/SKILL.md"
         ]
@@ -1810,6 +2060,9 @@
         ],
         "codex": [
           ".agents/skills/orchestrate-merge-train/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/orchestrate-merge-train/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/orchestrate-merge-train/SKILL.md"
@@ -1833,6 +2086,9 @@
         "codex": [
           ".agents/skills/orchestrate-partition/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/orchestrate-partition/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/orchestrate-partition/SKILL.md"
         ]
@@ -1854,6 +2110,9 @@
         ],
         "codex": [
           ".agents/skills/orchestrate-sequence/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/orchestrate-sequence/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/orchestrate-sequence/SKILL.md"
@@ -1878,6 +2137,9 @@
         ],
         "codex": [
           ".agents/skills/performance-fix/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/performance-fix/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/performance-fix/SKILL.md"
@@ -1904,6 +2166,9 @@
         "codex": [
           ".agents/skills/plan-architecture/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/plan-architecture/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/plan-architecture/SKILL.md"
         ]
@@ -1929,6 +2194,9 @@
         "codex": [
           ".agents/skills/plan-feature/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/plan-feature/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/plan-feature/SKILL.md"
         ]
@@ -1950,6 +2218,9 @@
         ],
         "codex": [
           ".agents/skills/plan-prd/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/plan-prd/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/plan-prd/SKILL.md"
@@ -1973,6 +2244,9 @@
         "codex": [
           ".agents/skills/project-onboard/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/project-onboard/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/project-onboard/SKILL.md"
         ]
@@ -1994,6 +2268,9 @@
         ],
         "codex": [
           ".agents/skills/react-flow-architect/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/react-flow-architect/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/react-flow-architect/SKILL.md"
@@ -2017,6 +2294,9 @@
         "codex": [
           ".agents/skills/react-performance/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/SKILL.md"
         ]
@@ -2038,6 +2318,9 @@
         ],
         "codex": [
           ".agents/skills/react-performance/references/async-patterns.md"
+        ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/async-patterns.md"
         ],
         "opencode": [
           ".opencode/skills/react-performance/references/async-patterns.md"
@@ -2061,6 +2344,9 @@
         "codex": [
           ".agents/skills/react-performance/references/bundle-optimization.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/bundle-optimization.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/bundle-optimization.md"
         ]
@@ -2082,6 +2368,9 @@
         ],
         "codex": [
           ".agents/skills/react-performance/references/js-micro-optimizations.md"
+        ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/js-micro-optimizations.md"
         ],
         "opencode": [
           ".opencode/skills/react-performance/references/js-micro-optimizations.md"
@@ -2105,6 +2394,9 @@
         "codex": [
           ".agents/skills/react-performance/references/rendering-patterns.md"
         ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/rendering-patterns.md"
+        ],
         "opencode": [
           ".opencode/skills/react-performance/references/rendering-patterns.md"
         ]
@@ -2126,6 +2418,9 @@
         ],
         "codex": [
           ".agents/skills/react-performance/references/rerender-patterns.md"
+        ],
+        "gemini": [
+          ".gemini/skills/react-performance/references/rerender-patterns.md"
         ],
         "opencode": [
           ".opencode/skills/react-performance/references/rerender-patterns.md"
@@ -2155,6 +2450,9 @@
         "codex": [
           ".agents/skills/reference-hunt/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/reference-hunt/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/reference-hunt/SKILL.md"
         ]
@@ -2179,6 +2477,9 @@
         "codex": [
           ".agents/skills/refine-code/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/refine-code/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/refine-code/SKILL.md"
         ]
@@ -2201,6 +2502,9 @@
         "codex": [
           ".agents/skills/research-curate/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/research-curate/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/research-curate/SKILL.md"
         ]
@@ -2222,6 +2526,9 @@
         ],
         "codex": [
           ".agents/skills/research-deep/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/research-deep/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/research-deep/SKILL.md"
@@ -2247,8 +2554,47 @@
         "codex": [
           ".agents/skills/research-synthesize/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/research-synthesize/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/research-synthesize/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/respond-clearly/SKILL.md",
+      "type": "skill",
+      "name": "respond-clearly",
+      "tier": "core",
+      "sha256": "0fd2ad3bd0281818c05ee645d8f85e3fb1291a9ceab90e01520e0270962cd071",
+      "triggers": [
+        "clear response",
+        "concise response",
+        "explain clearly",
+        "status update",
+        "decision explanation",
+        "next steps"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "write-content",
+        "write-ui-copy",
+        "manage-writing-style"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/respond-clearly/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/respond-clearly/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/respond-clearly/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/respond-clearly/SKILL.md"
         ]
       }
     },
@@ -2268,6 +2614,9 @@
         ],
         "codex": [
           ".agents/skills/review-peer/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/review-peer/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/review-peer/SKILL.md"
@@ -2290,6 +2639,9 @@
         ],
         "codex": [
           ".agents/skills/review-raise-bar/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/review-raise-bar/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/review-raise-bar/SKILL.md"
@@ -2315,6 +2667,9 @@
         "codex": [
           ".agents/skills/security-fix/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/security-fix/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/security-fix/SKILL.md"
         ]
@@ -2339,6 +2694,9 @@
         "codex": [
           ".agents/skills/sweep-codebase/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/sweep-codebase/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/sweep-codebase/SKILL.md"
         ]
@@ -2360,6 +2718,9 @@
         ],
         "codex": [
           ".agents/skills/tailscale-private-serve/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/tailscale-private-serve/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/tailscale-private-serve/SKILL.md"
@@ -2383,6 +2744,9 @@
         "codex": [
           ".agents/skills/use-codegraph/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/use-codegraph/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/use-codegraph/SKILL.md"
         ]
@@ -2404,6 +2768,9 @@
         ],
         "codex": [
           ".agents/skills/use-codegraph/agents/openai.yaml"
+        ],
+        "gemini": [
+          ".gemini/skills/use-codegraph/agents/openai.yaml"
         ],
         "opencode": [
           ".opencode/skills/use-codegraph/agents/openai.yaml"
@@ -2427,6 +2794,9 @@
         "codex": [
           ".agents/skills/verify-rls-policies/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/verify-rls-policies/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/verify-rls-policies/SKILL.md"
         ]
@@ -2448,6 +2818,9 @@
         ],
         "codex": [
           ".agents/skills/verify-rules/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/verify-rules/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/verify-rules/SKILL.md"
@@ -2471,6 +2844,9 @@
         "codex": [
           ".agents/skills/vet-hard/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/vet-hard/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/vet-hard/SKILL.md"
         ]
@@ -2492,6 +2868,9 @@
         ],
         "codex": [
           ".agents/skills/vet-simple/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/vet-simple/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/vet-simple/SKILL.md"
@@ -2515,6 +2894,9 @@
         "codex": [
           ".agents/skills/worker-bootstrap/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/worker-bootstrap/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/worker-bootstrap/SKILL.md"
         ]
@@ -2536,6 +2918,9 @@
         ],
         "codex": [
           ".agents/skills/worker-execute/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/worker-execute/SKILL.md"
         ],
         "opencode": [
           ".opencode/skills/worker-execute/SKILL.md"
@@ -2559,38 +2944,80 @@
         "codex": [
           ".agents/skills/worker-report/SKILL.md"
         ],
+        "gemini": [
+          ".gemini/skills/worker-report/SKILL.md"
+        ],
         "opencode": [
           ".opencode/skills/worker-report/SKILL.md"
         ]
       }
     },
     {
-      "path": ".agent/skills/write-clear/SKILL.md",
+      "path": ".agent/skills/write-content/SKILL.md",
       "type": "skill",
-      "name": "write-clear",
+      "name": "write-content",
       "tier": "core",
-      "sha256": "f3f0a452840ba05b65a1d603a3f2bc59c7c19f85d049942cdd7caf70e215de62",
+      "sha256": "48537c836a4c5c748d494a23c114bd98734f5056a14c0fedd7861a36c8dfe8a4",
       "triggers": [
-        "clear writing",
-        "concise writing",
-        "rewrite",
-        "copy edit",
-        "session communication",
-        "ticket writing",
-        "UI copy"
+        "website copy",
+        "help content",
+        "technical documentation",
+        "report writing",
+        "editorial voice",
+        "generic AI prose",
+        "anti-homogenization"
       ],
       "appliesTo": null,
       "requiredTools": null,
       "conflictsWith": null,
       "generatedTargets": {
         "claude": [
-          ".claude/skills/write-clear/SKILL.md"
+          ".claude/skills/write-content/SKILL.md"
         ],
         "codex": [
-          ".agents/skills/write-clear/SKILL.md"
+          ".agents/skills/write-content/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/write-content/SKILL.md"
         ],
         "opencode": [
-          ".opencode/skills/write-clear/SKILL.md"
+          ".opencode/skills/write-content/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/write-ui-copy/SKILL.md",
+      "type": "skill",
+      "name": "write-ui-copy",
+      "tier": "core",
+      "sha256": "afc0f5d7d05ab60acc1205b3701a9ddc2f797bafe8801e00a54a51229cc15506",
+      "triggers": [
+        "button label",
+        "UI copy",
+        "interface text",
+        "tooltip",
+        "error message",
+        "empty state",
+        "confirmation text"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "write-content",
+        "manage-writing-style"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/write-ui-copy/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/write-ui-copy/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/write-ui-copy/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/write-ui-copy/SKILL.md"
         ]
       }
     },
@@ -3038,6 +3465,31 @@
         ],
         "opencode": [
           ".opencode/commands/wrap-up.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/writing-style.md",
+      "type": "workflow",
+      "name": "writing-style",
+      "tier": "core",
+      "sha256": "fa59d7aa057793a9e03391a617014f918e359a6999014089e95b2e75bd482f28",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/writing-style.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-writing-style/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/writing-style.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/writing-style.md"
         ]
       }
     }

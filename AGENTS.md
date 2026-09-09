@@ -36,7 +36,11 @@ Use the canonical writing guidance for sessions, tickets, reports, handoffs, and
 
 - `.agent/rules/foundation-communication.md` — clear, concise session and technical prose.
 - `.agent/rules/pattern-ui-copy.md` — sparse, contextual UI copy.
-- `.agent/skills/write-clear/SKILL.md` — drafting, rewriting, and review workflow.
+- `.agent/rules/pattern-writing-quality.md` — reader-centered, format-aware content quality.
+- `.agent/skills/respond-clearly/SKILL.md` — concise agent-to-user response workflow.
+- `.agent/skills/write-content/SKILL.md` — sustained website, help, report, and content-heavy UI prose.
+- `.agent/skills/write-ui-copy/SKILL.md` — short product interface text.
+- `.agent/skills/manage-writing-style/SKILL.md` — project-local writing-style data lifecycle.
 
 Defaults:
 
@@ -73,4 +77,5 @@ Defaults:
 | `/test` | Generate unit/integration/reproduction tests following the project's existing test patterns. |
 | `/verify-pre-deploy` | Pre-production GO/NO-GO verification — automated checks plus a project-defined manual-flow gate. |
 | `/wrap-up` | Session exit protocol — cite-or-run technical gate, changelog, archival, and opportunistic branch closure; full wrap (codify, session log) only on deterministic triggers. |
+| `/writing-style` | Manage a project-local writing-style profile by initializing, adding samples, updating diagnostics, inspecting evidence, and approving or excluding sources. |
 <!-- <<< AGENTKIT WORKFLOWS <<< -->

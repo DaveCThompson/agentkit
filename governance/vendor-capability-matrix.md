@@ -15,7 +15,7 @@ stale when `last-verified` exceeds threshold — that is the trigger to re-read 
 |---|---|---|---|---|---|
 | Reads `.agent/` natively | ❌ | ❌ | ✅ (rules, skills, workflows) | ❌ | ❌ |
 | Reads root `AGENTS.md` natively | ❌ (CLAUDE.md only — **verified live 2026-07-03**) | ✅ (durable entry point) | ✅ | ✅ (GEMINI.md primary; AGENTS.md via config) | ✅ |
-| Skills surface | `.claude/skills/<name>/SKILL.md` | `.agents/skills/` (plural — per official docs; parent-dir discovery to repo root) | `.agent/skills/` (native; name==folder, flat) | ❌ (no skill primitive; commands only) | `.opencode/skills/` |
+| Skills surface | `.claude/skills/<name>/SKILL.md` | `.agents/skills/` (plural — per official docs; parent-dir discovery to repo root) | `.agent/skills/` (native; name==folder, flat) | `.gemini/skills/<name>/SKILL.md` (generated Agent Skills mirror) | `.opencode/skills/` |
 | Commands from workflows | `.claude/commands/*.md` | no native command surface → workflows ride in as `wf-`prefixed skills at `.agents/skills/wf-<name>/` | `.agent/workflows/` as slash commands (native) | `.gemini/commands/*.toml` (`description=`, `prompt=`) | `.opencode/commands/*.md` (native; filename→`/<name>`, `description` fm, body=template — **verified live 2026-07-08**) |
 | Rules | three-way by `trigger:` — `always` → `.claude/rules/*.md`; `glob` → path-scoped via `paths:` frontmatter (**verified live 2026-07-03**); `model-decision` → menu-hidden `rule-` skill at `.claude/skills/rule-<name>/` (description-gated, `user-invocable: false` — **verified 2026-07-09**) | `always`/`glob` via AGENTS.md text; `model-decision` → `rule-`prefixed skill at `.agents/skills/rule-<name>/` (**2026-08-20**) | `.agent/rules/` native (activation frontmatter) | via GEMINI.md text | via AGENTS.md text |
 | Subagent defs | `.claude/agents/*.md` (with `model:` hints) | `.codex/agents/*.toml` — required `name`, `description`, `developer_instructions`; optional `model`, `model_reasoning_effort`, `sandbox_mode`, `mcp_servers`, `skills.config` (**verified 2026-07-26**) | ❌ | ❌ | ❌ |
@@ -51,8 +51,9 @@ stale when `last-verified` exceeds threshold — that is the trigger to re-read 
 - **Antigravity — zero generation.** Consumes `.agent/` directly; sync only validates (SKILL.md
   `name`==folder, flat layout, workflows shaped as low-logic routers). Local doc snapshots:
   `help-docs/antigravity_docs_*.md`.
-- **Gemini CLI** — curated workflow subset → `.gemini/commands/*.toml` (opt out with `gemini: false`
-  frontmatter). Not a bulk mirror.
+- **Gemini CLI** — Agent Skills mirror → `.gemini/skills/**` plus curated workflow commands →
+  `.gemini/commands/*.toml` (opt out with `gemini: false` frontmatter). The skill mirror is generated
+  from canonical `.agent/skills`; no vendor-specific instruction copy is authored.
 - **OpenCode** — skills copy + workflows → native `.opencode/commands/*.md` (user-invoked slash
   commands, like Claude — not skills) + `package.json` created-if-absent; MCP servers → root
   `opencode.json` `mcp` key-merge using OpenCode's native local-server command-array shape.

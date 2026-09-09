@@ -20,6 +20,13 @@ the only conditions under which it reopens.
 | `migration-checklist.md` | running a per-project Phase-E migration — preconditions, steps, verification, rollback |
 | `vendor-capability-matrix.md` | adding/adjusting a vendor adapter, or re-verifying a vendor's native surfaces against its live docs |
 
+## Promoted research
+
+| Doc | Read it when… |
+|---|---|
+| `RESEARCH-2026-08-30-writing-style-system.md` | designing, implementing, or reviewing portable writing-style profiles, sample governance, root resolution, vendor routing, or multidimensional writing evaluation |
+| `RESEARCH-2026-08-30-writing-style-system-followup.md` | reviewing stylometric stability, corpus-size policies, profile/exemplar comparisons, or exact-span originality review |
+
 ## Decisions (settled — don't re-litigate)
 
 | Doc | Read it when… |

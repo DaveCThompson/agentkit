@@ -93,7 +93,8 @@ export function headerFor(srcRel, ext) {
   return null; // json etc: no header (would break parsers); lockfile hash still guards it
 }
 
-// Insert header AFTER frontmatter for md (Claude/Codex require frontmatter at byte 0), at top otherwise.
+// Insert header AFTER frontmatter for md (Claude/Codex require frontmatter at byte 0), after a
+// shebang for executable scripts, and at top otherwise.
 export function injectHeader(content, srcRel, ext) {
   const h = headerFor(srcRel, ext);
   if (!h) return content;
@@ -104,6 +105,11 @@ export function injectHeader(content, srcRel, ext) {
       const nl = text.indexOf('\n', end + 1);
       return text.slice(0, nl + 1) + h + '\n' + text.slice(nl + 1);
     }
+  }
+  if (text.startsWith('#!')) {
+    const nl = text.indexOf('\n');
+    if (nl === -1) return `${text}\n${h}\n`;
+    return text.slice(0, nl + 1) + h + '\n' + text.slice(nl + 1);
   }
   return h + '\n' + text;
 }
@@ -471,21 +477,29 @@ function codex(entries, ctx) {
   return { files, settings, validations };
 }
 
-// GEMINI CLI — curated subset of workflows → .gemini/commands/*.toml (opt out via `gemini: false`
-// in workflow frontmatter). Curated, not a bulk mirror.
+// GEMINI CLI — Agent Skills mirror plus curated workflows → .gemini/skills + .gemini/commands/*.toml.
+// Skills are copied from the canonical tree; workflows remain an explicit command surface and can
+// opt out with `gemini: false` in workflow frontmatter.
 function gemini(entries) {
   const files = [];
   const validations = [];
   for (const e of entries) {
-    if (e.type !== 'workflow' || e.fm?.gemini === false) continue;
-    const desc = e.fm?.description || e.name;
-    const prompt = normalizeEol(e.body).trim() + `\n\nCanonical source: ${e.srcRel}\n`;
-    const content =
-      headerFor(e.srcRel, '.toml') +
-      '\n' +
-      `description = ${JSON.stringify(desc)}\n` +
-      `prompt = ${tomlMultiline(prompt)}\n`;
-    files.push({ rel: `.gemini/commands/${e.name}.toml`, content });
+    if (e.type === 'skill') {
+      const ext = extOf(e.subPath);
+      const content = e.subPath.endsWith('SKILL.md')
+        ? injectHeader(stripFmTo(e, ['name', 'description']), e.srcRel, ext)
+        : injectHeader(normalizeEol(e.raw), e.srcRel, ext);
+      files.push({ rel: '.gemini/' + e.subPath, content });
+    } else if (e.type === 'workflow' && e.fm?.gemini !== false) {
+      const desc = e.fm?.description || e.name;
+      const prompt = normalizeEol(e.body).trim() + `\n\nCanonical source: ${e.srcRel}\n`;
+      const content =
+        headerFor(e.srcRel, '.toml') +
+        '\n' +
+        `description = ${JSON.stringify(desc)}\n` +
+        `prompt = ${tomlMultiline(prompt)}\n`;
+      files.push({ rel: `.gemini/commands/${e.name}.toml`, content });
+    }
   }
   return { files, settings: [], validations };
 }
