@@ -3138,6 +3138,9 @@ export function main(argv = process.argv.slice(2)) {
             console.log(`sync: wrote ${r.written.length}, pruned ${r.pruned.length}, settings ${r.settingsWritten.length}`);
           }
           r.refusals.forEach((x) => console.log(`  REFUSED ${x.rel} — ${x.why}${x.base ? ` (3-way base: ${x.base})` : ''}`));
+          for (const file of [...new Set((r.unresolvedSettings || []).map(item => item.file))]) {
+            console.log(`  [OWNERSHIP-UNRESOLVED] ${file} — legacy settings remain preserved; reconcile exact contributions using the selected kit's governance/migration-checklist.md, then run check --json. File application is not migration acceptance.`);
+          }
           r.validations.filter((v) => v.level !== 'info').forEach((v) => console.log(`  [lint:${v.level}] ${v.msg}`));
           (r.survivingByAbsence || []).forEach((f) => console.log(`  [overlay-unclaimed] ${f} — surviving only by absence-from-core; add it to .agentkit.json overlay.* or set 'tier: overlay' so a future kit release can't prune it`));
         }

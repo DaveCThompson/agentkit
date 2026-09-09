@@ -722,6 +722,7 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/rules/pattern-state.md',
   '.agent/rules/pattern-structure.md',
   '.agent/rules/pattern-ui-copy.md',
+  '.agent/rules/pattern-writing-quality.md',
   '.agent/rules/tech-node-gate.md',
   '.agent/skills/_templates/COMPOSE-EDITORIAL-TEMPLATE.md',
   '.agent/skills/_templates/SKILL-TEMPLATE.md',
@@ -756,6 +757,9 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/skills/implement-test/SKILL.md',
   '.agent/skills/kit-contribute/SKILL.md',
   '.agent/skills/maintain-docs/SKILL.md',
+  '.agent/skills/manage-writing-style/SKILL.md',
+  '.agent/skills/manage-writing-style/references/style-schema.md',
+  '.agent/skills/manage-writing-style/scripts/writing-style.mjs',
   '.agent/skills/optimize-agent/SKILL.md',
   '.agent/skills/orchestrate-decompose/SKILL.md',
   '.agent/skills/orchestrate-kickoff/SKILL.md',
@@ -773,6 +777,7 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/skills/research-curate/SKILL.md',
   '.agent/skills/research-deep/SKILL.md',
   '.agent/skills/research-synthesize/SKILL.md',
+  '.agent/skills/respond-clearly/SKILL.md',
   '.agent/skills/review-peer/SKILL.md',
   '.agent/skills/review-raise-bar/SKILL.md',
   '.agent/skills/security-fix/SKILL.md',
@@ -789,6 +794,8 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/skills/worker-execute/SKILL.md',
   '.agent/skills/worker-report/SKILL.md',
   '.agent/skills/write-clear/SKILL.md',
+  '.agent/skills/write-content/SKILL.md',
+  '.agent/skills/write-ui-copy/SKILL.md',
   '.agent/workflows/architect.md',
   '.agent/workflows/async-maint.md',
   '.agent/workflows/audit.md',
@@ -813,6 +820,7 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/workflows/verify-pre-deploy.md',
   '.agent/workflows/walk.md',
   '.agent/workflows/wrap-up.md',
+  '.agent/workflows/writing-style.md',
 ].sort();
 
 test('D2 snapshot: kinds-absent config selects byte-identically to the pre-kinds baseline (real kit sources)', () => {

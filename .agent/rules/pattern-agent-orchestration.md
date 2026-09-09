@@ -217,6 +217,19 @@ Select the runtime's supported models from the configured roster or explicit use
 Route by ambiguity and consequence, with independent checks where they matter. Tool reachability,
 permission and correctness are separate from tier. Concrete model examples are not fleet requirements.
 
+## Delegation depth and uncertain status
+
+Reachable tools do not grant delegation authority. A worker does not create child agents or a new
+top-level task through another API unless the accepted assignment explicitly authorizes that scope.
+Keep assignment/attempt lineage visible to the coordinator and check for an existing equivalent
+assignment before launching a replacement. Continue independent assigned work when delegation is
+unavailable; do not duplicate another worker's output to bypass a runtime limit.
+
+A timeout or an empty wait result leaves the child's state unconfirmed. A successful tool call does
+not itself mean the child is running or finished. Reconcile status with the runtime's actual child
+record and the current attempt; completion additionally needs accessible output and its reported
+evidence. Keep runtime record inconsistencies separate from observed worker behavior.
+
 ## Verification
 
 Confirm one owner per write surface; resolved assignment/base/attempt/output; applicable proof and

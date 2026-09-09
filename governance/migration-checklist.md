@@ -62,6 +62,15 @@ switching. A local coordinator lock is not a distributed lock. Two local fixture
 relocation mechanics, not a second device, cloud service, offline hydration or another OS.
 
 ## Preconditions (hard gate — do not start otherwise)
+- [ ] Confirm the selected kit checkout, package version and commit match the intended update.
+  A check invoked through an older feature checkout does not certify a newer consumer lock. Pulling
+  one checkout does not update launchers bound to another. Do not edit the lock to hide a mismatch.
+- [ ] Before enabling the portable SessionStart hook, verify launcher resolution in the invoking
+  client's environment. From the project, run `agentkit --version` and `agentkit check . --quick --json`;
+  an existing drift result may need reconciliation, but command-not-found is missing setup. Compare
+  with the selected checkout's direct Node invocation when diagnosing. Complete machine-local setup
+  and refresh the client's inherited environment before calling the hook usable. A successful command
+  in another shell is not client proof; retain that check as pending if the client is unavailable.
 - [ ] Inventory staged, tracked, untracked and useful ignored content. Preserve unrelated work;
   do not commit or stash it merely to clear status. Coordinate overlapping writers.
 - [ ] Record an exact pre-migration source state and separately verify recovery of local-only
@@ -108,6 +117,17 @@ relocation mechanics, not a second device, cloud service, offline hydration or a
    provenance into the kit, or preserve project-specific content as a distinct overlay. Adoption also
    writes kit package/changelog/manifest; deferred adoption writes a queue. Each needs the matching
    target owner. Body citations or ambiguous legacy lock entries cannot select an adoption target.
+   - **Legacy hooks/settings:** sync can preserve an old absolute-path hook and add the portable hook
+     because historical membership does not prove ownership. `OWNERSHIP-UNRESOLVED` means a disposition
+     is still needed, even after successful file application. Inspect the exact reported native
+     contribution and its preserved preimage. Once the replacement works and retirement is authorized,
+     remove only the superseded old hook from native settings, retaining unrelated hooks and policy,
+     then sync and check again. Verify one intended kit SessionStart check remains. Do not bulk-clear
+     settings, rewrite generated skill files, or restore machine-specific paths as fleet policy.
+   - **References and local work:** resolve active kit governance citations in the selected kit
+     checkout; keep project truth in the declared project KB. Repair migration-created broken routing
+     at its canonical owner. Separate pre-existing documentation warnings from upgrade regressions.
+     A report-only branch does not preserve the source machine's uncommitted overlay or ignored data.
 4. Use `agentkit sync <project> --force` only when the reviewed full overwrite/prune scope is
    authorized and every affected local variant is recoverable. It is not a one-file selector.
    Inspect actual results and retain refusals or ambiguous state for reconciliation.

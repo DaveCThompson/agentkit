@@ -1,5 +1,5 @@
 {
-  "kitVersion": "1.0.1",
+  "kitVersion": "1.1.0",
   "compiledAt": "2026-09-09",
   "note": "COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
@@ -196,7 +196,7 @@
       "type": "rule",
       "name": "pattern-agent-orchestration",
       "tier": "core",
-      "sha256": "91fea259b8b07ec7230515a53c09b7fa24d53ab2f97810df32372dd9e852c871",
+      "sha256": "89f3003c3efc1cf238852e921d3a244e489bfdba489ca2f770b55ef786694fe3",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -292,7 +292,7 @@
       "type": "rule",
       "name": "pattern-docs-artifacts",
       "tier": "core",
-      "sha256": "c97d0a422f979db6c9e979de8db43dc79db449d60e9e7343bc97cf9aede1f7ec",
+      "sha256": "405a3a550194fa0dcedceed41355b004f5eecd5cfa373a9d9753e595761dae3e",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -492,6 +492,22 @@
       "generatedTargets": {
         "claude": [
           ".claude/skills/rule-pattern-ui-copy/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/rules/pattern-writing-quality.md",
+      "type": "rule",
+      "name": "pattern-writing-quality",
+      "tier": "core",
+      "sha256": "0fdf0551f7abc0711fce0ab23b5cf90b1bcd0071a61b6d46b6440df492bcc150",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/rule-pattern-writing-quality/SKILL.md"
         ]
       }
     },
@@ -1839,6 +1855,91 @@
       }
     },
     {
+      "path": ".agent/skills/manage-writing-style/SKILL.md",
+      "type": "skill",
+      "name": "manage-writing-style",
+      "tier": "core",
+      "sha256": "dc11127104c6e870a729e8395c743bbb4ef36b646ef532c957cccd617342c756",
+      "triggers": [
+        "add to my writing style",
+        "learn from this sample",
+        "update writing style",
+        "refresh voice profile",
+        "inspect writing style",
+        "approve exemplar"
+      ],
+      "appliesTo": null,
+      "requiredTools": [],
+      "conflictsWith": [
+        "write-content",
+        "write-ui-copy"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/manage-writing-style/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/manage-writing-style/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/manage-writing-style/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/manage-writing-style/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/manage-writing-style/references/style-schema.md",
+      "type": "skill",
+      "name": "manage-writing-style",
+      "tier": "core",
+      "sha256": "1b30c38db97937db5c17fee36c67f6384bc48129781f8db82a6aa74c206ed01e",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/manage-writing-style/references/style-schema.md"
+        ],
+        "codex": [
+          ".agents/skills/manage-writing-style/references/style-schema.md"
+        ],
+        "gemini": [
+          ".gemini/skills/manage-writing-style/references/style-schema.md"
+        ],
+        "opencode": [
+          ".opencode/skills/manage-writing-style/references/style-schema.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/manage-writing-style/scripts/writing-style.mjs",
+      "type": "skill",
+      "name": "manage-writing-style",
+      "tier": "core",
+      "sha256": "10d5ae3c87913acbe324198a53d33d727c789c3ba6428e12b8e42f604644b54e",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/manage-writing-style/scripts/writing-style.mjs"
+        ],
+        "codex": [
+          ".agents/skills/manage-writing-style/scripts/writing-style.mjs"
+        ],
+        "gemini": [
+          ".gemini/skills/manage-writing-style/scripts/writing-style.mjs"
+        ],
+        "opencode": [
+          ".opencode/skills/manage-writing-style/scripts/writing-style.mjs"
+        ]
+      }
+    },
+    {
       "path": ".agent/skills/mcp-server-ops/SKILL.md",
       "type": "skill",
       "name": "mcp-server-ops",
@@ -2101,7 +2202,7 @@
       "type": "skill",
       "name": "plan-prd",
       "tier": "core",
-      "sha256": "8f2152d30285bc82e6261c7a1eaa0cc3af65dd9d3f311ab0a59fe13db5eee2a0",
+      "sha256": "bf18003f4f62c403051b407e5d6f3541deb2bc15ef58195281cd67be664786f7",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -2487,6 +2588,42 @@
         ],
         "opencode": [
           ".opencode/skills/research-synthesize/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/respond-clearly/SKILL.md",
+      "type": "skill",
+      "name": "respond-clearly",
+      "tier": "core",
+      "sha256": "c8b8e12d1700eb4009a923bf11824eec30ff9e227e22fffda53bc5efee1b8eab",
+      "triggers": [
+        "clear response",
+        "concise response",
+        "explain clearly",
+        "status update",
+        "decision explanation",
+        "next steps"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "write-content",
+        "write-ui-copy",
+        "manage-writing-style"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/respond-clearly/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/respond-clearly/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/respond-clearly/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/respond-clearly/SKILL.md"
         ]
       }
     },
@@ -2944,7 +3081,7 @@
       "type": "skill",
       "name": "write-clear",
       "tier": "core",
-      "sha256": "89f04a18f1126e44b9130cc1f6cf8d7f7ed4d889489fda4f86885215cd5b3479",
+      "sha256": "8d4d8e6f8e18d5cbb3ec0160dcf8acc547c8a2ab345927b037434d4724005b90",
       "triggers": [
         "clear writing",
         "concise writing",
@@ -2969,6 +3106,75 @@
         ],
         "opencode": [
           ".opencode/skills/write-clear/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/write-content/SKILL.md",
+      "type": "skill",
+      "name": "write-content",
+      "tier": "core",
+      "sha256": "8d9d1f0d966900f741d3ce2deffbec53aee0486df043ccfb2ca8e55a82aeca96",
+      "triggers": [
+        "website copy",
+        "help content",
+        "technical documentation",
+        "report writing",
+        "editorial voice",
+        "generic AI prose",
+        "anti-homogenization"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/write-content/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/write-content/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/write-content/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/write-content/SKILL.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/skills/write-ui-copy/SKILL.md",
+      "type": "skill",
+      "name": "write-ui-copy",
+      "tier": "core",
+      "sha256": "6d2a12f04900b3531be4e7bd7747c35303e6a4f2985d2d5cd13cb25e31cb89fa",
+      "triggers": [
+        "button label",
+        "UI copy",
+        "interface text",
+        "tooltip",
+        "error message",
+        "empty state",
+        "confirmation text"
+      ],
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": [
+        "write-content",
+        "manage-writing-style"
+      ],
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/write-ui-copy/SKILL.md"
+        ],
+        "codex": [
+          ".agents/skills/write-ui-copy/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/skills/write-ui-copy/SKILL.md"
+        ],
+        "opencode": [
+          ".opencode/skills/write-ui-copy/SKILL.md"
         ]
       }
     },
@@ -3566,6 +3772,31 @@
         ],
         "opencode": [
           ".opencode/commands/wrap-up.md"
+        ]
+      }
+    },
+    {
+      "path": ".agent/workflows/writing-style.md",
+      "type": "workflow",
+      "name": "writing-style",
+      "tier": "core",
+      "sha256": "fa59d7aa057793a9e03391a617014f918e359a6999014089e95b2e75bd482f28",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/commands/writing-style.md"
+        ],
+        "codex": [
+          ".agents/skills/wf-writing-style/SKILL.md"
+        ],
+        "gemini": [
+          ".gemini/commands/writing-style.toml"
+        ],
+        "opencode": [
+          ".opencode/commands/writing-style.md"
         ]
       }
     }

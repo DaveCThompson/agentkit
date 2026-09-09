@@ -51,6 +51,8 @@ uncommitted changes; it does not pull or upgrade in the background. Per-file pin
 Use `exclude` for exact canonical rule/workflow paths or a whole `.agent/skills/<name>` bundle.
 Skill files and resources are selected together; an individual skill-file path is not an exclusion ID.
 
+Use the [project migration kickoff](templates/project-migration-prompt.md) to ask an agent to preserve
+local work, reconcile legacy settings, clean up superseded files and verify an existing installation.
 The [operator checklist](governance/migration-checklist.md) covers setup, another computer,
 template derivation, migration, recovery, rollback and retirement. Native and platform support
 claims require their actual checks; a launcher/version probe establishes only local resolution.
@@ -59,7 +61,7 @@ claims require their actual checks; a launcher/version probe establishes only lo
 
 ### Upgrading to 1.0
 
-Public skill and slash-command names are retained. The pending 1.0 contract includes:
+Public skill and slash-command names are retained. The 1.0 contract includes:
 
 - **Locks:** acquire with a fresh `--id <acquisition-id>` or retain the generated ID. Release
   requires that same ID. Legacy/foreign locks and abandoned operation guards fail closed;

@@ -6,7 +6,12 @@ domain: docs
 
 # Artifacts Rule
 
-Use the repository's four-directory docs model (canonical spec: `governance/docs-standard.md`).
+Use the repository's four-directory docs model. The canonical spec is `governance/docs-standard.md`
+in the selected AgentKit checkout, not necessarily in the consumer project. Locate that checkout from
+the existing agentkit launcher/setup or configured vendor hook and read the spec there. Do not assume
+the shell's current kit branch matches the consumer's completed lock. If the checkout is unavailable,
+use this shipped rule and the project's declared layout, and name any detail that still requires the
+spec. Do not copy a governance tree or invent a project path to satisfy the reference.
 Resolve its declared KB root (`docs.kbRoot`, default `docs/knowledge-base`) and sanctioned layout.
 Flat specs describe current truth; prospective requirements stay in the accepted ticket, PLAN or PRD.
 Create separate artifacts only for a distinct reader or responsibility.
