@@ -75,6 +75,17 @@ test('Claude visible skill and command collisions require explicit implementatio
   assert.deepEqual(errors(adapters.claude([skill, entry('workflow', 'fixture', { skill: 'fixture' })], context())), []);
 });
 
+test('Claude preserves legacy underscore model-decision trigger compatibility', () => {
+  const legacy = entry('rule', 'legacy-trigger', {
+    trigger: 'model_decision',
+    description: 'Consult for legacy trigger compatibility.',
+  });
+  const out = adapters.claude([legacy], context(['claude']));
+  assert.deepEqual(errors(out), []);
+  assert.ok(out.files.some(file => file.rel === '.claude/skills/rule-legacy-trigger/SKILL.md'));
+  assert.ok(!out.files.some(file => file.rel === '.claude/rules/legacy-trigger.md'));
+});
+
 test('same-owner duplicate routes, case aliases and malformed metadata fail before output', () => {
   const valid = entry('skill', 'fixture');
   const badCases = [

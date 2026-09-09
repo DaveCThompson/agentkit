@@ -197,6 +197,7 @@ const safePath = value => typeof value === 'string' && !/[\\\x00-\x1f<>:"|?*]/.t
     && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part));
 const routeName = value => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 const tierName = value => typeof value === 'string' && /^(core|overlay|(?:tech|kind):[a-z0-9]+(?:-[a-z0-9]+)*)$/.test(value);
+const canonicalTrigger = value => value === 'model_decision' ? 'model-decision' : value;
 
 // Deliberately local-stdio only. Ingestion must validate raw metadata before a lossy parser;
 // this second boundary validates actual objects supplied by direct callers and the planner.
@@ -234,8 +235,9 @@ function validateInputs(entries, ctx, vendor) {
     for (const key of ['allowed-tools', 'tools', 'globs', 'skill']) {
       if (fm[key] !== undefined && typeof fm[key] !== 'string' && !strings(fm[key])) error(`${key} must be a string or string array in ${e.srcRel}`);
     }
-    if (fm.trigger !== undefined && !['always', 'glob', 'model-decision'].includes(fm.trigger)) error(`invalid trigger in ${e.srcRel}`);
-    if (fm.trigger === 'glob' && (!fm.globs || (Array.isArray(fm.globs) && !fm.globs.length))) error(`glob trigger requires globs in ${e.srcRel}`);
+    const trigger = canonicalTrigger(fm.trigger);
+    if (fm.trigger !== undefined && !['always', 'glob', 'model-decision'].includes(trigger)) error(`invalid trigger in ${e.srcRel}`);
+    if (trigger === 'glob' && (!fm.globs || (Array.isArray(fm.globs) && !fm.globs.length))) error(`glob trigger requires globs in ${e.srcRel}`);
   }
   if (!isRecord(ctx.mcpServers)) error('MCP servers must be a map');
   else for (const [name, cfg] of Object.entries(ctx.mcpServers)) {
@@ -397,7 +399,7 @@ function claude(entries, ctx) {
         : injectHeader(normalizeEol(e.raw), e.srcRel, ext);
       files.push(generated(e, rel, content, isSkillRoot(e) ? 'body-md' : 'copy'));
     } else if (e.type === 'rule') {
-      if (e.fm?.trigger === 'model-decision') {
+      if (canonicalTrigger(e.fm?.trigger) === 'model-decision') {
         // model-decision → menu-hidden `rule-` skill. Claude's progressive disclosure (name +
         // description always in context, body loaded on invocation) IS the model-decision
         // semantics; emitting these as .claude/rules/ made them always-on (~19K tokens/session

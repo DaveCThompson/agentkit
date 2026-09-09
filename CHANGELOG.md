@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.1] — 2026-09-09 — Preserve legacy rule trigger compatibility
+
+### Fixed
+- Accept the legacy `trigger: model_decision` spelling during validation and route it with the
+  canonical model-decision behavior, preserving existing project-owned rule files.
+
 ## [1.0.0] — 2026-09-07 — Comprehensive agent-kit update
 
 ### Breaking changes
