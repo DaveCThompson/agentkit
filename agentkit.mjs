@@ -1019,10 +1019,10 @@ function preflightTomlMerge(before, after, action, prior) {
   const desired = tomlClaims(TOML_BLOCK_START + '\n' + (action.data || '') + '\n' + TOML_BLOCK_END);
   const managedServers = new Set(desired.filter(c => c.managed && c.parts[0] === 'mcp_servers' && c.parts.length > 1).map(c => c.parts[1]));
   const overlap = old.find(c => !c.managed && c.parts[0] === 'mcp_servers' && c.parts.length > 1 && managedServers.has(c.parts[1]));
-  if (overlap) throw settingsFailure(action, prior, 'mcp_servers.' + overlap.parts[1], before, 'unowned server identity overlaps the managed block');
+  if (overlap) throw settingsFailure(action, prior, 'mcp_servers.' + overlap.parts[1], before, 'unowned server identity overlaps the managed block', after);
   const next = tomlClaims(after);
   const userClaims = list => JSON.stringify(list.filter(c => !c.managed).map(c => [c.parts, c.type, c.raw]));
-  if (userClaims(old) !== userClaims(next)) throw settingsFailure(action, prior, 'document', before, 'replacement would change the semantic location of project-owned settings');
+  if (userClaims(old) !== userClaims(next)) throw settingsFailure(action, prior, 'document', before, 'replacement would change the semantic location of project-owned settings', after);
 }
 
 function settingsFailure(action, prior, key, current, reason = 'contribution differs from the required or retained value', desired = undefined) {
@@ -1030,15 +1030,25 @@ function settingsFailure(action, prior, key, current, reason = 'contribution dif
   const ownership = p?.ownership || 'unowned';
   const safeKey = action.merge === 'claude-permissions' ? 'allow-entry' : /^[a-zA-Z0-9_. -]+$/.test(String(key)) ? String(key) : 'redacted-key';
   const digest = value => rawHash(Buffer.from(JSON.stringify(value) ?? 'null'));
-  // The operator needs the disposition that actually applies. A contribution the kit never introduced
-  // cannot be "restored", and reporting only current/prior hides the value the kit wanted instead.
-  const nextAction = ownership === 'introduced'
-    ? 'Inspect only this native contribution. Preserve unrelated settings. Restore the edited introduced value, or explicitly remove it after choosing its disposition, then rerun sync. Do not edit the machine lock or bulk-clear settings.'
-    : 'Inspect only this native contribution. Preserve unrelated settings. The kit did not introduce this value, so choose whether to keep the project value or accept the kit value, then remove the named contribution from the native file and rerun sync. Do not edit the machine lock or bulk-clear settings.';
+  const managedBlock = ['md-block', 'toml-block'].includes(action.merge);
+  const nativeMcp = ['mcp-json', 'opencode-mcp'].includes(action.merge);
+  // Recovery must match the guard that follows it. Introduced and borrowed blocks can only be
+  // refreshed after their recorded bytes are restored. Legacy membership has no proven author, so
+  // its explicit enrollment path clears only the managed contribution and keeps the markers.
+  const nextAction = nativeMcp && ['borrowed', 'unresolved', 'unowned'].includes(ownership)
+    ? `Inspect only this native contribution. Preserve unrelated settings. Keep the local ${ownership} value intact and leave this incompatible kit update pending (or make a supported explicit selection change that omits this contribution); do not remove it. To accept the kit value, remove only the exact ${ownership} contribution, then rerun sync. Do not edit the machine lock or bulk-clear settings.`
+    : ['introduced', 'borrowed'].includes(ownership)
+    ? `Inspect only this native contribution. Preserve unrelated settings. Restore the exact recorded ${ownership} value, then rerun sync; the next kit value will be applied after that check. Do not edit the machine lock or bulk-clear settings.`
+    : ownership === 'unresolved'
+      ? managedBlock
+        ? 'Inspect only this legacy managed block. Preserve unrelated settings. To keep the local body, leave this incompatible update pending (or make a supported explicit selection change that omits this contribution); do not remove it. To accept the kit value, remove only its body while retaining both managed markers, commit that marker-only edit when the selected Git action authorizes committing, then rerun sync to enroll it as introduced. Do not edit the machine lock, use --force, or bulk-clear settings.'
+        : 'Inspect only this legacy native contribution. Preserve unrelated settings. To keep the local value, leave this incompatible update pending (or make a supported explicit selection change that omits this contribution); do not remove it. To accept the kit value, remove only the named contribution, then rerun sync to establish new introduction. Do not edit the machine lock or bulk-clear settings.'
+      : 'Inspect only this native contribution. Preserve unrelated settings. To keep the local value, leave this incompatible update pending (or make a supported explicit selection change that omits this contribution); do not remove it. To accept the kit value, remove only the named unowned contribution, then rerun sync. Do not edit the machine lock or bulk-clear settings.';
+  const desiredHashRole = desired === undefined ? null : desired === p?.value ? 'retained-prerequisite' : 'kit-proposal';
   const context = { file: action.file || '(unspecified native file)', kind: action.merge, key: safeKey,
     ownership, state: ownership === 'introduced' ? 'edited' : ownership,
     hash: digest(current), priorHash: p ? digest(p.value) : null,
-    desiredHash: desired === undefined ? null : digest(desired), keyHash: digest(key), action: nextAction };
+    desiredHash: desired === undefined ? null : digest(desired), desiredHashRole, keyHash: digest(key), action: nextAction };
   const error = new Error(context.file + ': settings conflict (' + context.kind + ', key ' + context.key + ', ownership ' + ownership + '): ' + reason + '; ' + nextAction);
   error.settingsConflict = context;
   return error;
@@ -1077,17 +1087,24 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     // the kit cannot show it wrote that block, so it must not overwrite it. The operator removes the
     // contribution to re-establish introduction.
     if (p && p.ownership !== 'unresolved' && current !== p.value) conflict('block', current, desired);
+    // Empty explicit markers are an enrollment request for either managed-block format. A legacy
+    // nonempty block remains ambiguous and is never overwritten automatically.
+    const emptyOptIn = current !== null
+      && !text.slice(text.indexOf(start) + start.length, text.indexOf(end)).trim()
+      && (!p || p.ownership === 'unresolved');
     if (current !== null && (!p || p.ownership === 'unresolved') && current !== desired) {
-      // Empty explicit Markdown markers are an enrollment request. Nonempty blocks are not.
-      const emptyOptIn = kind === 'md-block' && !text.slice(text.indexOf(start) + start.length, text.indexOf(end)).trim() && !legacy.length;
       if (!emptyOptIn) {
         if (desired !== null) conflict('block', current, desired);
         if (p) records.push(p);
         return { content: null, managedKeys: records, unresolved: legacy };
       }
     }
-    if (p && p.ownership !== 'introduced' && desired === null) return { content: null, managedKeys: current === null ? [] : [p], unresolved: legacy };
-    if (desired !== null) record('block', desired, current === null ? 'introduced' : p?.ownership || (legacy.length ? 'unresolved' : current === desired ? 'borrowed' : 'introduced'));
+    if (p && p.ownership !== 'introduced' && desired === null) {
+      const body = current === null ? '' : text.slice(text.indexOf(start) + start.length, text.indexOf(end));
+      if (p.ownership === 'unresolved' && !body.trim()) return { content: text, managedKeys: [], unresolved: legacy };
+      return { content: null, managedKeys: current === null ? [] : [p], unresolved: legacy };
+    }
+    if (desired !== null) record('block', desired, current === null || emptyOptIn ? 'introduced' : p?.ownership || (legacy.length ? 'unresolved' : current === desired ? 'borrowed' : 'introduced'));
     let content = text;
     if (current !== null) content = text.replace(current, desired || '');
     else if (desired) content = text.trimEnd() + (text.trim() ? '\n\n' : '') + desired + '\n';
@@ -3073,6 +3090,11 @@ function parseArgs(argv) {
 
 export function printCheck(c, json) {
   if (json) { console.log(JSON.stringify(c, null, 2)); return; }
+  const hashLabel = value => value || '(unavailable)';
+  const desiredHashText = context => context.desiredHashRole
+    ? `${hashLabel(context.desiredHash)} (${context.desiredHashRole === 'retained-prerequisite' ? 'retained prerequisite' : 'kit proposal'})`
+    : hashLabel(context.desiredHash);
+  const settingsHashes = context => `[current SHA-256: ${hashLabel(context.hash)}; prior: ${hashLabel(context.priorHash)}; desired: ${desiredHashText(context)}]`;
   console.log(`agentkit check — ${c.project}`);
   let nudge = '';
   if (c.kitMovedAhead) {
@@ -3082,7 +3104,7 @@ export function printCheck(c, json) {
   }
   console.log(`  kit ${c.kitVersion} | lock ${c.lockKitVersion ?? '(never synced)'}${nudge}`);
   if (!c.results.length) console.log('  all tracked files in sync');
-  for (const r of c.results) console.log(`  [${r.verdict}] ${r.rel}${r.settingsConflict ? ' — ' + r.detail + ' [value SHA-256: ' + r.settingsConflict.hash + ']' : ''}`);
+  for (const r of c.results) console.log(`  [${r.verdict}] ${r.rel}${r.settingsConflict ? ' — ' + r.detail + ' ' + settingsHashes(r.settingsConflict) : ''}`);
   // gitDirty is informational only (Decision D) — never affects `clean` or the process exit code.
   for (const g of c.gitDirty || []) console.log(`  [git-dirty] ${g} — uncommitted git changes (informational; does not affect clean)`);
   for (const v of c.validations) console.log(`  [lint:${v.level}] ${v.msg}`);
@@ -3149,7 +3171,7 @@ export function main(argv = process.argv.slice(2)) {
         const r = syncProject(projectRoot, { dryRun: flags['dry-run'], force: flags.force, allowBranch: flags['allow-branch'] });
         if (flags.json) console.log(JSON.stringify(r, null, 2));
         else {
-          if (!r.ok) { console.log(`sync REFUSED: ${r.reason}`); (r.settingsConflicts || []).forEach(c => console.log('  value SHA-256: ' + c.hash + '; prior: ' + (c.priorHash || '(unowned)'))); (r.dirty || []).forEach((d) => console.log('  ' + d)); (r.errors || []).forEach((e) => console.log('  ' + e.msg)); (r.reparse || []).forEach((x) => console.log(`  [junction] ${x.dir} -> ${x.target ?? '(unreadable target)'}`)); return 1; }
+          if (!r.ok) { console.log(`sync REFUSED: ${r.reason}`); (r.settingsConflicts || []).forEach(c => console.log(`  ${c.file} (${c.kind}, ${c.ownership}) — current SHA-256: ${c.hash}; prior: ${c.priorHash || '(unowned)'}; desired: ${c.desiredHash || '(unavailable)'}${c.desiredHashRole ? ` (${c.desiredHashRole === 'retained-prerequisite' ? 'retained prerequisite' : 'kit proposal'})` : ''}`)); (r.dirty || []).forEach((d) => console.log('  ' + d)); (r.errors || []).forEach((e) => console.log('  ' + e.msg)); (r.reparse || []).forEach((x) => console.log(`  [junction] ${x.dir} -> ${x.target ?? '(unreadable target)'}`)); return 1; }
           if (r.dryRun) {
             console.log(`sync --dry-run: ${r.wouldWrite.length} writes, ${r.wouldPrune.length} prunes, ${r.refusals.length} refusals`);
             r.wouldWrite.forEach((w) => console.log('  write  ' + w));

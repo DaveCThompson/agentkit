@@ -30,10 +30,18 @@ them for separately authorized kit adoption. Keep distinct routing names and all
 entry points. Do not copy old generated files over the incoming canonical source.
 
 Reconcile legacy native settings contribution by contribution. Preserve unrelated servers, hooks and
-permission policy. Once the replacement hook works and retirement is authorized, remove the exact
-superseded hook, then sync and check again. Keep one intended kit SessionStart check. Unknown ownership
-remains explicit; do not bulk-clear settings, discard locks, erase pins or use blanket force to bypass
-a refusal. Force requires preservation and authority for the entire current overwrite/prune set.
+permission policy. For a legacy managed block, choose the disposition first. To keep the local content,
+leave its body intact and leave the incompatible kit update pending. To accept the kit value, clear only
+its body while retaining both markers. In a Git checkout, commit that marker-only edit before sync only
+when the selected Git action authorizes committing, so the managed-path dirty guard can run. If the
+selected action is `prepare a diff`, preserve the reviewed marker-only edit in the diff and report the
+guarded application step pending; do not commit or bypass the guard. Sync then records new introduced
+ownership for the empty-marker enrollment.
+Restore an edited introduced or borrowed block to its exact recorded value before rerunning sync; removal while edited is refused. Once
+the replacement hook works and retirement is authorized, remove the exact superseded hook, then sync
+and check again. Keep one intended kit SessionStart check. Unknown ownership remains explicit; do not
+bulk-clear settings, discard locks, erase pins or use blanket force to bypass a refusal. Force requires
+preservation and authority for the entire current overwrite/prune set.
 
 Remove only exact recoverable vendor files proven inactive and superseded. Resolve kit governance
 references in the selected kit checkout rather than assuming the consumer has a governance directory.
