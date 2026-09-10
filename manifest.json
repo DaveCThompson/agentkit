@@ -1,8 +1,20 @@
 {
   "kitVersion": "1.1.1",
-  "compiledAt": "2026-09-09",
+  "compiledAt": "2026-09-10",
   "note": "COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
+    {
+      "path": ".agent/agents-defaults.md",
+      "type": "other",
+      "name": "agents-defaults",
+      "tier": "core",
+      "sha256": "ce500258fa2c27e343ae44b4ba284a35ae4144438fe6f3ca1359b7d3ad8c5926",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {}
+    },
     {
       "path": ".agent/hooks.json",
       "type": "other",
@@ -14,6 +26,22 @@
       "requiredTools": null,
       "conflictsWith": null,
       "generatedTargets": {}
+    },
+    {
+      "path": ".agent/output-styles/flat-technical.md",
+      "type": "output-style",
+      "name": "flat-technical",
+      "tier": "core",
+      "sha256": "d6dce0446fa8e325370850edffdac78b30345ef9e378a87abc992ca0b57318a5",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/output-styles/flat-technical.md"
+        ]
+      }
     },
     {
       "path": ".agent/rules/foundation-accessibility.md",
@@ -196,7 +224,7 @@
       "type": "rule",
       "name": "pattern-agent-orchestration",
       "tier": "core",
-      "sha256": "89f3003c3efc1cf238852e921d3a244e489bfdba489ca2f770b55ef786694fe3",
+      "sha256": "ad49cdd8294c17012726169b1e999b437f47a6ac0aa74aaa02dee4271acfae5a",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,

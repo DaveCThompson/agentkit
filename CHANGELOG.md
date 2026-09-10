@@ -1,5 +1,62 @@
 # Changelog
 
+## [2026-09-10] — Vendor-specific defaults and policy from one canonical source
+
+### Added
+- **Output styles as a canonical asset type.** `.agent/output-styles/*.md` is a sixth entry type; the
+  Claude adapter emits `.claude/output-styles/<name>.md` and every other adapter emits nothing. The
+  shipped `flat-technical` style asks for a result-first, grade-10, filler-free register. Two
+  validations are enforced at plan time because both failures are invisible when authoring: a
+  frontmatter `name` must equal its filename stem, and `keep-coding-instructions` must be explicit
+  (its native default is `false`, which silently drops Claude Code's built-in coding instructions).
+  `force-for-plugin` is never generated. See `governance/DECISION-output-style-surface.md`.
+- **`vendorDefaults` in `.agentkit.json`.** Per-project, opt-in, default-off vendor preferences drawn
+  from a closed allowlist: `outputStyle` and `model` for Claude; `model`, `modelReasoningEffort`,
+  `subagentModel`, `subagentReasoningEffort` and `subagentWaitTimeoutMs` for Codex. A key outside the
+  allowlist, or one a selected vendor does not support, is refused with a typed error rather than
+  silently dropped. Claude values land in the SHARED `.claude/settings.json`, never
+  `settings.local.json`, which Claude Code git-excludes and which outranks the shared file. An
+  `outputStyle` naming a style the project does not select is refused. See the amendment in
+  `governance/DECISION-settings-key-merge-scope.md`.
+- **Communication and delegation defaults in a managed `AGENTS.md` block.** Authored once in
+  `.agent/agents-defaults.md` and rendered between `AGENTKIT DEFAULTS` markers, beside the existing
+  workflow block. Opt-in: a project without the markers is left untouched, since a managed block must
+  not install itself. This is the only always-on prose surface Codex has here, because the Codex
+  adapter emits no rules. The delegation guidance is behavioural, with no enforcement guarantee —
+  nothing in either runtime prevents a subagent from delegating.
+
+### Fixed
+- **A managed TOML block that opens with root scalars is no longer appended at end of file.** TOML
+  cannot reopen the root table once a header opens, so an appended `model = …` silently became
+  `features.model` after any trailing table, with no diagnostic. Such blocks are now inserted before
+  the first table header, and `preflightTomlMerge` asserts every declared key's resolved path against
+  the actual parsed document, failing closed on a mismatch. A block made only of table headers —
+  every existing MCP block — still appends exactly as before, so no consumer sees its block move.
+
+### Changed
+- `pattern-agent-orchestration.md` now says to match the status-check interval to an assignment's
+  expected duration rather than using a fixed short tick on long-running delegated work.
+
+### Verification
+
+Combined candidate: `npm test` 382 tests, 381 passed, 0 failed, 1 skipped. The skip is a pre-existing
+TOML case needing a Python `tomllib` runtime this checkout does not have; it was skipped before this
+change. `agentkit check .` reports all tracked files in sync. `agentkit check . --content` reports no
+unresolved citations. Drift detection on the new asset type was exercised directly: a hand edit to a
+generated output style reports `[LOCALLY-EDITED]`.
+
+Refusal paths carry violating and conforming fixtures: output-style name/filename disagreement, an
+omitted `keep-coding-instructions`, an `outputStyle` naming no selected style, a `vendorDefaults` key
+outside the allowlist or unsupported by the selected vendor, a duplicate TOML key or table, and a
+declared TOML key path the merged document does not produce. Settings ownership is asserted case by
+case for both models: per-key introduced, borrowed, unowned conflict, edited-introduced, pruning and
+preservation for Claude JSON; whole-block ownership with external-declaration refusal for Codex TOML.
+
+Not verified, and unchanged by this release: whether Claude loads a generated output style, whether
+Codex honours the merged keys, and whether a longer wait window lengthens an orchestrator's check
+cycle. Adapter output proves a file was written, not that a vendor read it. Codex project config
+additionally applies only in a trusted project, which the kit cannot observe.
+
 ## [1.1.1] — 2026-09-09 — Let existing consumers take a release
 
 ### Fixed

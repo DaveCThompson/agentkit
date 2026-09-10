@@ -54,7 +54,48 @@ the kit policed everything around it *except* permissions.
 - Still off-limits to `sync`: `defaultMode`, `deny`, `trustedDirectories`, memory. That narrower
   boundary is the live gate, not an oversight.
 
+## Amendment 2026-09-10 — vendorDefaults scalar keys
+
+`sync` additionally owns a **closed allowlist** of scalar preference keys, declared per project in
+`.agentkit.json` `vendorDefaults` and default-off. The allowlist lives in `adapters.mjs`
+(`VENDOR_DEFAULT_KEYS`); a key outside it is refused with a typed error, never passed through.
+
+The boundary is **authority**, not file location or convenience:
+
+| Class | Owned | Reason |
+| --- | --- | --- |
+| Tone and format (`outputStyle`) | Yes | Changes how output reads. No authority effect. |
+| Model, reasoning effort, subagent wait window | Yes | Cost, quality and latency. Reversible, and visible in every response. |
+| Claude `defaultMode`, `permissions.deny`, `trustedDirectories` | **No** | Unchanged from the original decision. |
+| Codex approval policy, sandbox mode, trust level | **No** | Same authority class. A wrong value is a lockout or a fail-open. |
+| Tool-existence keys (`agents.enabled`, `wait_agent_enabled`, `expose_spawn_agent_model_overrides`) | **No** | These change which tools exist rather than how they behave, which sits closer to authority than to tuning. |
+
+Three Codex keys were considered and deliberately excluded on their own merits, not by class:
+`subagent_developer_instructions` **overrides** a subagent's inherited developer instructions and
+reaches only subagents without role-specific instructions — replacing an entire instruction layer to
+add one rule is disproportionate; `agents.max_depth` is documented "Ignored by V2", so owning it
+would imply an enforcement the kit cannot deliver; `max_concurrent_threads_per_session` exists in two
+schema definitions and one neutral name cannot address both unambiguously.
+
+**Targets.** Claude uses the SHARED `.claude/settings.json`, never `settings.local.json` — Claude Code
+adds the local file to the global git excludes the first time it writes it, so a value there reaches
+no teammate and no other machine, and it outranks the shared file, so writing there would silently
+override someone's own choice. Both `outputStyle` and `model` carry scope `Any file` in the settings
+index, which was checked specifically because keys scoped `User, local, or managed` never apply from
+a repository file. Codex uses the existing `.codex/config.toml` managed block.
+
+**Ownership models differ by vendor and are not interchangeable.** Claude JSON keys use the per-key
+introduced/borrowed/conflict contract from `mirror-contract.md`. The Codex TOML block is owned whole:
+a key or table the project already declares refuses rather than borrowing, because TOML cannot
+declare the same key twice. Per-key TOML borrowing would need a key-level editor and is deferred.
+
+**Codex project config applies only in a trusted project.** Codex ignores project `.codex/` layers
+when the project is untrusted. `check` keeps reporting generated-state agreement, which is what it
+can observe; it gains no permanent unverified-in-effect status, because a status that is always
+unverified carries no information. The condition is documented for the config author instead.
+
 ## Revisit trigger
-RESOLVED 2026-07-10 (permissions.allow now owned). Next revisit only if a project needs kit-managed
-`deny` or `defaultMode` — deliberately still deferred (a wrong `defaultMode` or `deny` is a
-fail-open/lockout risk the owner must set consciously).
+RESOLVED 2026-07-10 (permissions.allow now owned). RESOLVED 2026-09-10 (vendorDefaults allowlist).
+Next revisit only if a project needs kit-managed `deny`, `defaultMode`, a Codex approval/sandbox key,
+or a tool-existence key — all deliberately still deferred, because a wrong value in any of them is a
+fail-open or lockout risk the owner must set consciously.

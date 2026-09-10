@@ -4,6 +4,50 @@
 //   ctx: { kitPath, projectRoot, config (.agentkit.json), mcpServers, hooks }
 // Shared text utilities live here so agentkit.mjs and tests import one place (no circular deps).
 
+// ---------- vendor defaults ----------
+
+// POSITIVE allowlist for `.agentkit.json` vendorDefaults. A neutral name maps to exactly one native
+// key per vendor; anything absent is refused rather than passed through. The boundary is AUTHORITY,
+// not convenience — tone, model, effort and latency are ownable; approval policy, sandbox mode,
+// trust level, Claude `defaultMode`/`deny`/`trustedDirectories` are not, because a wrong value there
+// is a lockout or a fail-open the owner must set consciously (DECISION-settings-key-merge-scope).
+//
+// Codex paths verified 2026-09-10 against learn.chatgpt.com/docs/config-schema.json. Note that the
+// subagent model/effort keys live under `agents`, NOT under `features.multi_agent_v2` — the two
+// definitions are separate and an earlier draft of this work had them wrong.
+//
+// Deliberately ABSENT and why:
+//   subagent_developer_instructions — OVERRIDES a subagent's inherited developer instructions and
+//     reaches only subagents "without role-specific instructions". Replacing an entire instruction
+//     layer to add one delegation rule is disproportionate; the managed AGENTS.md block carries it.
+//   agents.max_depth — documented "Ignored by V2", so owning it would imply an enforcement this
+//     kit cannot deliver.
+//   max_concurrent_threads_per_session — exists in BOTH definitions; one neutral name cannot
+//     address both unambiguously.
+//   agents.enabled / wait_agent_enabled / expose_spawn_agent_model_overrides — change which tools
+//     exist rather than how they behave, which sits closer to authority than to tuning.
+export const VENDOR_DEFAULT_KEYS = Object.freeze({
+  outputStyle: { type: 'string', claude: 'outputStyle' },
+  model: { type: 'string', claude: 'model', codex: 'model' },
+  modelReasoningEffort: { type: 'string', codex: 'model_reasoning_effort' },
+  subagentModel: { type: 'string', codex: 'agents.default_subagent_model' },
+  subagentReasoningEffort: { type: 'string', codex: 'agents.default_subagent_reasoning_effort' },
+  subagentWaitTimeoutMs: { type: 'integer', min: 1, codex: 'features.multi_agent_v2.default_wait_timeout_ms' },
+});
+
+export const VENDOR_DEFAULT_VENDORS = Object.freeze(['claude', 'codex']);
+
+// Shared so config validation and the adapters agree on the one definition of "valid".
+export function vendorDefaultIssue(vendor, key, value) {
+  if (!VENDOR_DEFAULT_VENDORS.includes(vendor)) return `vendorDefaults: unsupported vendor '${vendor}'`;
+  const spec = VENDOR_DEFAULT_KEYS[key];
+  if (!spec) return `vendorDefaults.${vendor}: unsupported key '${key}'`;
+  if (!spec[vendor]) return `vendorDefaults.${vendor}: '${key}' is not supported by ${vendor}`;
+  if (spec.type === 'string' && (typeof value !== 'string' || !value.trim())) return `vendorDefaults.${vendor}.${key} must be a nonempty string`;
+  if (spec.type === 'integer' && (!Number.isInteger(value) || value < (spec.min ?? 0))) return `vendorDefaults.${vendor}.${key} must be an integer >= ${spec.min ?? 0}`;
+  return null;
+}
+
 // ---------- text utils ----------
 
 export function normalizeEol(s) {
@@ -226,13 +270,24 @@ function validateInputs(entries, ctx, vendor) {
     const skillRoot = isSkillRoot(e);
     // _templates is a reserved support directory, not a native skill. Its resources still copy.
     const template = e.type === 'skill' && e.name === '_templates';
-    if (['skill', 'rule', 'workflow', 'agent'].includes(e.type) && !template && !routeName(e.name)) error(`invalid routing name '${e.name}' in ${e.srcRel}`);
+    if (['skill', 'rule', 'workflow', 'agent', 'output-style'].includes(e.type) && !template && !routeName(e.name)) error(`invalid routing name '${e.name}' in ${e.srcRel}`);
+    // An output style's identity resolves TWO ways in Claude Code: frontmatter `name` when present,
+    // otherwise the filename stem. The `outputStyle` setting names one of them. Requiring agreement
+    // removes the ambiguity so a referential check has a single answer.
+    // `keep-coding-instructions` defaults to FALSE natively, and a custom style without it silently
+    // drops Claude Code's built-in software-engineering instructions. Omission is an error here, not
+    // an implicit false — the failure mode is invisible at the point of authoring.
+    if (e.type === 'output-style') {
+      if (fm.name !== undefined && fm.name !== e.name) error(`output-style name must match its filename stem: ${e.srcRel}`);
+      if (typeof fm['keep-coding-instructions'] !== 'boolean') error(`output-style must set keep-coding-instructions explicitly (it defaults to false, which drops Claude Code's coding instructions): ${e.srcRel}`);
+      if (typeof fm.description !== 'string' || !fm.description.trim()) error(`output-style description must be a nonempty string: ${e.srcRel}`);
+    }
     if (skillRoot && !template && (fm.name !== e.name || e.name.length > 64)) error(`SKILL.md name must match its folder and fit 64 characters: ${e.srcRel}`);
     if (skillRoot && !template && (typeof fm.description !== 'string' || !fm.description.trim())) error(`skill description must be a nonempty string: ${e.srcRel}`);
     for (const key of ['name', 'description', 'model', 'argument-hint', 'agent']) {
       if (fm[key] !== undefined && typeof fm[key] !== 'string') error(`${key} must be a string in ${e.srcRel}`);
     }
-    for (const key of ['gemini', 'subtask', 'user-invocable', 'disable-model-invocation']) {
+    for (const key of ['gemini', 'subtask', 'user-invocable', 'disable-model-invocation', 'keep-coding-instructions']) {
       if (fm[key] !== undefined && typeof fm[key] !== 'boolean') error(`${key} must be boolean in ${e.srcRel}`);
     }
     for (const key of ['required-tools', 'triggers', 'applies-to', 'conflicts-with']) {
@@ -434,6 +489,12 @@ function claude(entries, ctx) {
     } else if (e.type === 'agent') {
       const rel = `.claude/agents/${e.name}.md`;
       files.push(generated(e, rel, injectHeader(stripFmTo(e, ['name', 'description', 'tools', 'model']), e.srcRel, '.md'), 'body-md'));
+    } else if (e.type === 'output-style') {
+      // .claude/output-styles/<name>.md (docs verified 2026-09-10, code.claude.com/docs/en/output-styles).
+      // `force-for-plugin` is deliberately NOT forwarded: it is plugin-only and activates a style
+      // without the user choosing, which is the opposite of this kit's restraint about user keys.
+      const rel = `.claude/output-styles/${e.name}.md`;
+      files.push(generated(e, rel, injectHeader(stripFmTo(e, ['name', 'description', 'keep-coding-instructions']), e.srcRel, '.md'), 'body-md'));
     }
   }
   if (ctx.hooks.length) {
@@ -446,6 +507,29 @@ function claude(entries, ctx) {
   const permsBaseline = claudePermissionsBaseline(ctx);
   if (permsBaseline.length) {
     settings.push({ file: '.claude/settings.json', merge: 'claude-permissions', data: permsBaseline });
+  }
+  // Shared `.claude/settings.json`, NOT settings.local.json. The local file is personal by design:
+  // Claude Code adds it to the global git excludes the first time it writes it, so a value placed
+  // there reaches no teammate and no other machine, and it outranks the shared file, so writing
+  // there would silently override someone's own choice. `outputStyle` and `model` both carry scope
+  // "Any file" in the settings index, so both apply from a committed shared file — checked
+  // specifically, because keys scoped "User, local, or managed" never apply from a repository file.
+  const claudeScalars = {};
+  for (const [key, value] of Object.entries(ctx.config?.vendorDefaults?.claude || {})) {
+    const native = VENDOR_DEFAULT_KEYS[key]?.claude;
+    if (native) claudeScalars[native] = value;
+  }
+  if (claudeScalars.outputStyle !== undefined) {
+    // Referential integrity at plan time. A setting naming a style this project does not select
+    // would sync clean and then silently do nothing.
+    const styles = new Set(entries.filter(e => e.type === 'output-style').map(e => e.name));
+    if (!styles.has(claudeScalars.outputStyle)) {
+      const known = [...styles].sort().join(', ') || 'none selected';
+      validations.push({ level: 'error', msg: `claude: vendorDefaults.claude.outputStyle names '${claudeScalars.outputStyle}', which is not a selected output style (available: ${known})` });
+    }
+  }
+  if (Object.keys(claudeScalars).length) {
+    settings.push({ file: '.claude/settings.json', merge: 'json-scalars', data: claudeScalars });
   }
   const servers = Object.fromEntries(Object.entries(ctx.mcpServers).filter(([, cfg]) => cfg.enabled !== false).map(([name, cfg]) => [name, {
     command: cfg.command, ...(cfg.args !== undefined ? { args: [...cfg.args] } : {}), ...(cfg.env !== undefined ? { env: { ...cfg.env } } : {}),
@@ -475,14 +559,35 @@ function codex(entries, ctx) {
       files.push(generated(e, '.agents/' + w.subPath, injectHeader(stripFmTo(w, ['name', 'description']), e.srcRel, '.md'), 'body-md'));
     }
   }
-  if (Object.keys(ctx.mcpServers).length) {
-    const lines = [];
-    for (const [name, cfg] of Object.entries(ctx.mcpServers)) {
-      const native = { command: cfg.command, ...(cfg.args !== undefined ? { args: [...cfg.args] } : {}),
-        ...(cfg.enabled !== undefined ? { enabled: cfg.enabled } : {}), ...(cfg.env !== undefined ? { env: { ...cfg.env } } : {}) };
-      lines.push(...renderTomlTable(`mcp_servers.${JSON.stringify(name)}`, native), '');
+  // One managed block holds both contributions. Root scalars MUST come first: a table header ends
+  // the root scope for everything after it, so `model` emitted below `[agents]` would silently
+  // become `agents.model`. `expect` carries the intended resolved path of every scalar so the merge
+  // can assert it against the actual parsed document instead of trusting emission order.
+  const lines = [];
+  const expect = [];
+  const nested = {};
+  for (const [key, value] of Object.entries(ctx.config?.vendorDefaults?.codex || {})) {
+    const native = VENDOR_DEFAULT_KEYS[key]?.codex;
+    if (!native) continue;
+    const parts = native.split('.');
+    expect.push(parts);
+    if (parts.length === 1) lines.push(`${JSON.stringify(parts[0])} = ${tomlValue(value)}`);
+    else {
+      const table = parts.slice(0, -1).join('.');
+      (nested[table] ||= {})[parts[parts.length - 1]] = value;
     }
-    settings.push({ file: '.codex/config.toml', merge: 'toml-block', data: lines.join('\n').trimEnd() });
+  }
+  if (lines.length) lines.push('');
+  for (const [table, values] of Object.entries(nested)) {
+    lines.push(...renderTomlTable(table.split('.').map(s => JSON.stringify(s)).join('.'), values), '');
+  }
+  for (const [name, cfg] of Object.entries(ctx.mcpServers)) {
+    const native = { command: cfg.command, ...(cfg.args !== undefined ? { args: [...cfg.args] } : {}),
+      ...(cfg.enabled !== undefined ? { enabled: cfg.enabled } : {}), ...(cfg.env !== undefined ? { env: { ...cfg.env } } : {}) };
+    lines.push(...renderTomlTable(`mcp_servers.${JSON.stringify(name)}`, native), '');
+  }
+  if (lines.length) {
+    settings.push({ file: '.codex/config.toml', merge: 'toml-block', data: lines.join('\n').trimEnd(), ...(expect.length ? { expect } : {}) });
   }
   return { files, settings, validations };
 }

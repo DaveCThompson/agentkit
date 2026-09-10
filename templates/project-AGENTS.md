@@ -42,6 +42,13 @@ semantic tokens only", "PDF worker is single-source".>
 <!-- >>> AGENTKIT WORKFLOWS >>> (generated — do not edit; run 'agentkit sync') -->
 <!-- <<< AGENTKIT WORKFLOWS <<< -->
 
+## Communication and delegation
+<!-- The block below is GENERATED from `.agent/agents-defaults.md` by `agentkit sync` — do not edit
+     inside it. Keep these two markers where you want the defaults to appear; sync fills the body.
+     Remove both markers to opt out; sync then leaves this file alone. -->
+<!-- >>> AGENTKIT DEFAULTS >>> (generated — do not edit; run 'agentkit sync') -->
+<!-- <<< AGENTKIT DEFAULTS <<< -->
+
 <!-- ========================= PORTABILITY SEAM ========================= -->
 <!-- Everything BELOW is project-specific. A same-project clone retains identity and ownership.
      A template-derived project needs reviewed keep/change/retire decisions for inherited guidance,
