@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased] — 2026-09-09 — Migrate the self-hosted checkout to AgentKit 1.1.1
+
+### Changed
+- Fast-forward local `main` to `origin/main` at `40369bc516be263ce525c0167841f74ad5da751d` after
+  confirming the requested release is current.
+- Sync the local ignored lock and vendor mirrors from the selected 1.1.1 checkout.
+- Enroll the legacy `AGENTS.md` and `.codex/config.toml` managed blocks, replace the superseded
+  absolute SessionStart hook with one portable `agentkit check . --quick --json` hook, and reconcile
+  the 11 legacy Claude permission entries against the 1.1.1 baseline.
+- Install the machine-local launcher at `C:\\Users\\davec\\.local\\bin\\agentkit.cmd` and bind it
+  to this checkout.
+
+### Verification
+- `npm test` — PASS: 363 tests, 362 passed, 1 skipped, 0 failed.
+- Repeated `sync . --dry-run --json` — PASS: 0 writes, 0 prunes; 11 preserved permission records
+  were re-enrolled or retired under the selected 1.1.1 baseline.
+- `agentkit --version` through the refreshed launcher environment — PASS: `1.1.1`.
+- Exact `.agent/hooks.json` command in a fresh PATH-refreshed process — PASS: `check --quick --json`
+  clean with zero results.
+- Native client lifecycle invocation — PENDING: Claude and Codex are discoverable, but this session
+  did not start a model client solely to trigger its lifecycle hook.
+
+KB consulted: `docs/knowledge-base/README.md`, `docs/working/README.md`.
+
 ## [1.1.1] — 2026-09-09 — Let existing consumers take a release
 
 ### Fixed
