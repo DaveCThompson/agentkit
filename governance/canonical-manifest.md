@@ -88,8 +88,33 @@ proposed set could not express without misfiling a rule:
 - Phase gates — the routing-disambiguation test reads `triggers` to build ambiguous-prompt probes.
 
 ## Project-side files (for contrast)
-- `.agentkit.json` — **project intent**: vendors, stack/kinds, tools, overlays, capability exclusions
-  and optional `docs.kbRoot`. Hand-authored; legacy nonempty/malformed pins are rejected.
+- `.agentkit.json` — **project intent**: vendors, stack/kinds, tools, overlays, capability exclusions,
+  optional `docs.kbRoot` and optional `vendorDefaults`. Hand-authored; legacy nonempty/malformed pins
+  are rejected.
+
+  `vendorDefaults` selects per-vendor scalar preferences from a closed allowlist and is default-off.
+  Its authority boundary and the full key table live in `DECISION-settings-key-merge-scope.md`.
+
+  ```json
+  "vendorDefaults": {
+    "claude": { "outputStyle": "flat-technical", "model": "<model id>" },
+    "codex":  { "model": "<model id>", "modelReasoningEffort": "<effort>",
+                "subagentModel": "<model id>", "subagentReasoningEffort": "<effort>",
+                "subagentWaitTimeoutMs": 900000 }
+  }
+  ```
+
+  Two conditions an author must know, because neither is visible in a clean sync:
+
+  - **`outputStyle` must name a style the project actually selects.** Sync refuses one that does not,
+    rather than writing a setting that silently does nothing.
+  - **Codex reads project config only in a trusted project.** An untrusted project gets a correct
+    file, a clean sync, a clean drift check, and no effect. The kit cannot observe trust, so it
+    reports what it generated and does not claim the values are live.
+
+  `subagentWaitTimeoutMs` maps to Codex's `default_wait_timeout_ms`, which bounds how long a wait
+  call blocks. Whether a longer window lengthens an orchestrator's check cycle is unverified; name it
+  a timeout, not a polling interval.
 - `.agentkit.lock` — **completed shipped state**: hashes, source/transform identity, kit version and
   typed settings ownership. Machine-written, committed by consumers, never hand-edited.
 - `.agentkit.pending.json` — private incomplete-operation recovery, excluded from Git. It is not

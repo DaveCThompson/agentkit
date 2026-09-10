@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  adapters, VENDORS, parseFrontmatter, normalizeEol, injectHeader, stripHeader,
+  adapters, VENDORS, parseFrontmatter, normalizeEol, injectHeader, stripHeader, vendorDefaultIssue,
 } from './adapters.mjs';
 
 export const KIT_ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -301,7 +301,12 @@ export function kitBranchWarn(kitRoot, projectRoot, allowBranch) {
 
 // ---------- kit scan ----------
 
-const TYPE_BY_DIR = { skills: 'skill', rules: 'rule', workflows: 'workflow', scripts: 'script', agents: 'agent' };
+// `output-styles` is a Claude-only asset in NATIVE shape — Codex, Gemini, OpenCode and Antigravity
+// have no output-style concept to abstract over, so there is nothing neutral to transform (the
+// tier-3 case in PLAN-vendor-policy-surface). It stays a flat canonical directory rather than a
+// per-vendor tree: DECISION-vendor-generation forbids mirrored per-vendor folders, and every other
+// adapter simply emits nothing for this type.
+const TYPE_BY_DIR = { skills: 'skill', rules: 'rule', workflows: 'workflow', scripts: 'script', agents: 'agent', 'output-styles': 'output-style' };
 
 export function classifyAgentFile(subPath) {
   const segs = subPath.split('/');
@@ -624,6 +629,17 @@ function validateConfig(cfg) {
     if (cfg.permissions.extra !== undefined && (!Array.isArray(cfg.permissions.extra) || cfg.permissions.extra.some(v => typeof v !== 'string'))) throw new Error('permissions.extra must be a string array');
   }
   if (cfg.docs !== undefined && (!cfg.docs || typeof cfg.docs !== 'object' || Array.isArray(cfg.docs))) throw new Error('docs must be an object');
+  if (cfg.vendorDefaults !== undefined) {
+    if (!cfg.vendorDefaults || typeof cfg.vendorDefaults !== 'object' || Array.isArray(cfg.vendorDefaults)) throw new Error('vendorDefaults must be an object');
+    for (const [vendor, values] of Object.entries(cfg.vendorDefaults)) {
+      if (!values || typeof values !== 'object' || Array.isArray(values)) throw new Error(`vendorDefaults.${vendor} must be an object`);
+      for (const [key, value] of Object.entries(values)) {
+        // Refuse, never silently drop. A dropped key looks like a clean sync that changed nothing.
+        const issue = vendorDefaultIssue(vendor, key, value);
+        if (issue) throw new Error(issue);
+      }
+    }
+  }
 }
 export function kbRootFor(projectRoot, cfg = loadConfig(projectRoot) || {}) {
   const name = cfg.docs?.kbRoot === undefined ? 'docs/knowledge-base' : cfg.docs.kbRoot;
@@ -829,6 +845,14 @@ export function planSync(projectRoot, opts = {}) {
   const workflowMap = renderWorkflowMap(merged);
   if (workflowMap) settingsActions.push({ file: 'AGENTS.md', merge: 'md-block', data: workflowMap, vendor: null });
 
+  // Communication and delegation defaults, authored once in `.agent/agents-defaults.md` and rendered
+  // into a second managed block. Opt-in through markers exactly like the workflow map: a project
+  // without them is left untouched. This is the only always-on prose surface Codex has here, since
+  // the Codex adapter emits no rules.
+  const defaultsEntry = merged.find((e) => e.subPath === 'agents-defaults.md');
+  const defaultsBody = defaultsEntry ? normalizeEol(defaultsEntry.body).trim() : '';
+  if (defaultsBody) settingsActions.push({ file: 'AGENTS.md', merge: 'md-defaults-block', data: defaultsBody, vendor: null });
+
   // overlay↔core name collision lint (decision 34) — two skills with one ROUTING name is ambiguity.
   // The routing name is what the model sees: SKILL.md frontmatter `name:` (fallback: folder name).
   const effName = (e) => (e.type === 'skill' ? String(e.fm?.name || e.name) : e.name);
@@ -896,6 +920,18 @@ const TOML_BLOCK_END = '# <<< AGENTKIT MANAGED <<<';
 // project's AGENTS.md already contains them — an authored AGENTS.md without markers is never touched.
 const MD_BLOCK_START = "<!-- >>> AGENTKIT WORKFLOWS >>> (generated — do not edit; run 'agentkit sync') -->";
 const MD_BLOCK_END = '<!-- <<< AGENTKIT WORKFLOWS <<< -->';
+// A SECOND managed block in the same AGENTS.md needs its own identity, because ownership records and
+// retirement are keyed by merge kind and `prepareSettings` refuses two actions of one kind per file.
+// Codex reads AGENTS.md before doing any work and receives no rules from this kit, so this is the
+// only always-on prose surface it has (PLAN-vendor-policy-surface Part D).
+const MD_DEFAULTS_BLOCK_START = "<!-- >>> AGENTKIT DEFAULTS >>> (generated — do not edit; run 'agentkit sync') -->";
+const MD_DEFAULTS_BLOCK_END = '<!-- <<< AGENTKIT DEFAULTS <<< -->';
+const MANAGED_BLOCK_KINDS = { 'toml-block': null, 'md-block': null, 'md-defaults-block': null };
+function blockMarkers(kind) {
+  if (kind === 'toml-block') return { start: TOML_BLOCK_START, end: TOML_BLOCK_END };
+  if (kind === 'md-defaults-block') return { start: MD_DEFAULTS_BLOCK_START, end: MD_DEFAULTS_BLOCK_END };
+  return { start: MD_BLOCK_START, end: MD_BLOCK_END };
+}
 
 // Render the workflow/command map from merged (selected + overlay) workflow entries. Deterministic
 // (sorted by command) so sync is idempotent. Descriptions come from each workflow's frontmatter.
@@ -1023,6 +1059,14 @@ function preflightTomlMerge(before, after, action, prior) {
   const next = tomlClaims(after);
   const userClaims = list => JSON.stringify(list.filter(c => !c.managed).map(c => [c.parts, c.type, c.raw]));
   if (userClaims(old) !== userClaims(next)) throw settingsFailure(action, prior, 'document', before, 'replacement would change the semantic location of project-owned settings', after);
+  // Resolved-path post-condition. TOML has no syntax to reopen the root table once a header opens,
+  // so a bare root scalar in an appended block silently binds to whatever table precedes it —
+  // `model` becomes `features.model` and nothing complains. Placement below avoids that; this
+  // assertion proves it for the actual merged document rather than trusting the placement heuristic.
+  for (const expected of action.expect || []) {
+    const hit = next.find(c => c.managed && c.type === 'value' && c.parts.length === expected.length && c.parts.every((p, n) => p === expected[n]));
+    if (!hit) throw settingsFailure(action, prior, expected.join('.'), before, `managed key did not resolve to '${expected.join('.')}' in the merged document`, after);
+  }
 }
 
 function settingsFailure(action, prior, key, current, reason = 'contribution differs from the required or retained value', desired = undefined) {
@@ -1054,6 +1098,34 @@ function settingsFailure(action, prior, key, current, reason = 'contribution dif
   return error;
 }
 
+// Where a NEW managed block goes. Appending is correct for a block made entirely of table headers
+// (every MCP block is), and it is what every existing consumer already has, so that path is left
+// byte-identical on purpose. A block that opens with bare root scalars cannot be appended: TOML
+// cannot reopen the root table after a header, so the scalars would bind to the preceding table.
+// Those blocks are inserted before the first table header instead. The resolved-path assertion in
+// preflightTomlMerge is the backstop — this heuristic never gets the last word.
+function blockOpensWithRootScalars(data) {
+  for (const line of String(data ?? '').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    return !t.startsWith('[');
+  }
+  return false;
+}
+function insertManagedBlock(text, desired, kind, data) {
+  const append = () => text.trimEnd() + (text.trim() ? '\n\n' : '') + desired + '\n';
+  if (kind !== 'toml-block' || !blockOpensWithRootScalars(data)) return append();
+  const lines = text.split('\n');
+  let offset = 0;
+  for (const line of lines) {
+    if (/^\[[^\]]*\]\s*(#.*)?$/.test(line.trim()) && line === line.trimStart()) {
+      return text.slice(0, offset) + desired + '\n\n' + text.slice(offset);
+    }
+    offset += line.length + 1;
+  }
+  return append();
+}
+
 // Records are exact contributions, independently retired by kind. A legacy string list
 // proves membership only; preserve it as unresolved rather than inventing acquisition.
 export function mergeSettings(action, existingContent, lockKeys = []) {
@@ -1070,13 +1142,14 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     : value;
   const equal = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
   const conflict = (key, current, desired) => { throw settingsFailure(action, prior, key, current, undefined, desired); };
-  if (kind === 'toml-block' || kind === 'md-block') {
-    const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
-    const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
+  if (Object.hasOwn(MANAGED_BLOCK_KINDS, kind)) {
+    const { start, end } = blockMarkers(kind);
     const text = existingContent ?? '';
     const starts = text.split(start).length - 1, ends = text.split(end).length - 1;
     if (starts !== ends || starts > 1 || (starts && text.indexOf(end) < text.indexOf(start))) throw new Error('malformed managed block: ' + kind);
-    if (kind === 'md-block' && !starts) return { content: null, managedKeys: [] };
+    // No markers means the project has not opted in. Never install a Markdown block into a file
+    // that never had one; leave it untouched and let the owner add the markers once.
+    if (kind !== 'toml-block' && !starts) return { content: null, managedKeys: [] };
     const current = starts ? text.slice(text.indexOf(start), text.indexOf(end) + end.length) : null;
     const desired = action.data ? start + '\n' + action.data + '\n' + end : null;
     const p = prior[0];
@@ -1107,7 +1180,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     if (desired !== null) record('block', desired, current === null || emptyOptIn ? 'introduced' : p?.ownership || (legacy.length ? 'unresolved' : current === desired ? 'borrowed' : 'introduced'));
     let content = text;
     if (current !== null) content = text.replace(current, desired || '');
-    else if (desired) content = text.trimEnd() + (text.trim() ? '\n\n' : '') + desired + '\n';
+    else if (desired) content = insertManagedBlock(text, desired, kind, action.data);
     if (kind === 'toml-block') preflightTomlMerge(text, content, action, prior);
     return { content, managedKeys: records, unresolved: legacy };
   }
@@ -1177,6 +1250,25 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
       servers[name] = value;
     }
     if (Object.keys(servers).length) json[key] = servers; else delete json[key];
+  } else if (kind === 'json-scalars') {
+    // Top-level scalar preferences from `.agentkit.json` vendorDefaults. Per-key ownership, the same
+    // introduced/borrowed/conflict contract mcp-json uses. The ALLOWLIST that decides which keys may
+    // appear here lives in adapters.mjs (VENDOR_DEFAULT_KEYS) and is enforced at config-validation
+    // time, so this merge never has to decide whether a key is safe to own.
+    for (const p of prior) {
+      if (p.ownership === 'introduced' && !equal(json[p.key], p.value)) conflict(p.key, json[p.key], p.value);
+      if (!Object.hasOwn(action.data, p.key)) {
+        if (p.ownership === 'introduced') delete json[p.key];
+        else if (Object.hasOwn(json, p.key)) records.push({ ...p, value: json[p.key] });
+      }
+    }
+    for (const [key, value] of Object.entries(action.data)) {
+      const p = prior.find(x => x.key === key);
+      const exists = Object.hasOwn(json, key);
+      if (exists && !equal(json[key], value) && p?.ownership !== 'introduced') conflict(key, json[key], value);
+      record(key, value, exists ? (p?.ownership || (legacy.includes(key) ? 'unresolved' : 'borrowed')) : 'introduced');
+      json[key] = value;
+    }
   } else throw new Error('unknown settings merge kind: ' + kind);
   return { content: jsonBytes(json), managedKeys: records, unresolved: legacy };
 }
@@ -1187,8 +1279,7 @@ function legacySettingsRecords(file, keys, content) {
   const add = (kind, key, value) => records.push({ kind, key, value, ownership: 'unresolved' });
   if (file.endsWith('.toml') || file.endsWith('.md')) {
     const kind = file.endsWith('.toml') ? 'toml-block' : 'md-block';
-    const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
-    const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
+    const { start, end } = blockMarkers(kind);
     if (content.includes(start)) add(kind, 'block', content.slice(content.indexOf(start), content.indexOf(end) + end.length));
   } else {
     const json = JSON.parse(content);
@@ -1223,7 +1314,7 @@ function prepareSettings(projectRoot, actions, lock, initialEffects = []) {
       const same = wanted.filter(a => a.merge === kind);
       if (same.length > 1) throw new Error('duplicate settings merge: ' + file + ' ' + kind);
       const empty = ['claude-hooks', 'claude-permissions'].includes(kind) ? [] :
-        ['mcp-json', 'opencode-mcp'].includes(kind) ? {} : '';
+        ['mcp-json', 'opencode-mcp', 'json-scalars'].includes(kind) ? {} : '';
       const action = { ...(same[0] || { merge: kind, data: empty }), file };
       let result;
       try { result = mergeSettings(action, content, previous); }
@@ -1311,10 +1402,9 @@ export function checkProject(projectRoot, opts = {}) {
           let data;
           if (kind === 'claude-permissions') data = owned.map(r => r.value);
           else if (kind === 'claude-hooks') data = owned.map(r => ({ event: r.key, command: r.value.hooks[0].command }));
-          else if (kind === 'mcp-json' || kind === 'opencode-mcp') data = Object.fromEntries(owned.map(r => [r.key, r.value]));
-          else if (kind === 'toml-block' || kind === 'md-block') {
-            const start = kind === 'toml-block' ? TOML_BLOCK_START : MD_BLOCK_START;
-            const end = kind === 'toml-block' ? TOML_BLOCK_END : MD_BLOCK_END;
+          else if (kind === 'mcp-json' || kind === 'opencode-mcp' || kind === 'json-scalars') data = Object.fromEntries(owned.map(r => [r.key, r.value]));
+          else if (Object.hasOwn(MANAGED_BLOCK_KINDS, kind)) {
+            const { start, end } = blockMarkers(kind);
             data = owned[0]?.value.slice(start.length + 1, -(end.length + 1)) || '';
           } else continue;
           actions.push({ file, merge: kind, data });

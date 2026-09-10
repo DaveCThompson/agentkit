@@ -268,3 +268,145 @@ test('default grants cannot approve arbitrary helper scripts, broad runners or l
   ctx.config.permissions.enabled = false;
   assert.deepEqual(claudePermissionsBaseline(ctx), []);
 });
+
+// ---------------------------------------------------------------------------
+// Output styles — a Claude-only asset in native shape (tier 3, PLAN-vendor-policy-surface).
+// ---------------------------------------------------------------------------
+
+function outputStyle(name, fm = {}, body = 'Answer in simplified technical English.\n') {
+  const front = { name, description: 'Fixture style.', 'keep-coding-instructions': true, tier: 'core', ...fm };
+  for (const [k, v] of Object.entries(front)) if (v === undefined) delete front[k];
+  const subPath = `output-styles/${name}.md`;
+  return {
+    type: 'output-style', name, subPath, srcRel: `.agent/${subPath}`, owner: 'core',
+    fm: front, raw: api.serializeFrontmatter(front) + '\n' + body, body, tier: front.tier || 'core',
+  };
+}
+
+test('output styles reach Claude only; every other adapter emits nothing for the type', () => {
+  const style = outputStyle('flat-technical');
+  const claude = adapters.claude([style], context());
+  assert.deepEqual(errors(claude), []);
+  const emitted = claude.files.filter(f => f.source === style.srcRel);
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0].rel, '.claude/output-styles/flat-technical.md');
+  assert.equal(emitted[0].transform, 'body-md');
+  for (const vendor of ['codex', 'gemini', 'opencode', 'antigravity']) {
+    const out = adapters[vendor]([style], context());
+    assert.deepEqual(errors(out), [], vendor);
+    assert.deepEqual(out.files.filter(f => f.source === style.srcRel), [], `${vendor} must emit nothing for an output style`);
+  }
+});
+
+test('output style keeps only native frontmatter and never forwards force-for-plugin', () => {
+  const style = outputStyle('flat-technical', { 'force-for-plugin': true });
+  const out = adapters.claude([style], context());
+  const { fm } = parseFrontmatter(stripHeader(out.files.find(f => f.source === style.srcRel).content));
+  assert.deepEqual(Object.keys(fm).sort(), ['description', 'keep-coding-instructions', 'name']);
+  assert.equal(fm['keep-coding-instructions'], true, 'must survive as a real boolean, not a string');
+  assert.equal(fm['force-for-plugin'], undefined, 'plugin-only activation must never be generated');
+  assert.equal(fm.tier, undefined, 'canonical-only metadata is stripped');
+});
+
+test('output style refuses a frontmatter name that disagrees with its filename stem', () => {
+  // Claude resolves a style's identity from `name` when present, else the filename. The
+  // `outputStyle` setting names one of them; disagreement makes the reference ambiguous.
+  const bad = outputStyle('flat-technical', { name: 'something-else' });
+  assert.ok(errors(adapters.claude([bad], context())).some(v => v.msg.includes('filename stem')));
+  assert.deepEqual(errors(adapters.claude([outputStyle('flat-technical')], context())), [], 'conforming control');
+});
+
+test('output style refuses an omitted keep-coding-instructions rather than defaulting it', () => {
+  // Native default is false, which silently drops Claude Code's built-in coding instructions.
+  const omitted = outputStyle('flat-technical', { 'keep-coding-instructions': undefined });
+  assert.ok(errors(adapters.claude([omitted], context())).some(v => v.msg.includes('keep-coding-instructions')));
+  const wrongType = outputStyle('flat-technical', { 'keep-coding-instructions': 'true' });
+  assert.ok(errors(adapters.claude([wrongType], context())).length, 'a string is not an explicit boolean');
+  for (const value of [true, false]) {
+    assert.deepEqual(errors(adapters.claude([outputStyle('flat-technical', { 'keep-coding-instructions': value })], context())), [],
+      `explicit ${value} is a conforming control`);
+  }
+});
+
+test('output style refuses an empty description and an invalid routing name', () => {
+  assert.ok(errors(adapters.claude([outputStyle('flat-technical', { description: '  ' })], context())).some(v => v.msg.includes('description')));
+  assert.ok(errors(adapters.claude([outputStyle('Flat_Technical')], context())).some(v => v.msg.includes('routing name')));
+});
+
+// ---------------------------------------------------------------------------
+// vendorDefaults — positive allowlist, native key mapping, referential integrity.
+// ---------------------------------------------------------------------------
+
+const vdContext = (vendorDefaults, vendors = ['claude', 'codex']) => ({
+  ...context(vendors), config: { vendors, kinds: ['tooling'], stack: [], permissions: { enabled: false }, vendorDefaults },
+});
+
+test('vendorDefaults maps neutral names to the verified native Codex key paths', () => {
+  const out = adapters.codex([], vdContext({ codex: {
+    model: 'm1', modelReasoningEffort: 'high', subagentModel: 'm2',
+    subagentReasoningEffort: 'low', subagentWaitTimeoutMs: 900000,
+  } }));
+  assert.deepEqual(errors(out), []);
+  const action = out.settings.find(s => s.file === '.codex/config.toml');
+  // Subagent model/effort live under `agents`, NOT features.multi_agent_v2 — the two schema
+  // definitions are separate and this mapping was wrong in an earlier draft.
+  assert.deepEqual(action.expect, [
+    ['model'], ['model_reasoning_effort'],
+    ['agents', 'default_subagent_model'], ['agents', 'default_subagent_reasoning_effort'],
+    ['features', 'multi_agent_v2', 'default_wait_timeout_ms'],
+  ]);
+  // Root scalars must precede every table header, or a table would capture them.
+  const firstTable = action.data.indexOf('[');
+  assert.ok(action.data.indexOf('"model"') < firstTable, 'root scalars are emitted before any table');
+});
+
+test('vendorDefaults writes Claude scalars to the SHARED settings file, not settings.local.json', () => {
+  const style = outputStyle('flat-technical');
+  const out = adapters.claude([style], vdContext({ claude: { outputStyle: 'flat-technical', model: 'claude-opus-5' } }));
+  assert.deepEqual(errors(out), []);
+  const action = out.settings.find(s => s.merge === 'json-scalars');
+  assert.equal(action.file, '.claude/settings.json', 'the local file is personal and git-excluded; shared defaults belong in the committed file');
+  assert.deepEqual(action.data, { outputStyle: 'flat-technical', model: 'claude-opus-5' });
+});
+
+test('vendorDefaults refuses an outputStyle that names no selected style', () => {
+  const withStyle = adapters.claude([outputStyle('flat-technical')], vdContext({ claude: { outputStyle: 'flat-technical' } }));
+  assert.deepEqual(errors(withStyle), [], 'conforming control');
+  const missing = adapters.claude([outputStyle('flat-technical')], vdContext({ claude: { outputStyle: 'not-shipped' } }));
+  assert.ok(errors(missing).some(v => v.msg.includes("'not-shipped'") && v.msg.includes('flat-technical')),
+    'the error must name both the missing style and what is available');
+  const noStyles = adapters.claude([], vdContext({ claude: { outputStyle: 'flat-technical' } }));
+  assert.ok(errors(noStyles).some(v => v.msg.includes('none selected')));
+});
+
+test('a vendor emits nothing for a key the other vendor owns', () => {
+  const codexOnly = adapters.claude([], vdContext({ codex: { model: 'm' } }));
+  assert.equal(codexOnly.settings.find(s => s.merge === 'json-scalars'), undefined, 'claude ignores codex defaults');
+  const claudeOnly = adapters.codex([], vdContext({ claude: { outputStyle: 'x' } }));
+  assert.equal(claudeOnly.settings.find(s => s.file === '.codex/config.toml'), undefined, 'codex ignores claude defaults');
+});
+
+test('an MCP-only Codex block still carries no expect and stays table-only', () => {
+  // Byte compatibility: existing consumers have an appended MCP block and must not see it move.
+  const out = adapters.codex([], { ...context(['codex']), mcpServers: { srv: { command: 'node' } } });
+  const action = out.settings.find(s => s.file === '.codex/config.toml');
+  assert.equal(action.expect, undefined);
+  assert.ok(action.data.trimStart().startsWith('['), 'an MCP-only block opens with a table header, so it is safe to append');
+});
+
+test('the vendorDefaults allowlist refuses unknown keys, wrong vendors and bad types', () => {
+  const { vendorDefaultIssue: issue } = api;
+  assert.equal(issue('claude', 'outputStyle', 'x'), null);
+  assert.equal(issue('codex', 'model', 'm'), null);
+  assert.equal(issue('codex', 'subagentWaitTimeoutMs', 900000), null);
+  assert.match(issue('gemini', 'model', 'm'), /unsupported vendor/);
+  assert.match(issue('codex', 'approvalPolicy', 'never'), /unsupported key/);
+  assert.match(issue('claude', 'modelReasoningEffort', 'high'), /not supported by claude/);
+  assert.match(issue('codex', 'subagentWaitTimeoutMs', 0), /integer >= 1/);
+  assert.match(issue('codex', 'subagentWaitTimeoutMs', 1.5), /integer/);
+  assert.match(issue('claude', 'outputStyle', '   '), /nonempty string/);
+  // Authority keys stay off-limits: none of them is in the allowlist at all.
+  for (const key of ['defaultMode', 'deny', 'trustedDirectories', 'approvalPolicy', 'sandboxMode', 'maxAgentDepth', 'subagentInstructions']) {
+    assert.match(issue('claude', key, 'v') || issue('codex', key, 'v'), /unsupported key/, key);
+  }
+});
