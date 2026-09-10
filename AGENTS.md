@@ -57,31 +57,4 @@ Defaults:
 
 ## Workflows (slash commands)
 <!-- >>> AGENTKIT WORKFLOWS >>> (generated — do not edit; run 'agentkit sync') -->
-| Command | What it does |
-| --- | --- |
-| `/architect` | Create a technical architecture specification from an accepted problem and constraints. |
-| `/async-maint` | Run requested or configured background diagnostics and return uniquely identified health reports. |
-| `/audit` | Route scoped or full scan-only audits and report findings with explicit coverage. |
-| `/backlog-status` | Derive an on-demand ticket view from canonical artifacts without maintaining a second backlog. |
-| `/build` | Implement an accepted contract with risk-appropriate proof and truthful remaining acceptance. |
-| `/close` | Prepare a task for archive while preserving pending work and session-owned resources. |
-| `/debug` | Diagnose, reproduce or repair a bug using discriminating evidence and scoped authority. |
-| `/explore` | Route open questions to concept, technical, visual or interaction exploration. |
-| `/huh` | Repeat the latest explanation in one line of simple English. |
-| `/land` | Land the scoped session on its authorized integration target with proof and safe cleanup. |
-| `/onboard` | Load sufficient project context index-first and preserve current intent on resume. |
-| `/plan` | Produce a right-sized implementation plan while preserving the accepted work contract. |
-| `/prd` | Define product outcomes, states and acceptance when those decisions are still open. |
-| `/quick-fix` | Apply a small, well-understood change with a risk-based scope guard. |
-| `/refactor` | Restructure code while preserving the agreed observable behavior and compatibility. |
-| `/remind` | Reorient the user to the session purpose, completed work, current state, and next action. |
-| `/research` | Research open questions and map supported findings to the project without implying approval. |
-| `/ship` | Deliver one ticket against its accepted contract and close out its actual state truthfully. |
-| `/test` | Create meaningful unit, integration or reproduction tests within the requested test boundary. |
-| `/tldr` | Give exactly three bullets summarizing the requested scope, each under ten words. |
-| `/todo` | List every known completed and outstanding session step as Markdown checkboxes. |
-| `/verify-pre-deploy` | Assess release readiness on the exact candidate with applicable proof and explicit pending gates. |
-| `/walk` | Walk through the selected explanation one point per user-controlled turn. |
-| `/wrap-up` | Close out scoped local work with reusable proof and honest remaining state. |
-| `/writing-style` | Manage a project-local writing-style profile by initializing, adding samples, updating diagnostics, inspecting evidence, and approving or excluding sources. |
 <!-- <<< AGENTKIT WORKFLOWS <<< -->
