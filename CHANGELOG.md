@@ -3,6 +3,16 @@
 ## [1.1.1] — 2026-09-09 — Let existing consumers take a release
 
 ### Fixed
+- Enroll legacy empty `AGENTS.md` and `.codex/config.toml` managed markers as new `introduced`
+  ownership after an operator clears only the managed body. Same-release repeats and later releases
+  now remain syncable, while ambiguous nonempty legacy blocks and edited managed blocks still refuse.
+- Align managed-settings recovery guidance with the ownership guard: introduced and borrowed managed
+  blocks are restored to their recorded bytes before rerun, while borrowed, unowned and legacy MCP
+  conflicts preserve a keep-local option and require exact removal only when accepting the kit value.
+  Legacy blocks use explicit empty-marker enrollment and honor the consumer Git-dirty guard.
+- Render current, prior and desired settings hashes in human sync/check diagnostics, labeling desired
+  unavailable when syntax failure prevented a proposal from being computed and identifying retained
+  prerequisites separately from kit proposals.
 - Refresh a `borrowed` managed block when the on-disk bytes still match the lock record. Previously
   only `introduced` blocks were compared against the recorded value; a `borrowed` block was compared
   against the new desired content, so every release refused and the block was permanently wedged. An
@@ -14,9 +24,10 @@
   longer conflicts, so a project whose `opencode.json` already declares the same MCP server with
   reordered keys is no longer refused, and reordering an adapter's object literal is not a breaking
   change for consumers.
-- Report the value the kit wanted alongside the current value in a settings conflict, and describe
-  the disposition that matches the actual ownership. The message previously printed two identical
-  hashes and told the operator to restore an edited introduced value that did not exist.
+- Report the value the kit wanted alongside the current value in a settings conflict, identify when a
+  retained prerequisite is being reported, and describe the disposition that matches actual ownership.
+  The message previously printed two identical hashes and told the operator to restore an edited
+  introduced value that did not exist.
 - Add `.writing/` to the ignore lines sync maintains in a consumer. The writing store's own ignore
   file lives inside the ignored directory and is therefore never committed.
 - Report one `OWNERSHIP-UNRESOLVED` verdict per native file instead of one per record.
