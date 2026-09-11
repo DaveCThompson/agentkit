@@ -1,6 +1,6 @@
 {
   "name": "agentkit",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Canonical vendor-agnostic agent kit: one .agent/ source of truth, generated vendor surfaces, drift checking, flowback.",
   "type": "module",
   "bin": {

@@ -1,6 +1,6 @@
 # Changelog
 
-## [2026-09-10] — Vendor-specific defaults and policy from one canonical source
+## [1.2.0] — 2026-09-10 — Vendor-specific defaults and policy from one canonical source
 
 ### Added
 - **Output styles as a canonical asset type.** `.agent/output-styles/*.md` is a sixth entry type; the
