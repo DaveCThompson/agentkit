@@ -225,6 +225,10 @@ Keep assignment/attempt lineage visible to the coordinator and check for an exis
 assignment before launching a replacement. Continue independent assigned work when delegation is
 unavailable; do not duplicate another worker's output to bypass a runtime limit.
 
+Match the status-check interval to the assignment's expected duration. A fixed short tick against
+long-running delegated work spends context and tokens to re-read the same unfinished state. Where the
+runtime exposes a wait or poll window, set it from the work, not from a default.
+
 A timeout or an empty wait result leaves the child's state unconfirmed. A successful tool call does
 not itself mean the child is running or finished. Reconcile status with the runtime's actual child
 record and the current attempt; completion additionally needs accessible output and its reported

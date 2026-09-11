@@ -695,7 +695,9 @@ test('tech-tier selection: react skill ships only when stack declares react', ()
 // intentionally join the default selection. They are not a re-tiering or an accidental selection
 // change: they provide the requested session, ticket, and UI-copy guidance.
 const PRE_KINDS_SNAPSHOT = [
+  '.agent/agents-defaults.md',
   '.agent/hooks.json',
+  '.agent/output-styles/flat-technical.md',
   '.agent/rules/foundation-accessibility.md',
   '.agent/rules/foundation-browser-usage.md',
   '.agent/rules/foundation-communication.md',
@@ -3934,4 +3936,160 @@ test('acceptance repair: CLI JSON, human sync and check expose redacted scoped c
     }
     assert.deepEqual(repairSnapshot(proj), before);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Managed AGENTS.md defaults block (PLAN-vendor-policy-surface Part D). A SECOND managed block in
+// one file, with its own identity, opt-in through markers.
+// ---------------------------------------------------------------------------
+
+const DEFAULTS_START = "<!-- >>> AGENTKIT DEFAULTS >>> (generated — do not edit; run 'agentkit sync') -->";
+const DEFAULTS_END = '<!-- <<< AGENTKIT DEFAULTS <<< -->';
+const WF_START = "<!-- >>> AGENTKIT WORKFLOWS >>> (generated — do not edit; run 'agentkit sync') -->";
+const WF_END = '<!-- <<< AGENTKIT WORKFLOWS <<< -->';
+
+function kitWithDefaults() {
+  const kit = mkKit();
+  write(kit, '.agent/agents-defaults.md', '---\ndescription: d\ntier: core\n---\n\n### Delegation\n\nKeep delegation one level deep.\n');
+  return kit;
+}
+
+test('AGENTS.md defaults block fills only between its own markers and preserves project text', () => {
+  const kit = kitWithDefaults();
+  const project = mkProject({ stack: [] });
+  write(project, 'AGENTS.md', `# Project\n\nOwned intro.\n\n## Workflows\n${WF_START}\n${WF_END}\n\n## Defaults\n${DEFAULTS_START}\n${DEFAULTS_END}\n\n## Owned tail\nKeep me.\n`);
+  syncProject(project, { kitRoot: kit });
+  const out = read(project, 'AGENTS.md');
+  assert.ok(out.includes('Keep delegation one level deep.'), 'defaults body is rendered');
+  assert.ok(out.includes('Owned intro.') && out.includes('Keep me.'), 'project-authored text survives');
+  assert.ok(out.includes('| `/plan` |'), 'the workflow block still fills independently');
+  // Each block owns only its own span.
+  const defaults = out.slice(out.indexOf(DEFAULTS_START), out.indexOf(DEFAULTS_END));
+  assert.ok(!defaults.includes('| `/plan` |'), 'workflow rows never leak into the defaults block');
+  const workflows = out.slice(out.indexOf(WF_START), out.indexOf(WF_END));
+  assert.ok(!workflows.includes('Keep delegation'), 'defaults never leak into the workflow block');
+});
+
+test('AGENTS.md defaults block is idempotent across repeated syncs', () => {
+  const kit = kitWithDefaults();
+  const project = mkProject({ stack: [] });
+  write(project, 'AGENTS.md', `# P\n${WF_START}\n${WF_END}\n${DEFAULTS_START}\n${DEFAULTS_END}\n`);
+  syncProject(project, { kitRoot: kit });
+  const first = read(project, 'AGENTS.md');
+  syncProject(project, { kitRoot: kit });
+  assert.equal(read(project, 'AGENTS.md'), first, 'a second sync with unchanged inputs is byte-identical');
+});
+
+test('AGENTS.md without defaults markers is left untouched; the block never installs itself', () => {
+  const kit = kitWithDefaults();
+  const project = mkProject({ stack: [] });
+  const original = `# P\n\nNo markers here at all.\n`;
+  write(project, 'AGENTS.md', original);
+  syncProject(project, { kitRoot: kit });
+  assert.equal(read(project, 'AGENTS.md'), original, 'opt-in only: no markers means no modification');
+});
+
+test('an edited defaults block is preserved and reported, never silently overwritten', () => {
+  const kit = kitWithDefaults();
+  const project = mkProject({ stack: [] });
+  write(project, 'AGENTS.md', `# P\n${DEFAULTS_START}\n${DEFAULTS_END}\n`);
+  syncProject(project, { kitRoot: kit });
+  const edited = read(project, 'AGENTS.md').replace('Keep delegation one level deep.', 'Hand-edited by the project.');
+  write(project, 'AGENTS.md', edited);
+  const result = syncProject(project, { kitRoot: kit });
+  assert.equal(result.ok, false, 'an edited managed block must not be refreshed silently');
+  assert.ok(read(project, 'AGENTS.md').includes('Hand-edited by the project.'), 'the edit survives');
+});
+
+test('removing the canonical defaults source retires the block body and keeps the markers', () => {
+  const kit = kitWithDefaults();
+  const project = mkProject({ stack: [] });
+  write(project, 'AGENTS.md', `# P\n${DEFAULTS_START}\n${DEFAULTS_END}\n\n## Tail\nOwned.\n`);
+  syncProject(project, { kitRoot: kit });
+  assert.ok(read(project, 'AGENTS.md').includes('Keep delegation one level deep.'));
+  fs.rmSync(path.join(kit, '.agent/agents-defaults.md'));
+  syncProject(project, { kitRoot: kit });
+  const out = read(project, 'AGENTS.md');
+  assert.ok(!out.includes('Keep delegation one level deep.'), 'the retired body is removed');
+  assert.ok(out.includes('## Tail') && out.includes('Owned.'), 'project text outside the block survives retirement');
+});
+
+// ---------------------------------------------------------------------------
+// vendorDefaults settings ownership. The two vendors use DIFFERENT ownership models and are
+// asserted separately: Claude JSON is per-key, the Codex TOML block is owned whole.
+// ---------------------------------------------------------------------------
+
+const scalars = (data) => ({ file: '.claude/settings.json', merge: 'json-scalars', data });
+
+test('json-scalars: introduced, borrowed, conflict, edit-preservation, pruning, preservation', () => {
+  const owned = (r) => ({ kind: 'json-scalars', key: r.key, value: r.value, ownership: r.ownership });
+
+  // Introduced — the key was absent, so the kit wrote it and may retire it later.
+  const intro = mergeSettings(scalars({ outputStyle: 'flat-technical' }), JSON.stringify({ model: 'keep' }), []);
+  assert.equal(intro.managedKeys[0].ownership, 'introduced');
+  assert.equal(JSON.parse(intro.content).outputStyle, 'flat-technical');
+  assert.equal(JSON.parse(intro.content).model, 'keep', 'an unrelated key is preserved');
+
+  // Borrowed — an identical value already existed, so it stays user-owned.
+  const borrowed = mergeSettings(scalars({ outputStyle: 'flat-technical' }), JSON.stringify({ outputStyle: 'flat-technical' }), []);
+  assert.equal(borrowed.managedKeys[0].ownership, 'borrowed');
+
+  // Unowned conflict — a different pre-existing value refuses before any write.
+  assert.throws(() => mergeSettings(scalars({ outputStyle: 'flat-technical' }), JSON.stringify({ outputStyle: 'mine' }), []),
+    (e) => e.settingsConflict !== undefined, 'a differing unowned value must conflict, not be overwritten');
+
+  // Edited introduced — the kit wrote it, the user changed it: preserved, reported, not clobbered.
+  assert.throws(() => mergeSettings(scalars({ outputStyle: 'flat-technical' }), JSON.stringify({ outputStyle: 'user-changed' }),
+    [owned({ key: 'outputStyle', value: 'flat-technical', ownership: 'introduced' })]),
+    (e) => e.settingsConflict !== undefined);
+
+  // Pruning — dropping the intent removes the introduced key and nothing else.
+  const pruned = mergeSettings(scalars({}), JSON.stringify({ outputStyle: 'flat-technical', model: 'keep', permissions: { allow: ['x'] } }),
+    [owned({ key: 'outputStyle', value: 'flat-technical', ownership: 'introduced' })]);
+  const after = JSON.parse(pruned.content);
+  assert.equal(after.outputStyle, undefined, 'the kit key is retired');
+  assert.equal(after.model, 'keep');
+  assert.deepEqual(after.permissions, { allow: ['x'] }, 'unrelated settings keep their values');
+
+  // A borrowed key is never retired automatically — it was the user's before the kit saw it.
+  const keptBorrowed = mergeSettings(scalars({}), JSON.stringify({ outputStyle: 'flat-technical' }),
+    [owned({ key: 'outputStyle', value: 'flat-technical', ownership: 'borrowed' })]);
+  assert.equal(JSON.parse(keptBorrowed.content).outputStyle, 'flat-technical', 'a borrowed value survives retirement');
+});
+
+test('toml-block: root scalars resolve to the root table across real-world file shapes', () => {
+  const data = '"model" = "m1"\n\n["agents"]\n"default_subagent_model" = "m2"';
+  const expect = [['model'], ['agents', 'default_subagent_model']];
+  const action = { file: '.codex/config.toml', merge: 'toml-block', data, expect };
+  const fixtures = {
+    'empty file': null,
+    'root keys only': 'other = 1\n',
+    'trailing [features] table': 'other = 1\n[features]\nflag = true\n',
+    'leading comments': '# a\n# b\nother = 1\n',
+    'existing MCP entries': '[mcp_servers."srv"]\ncommand = "node"\n',
+    'table first, no root keys': '[project]\nx = 1\n',
+  };
+  for (const [label, before] of Object.entries(fixtures)) {
+    const out = mergeSettings(action, before, []);
+    const head = out.content.slice(0, out.content.indexOf('['));
+    assert.ok(head.includes('"model" = "m1"'), `${label}: model must sit above the first table header`);
+    if (before) for (const line of before.trim().split('\n')) {
+      assert.ok(out.content.includes(line), `${label}: project line preserved: ${line}`);
+    }
+  }
+});
+
+test('toml-block refuses a key or table the project already declares, and never emits invalid TOML', () => {
+  const action = { file: '.codex/config.toml', merge: 'toml-block',
+    data: '"model" = "m1"\n\n["agents"]\n"default_subagent_model" = "m2"', expect: [['model'], ['agents', 'default_subagent_model']] };
+  for (const [label, before] of Object.entries({
+    'duplicate root key': 'model = "theirs"\n',
+    'duplicate table': '[agents]\nmax_depth = 1\n',
+  })) {
+    assert.throws(() => mergeSettings(action, before, []), (e) => /duplicate or incompatible/.test(e.message), label);
+  }
+  // Red-proof for the resolved-path assertion itself: a declared path the document does not produce
+  // must fail closed rather than write a file whose keys landed somewhere else.
+  assert.throws(() => mergeSettings({ ...action, expect: [...action.expect, ['agents', 'absent']] }, null, []),
+    (e) => /did not resolve/.test(e.message), 'the post-condition must fire on a mismatch');
 });

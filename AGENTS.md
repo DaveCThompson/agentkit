@@ -42,7 +42,11 @@ Use the canonical writing guidance for sessions, tickets, reports, handoffs, and
 - `.agent/skills/write-ui-copy/SKILL.md` — short interface text.
 - `.agent/skills/manage-writing-style/SKILL.md` — explicit project-local style data operations.
 
-Defaults:
+Defaults are GENERATED from `.agent/agents-defaults.md` into the block below — do not edit inside it.
+Keep both markers where the defaults should appear; remove them to opt out.
+
+<!-- >>> AGENTKIT DEFAULTS >>> (generated — do not edit; run 'agentkit sync') -->
+### Communication
 
 - Use flat, literal language. Write for one-pass reading.
 - State the result or current state first. Add only material evidence and the next action, blocker,
@@ -54,6 +58,17 @@ Defaults:
 - Do not narrate tool calls or repeat unchanged summaries.
 - For UI, use sparse sentence-case text.
 - For tickets, use imperative outcome titles and observable acceptance criteria.
+
+### Delegation
+
+- Keep delegation one level deep. Include "Do not spawn additional agents; return further delegation
+  needs to the parent" in every worker assignment.
+- Match the status-check interval to the assignment's expected duration. A fixed short tick on
+  long-running delegated work is waste.
+
+This is behavioural guidance, not an enforced limit. Nothing in the runtime prevents a subagent from
+delegating, so the restriction has to travel in the assignment text the parent writes.
+<!-- <<< AGENTKIT DEFAULTS <<< -->
 
 ## Workflows (slash commands)
 <!-- >>> AGENTKIT WORKFLOWS >>> (generated — do not edit; run 'agentkit sync') -->
