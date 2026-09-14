@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased] — 2026-09-14 — Add a peer-reviewable cross-vendor command-guard plan
+
+### Added
+- A tracked backlog ticket defining a clean-room destructive-command guard for Claude Code,
+  OpenCode, Gemini CLI, and Codex. It records the research conclusion, protected-target policy,
+  permission boundaries, phased implementation, verification matrix, and unresolved review
+  questions.
+
+### Verification
+- Plan-only change; no dependency installed, vendor hook enabled, global configuration changed, or
+  destructive command executed.
+
+KB consulted: `docs/knowledge-base/README.md`, `docs/working/README.md`, `governance/docs-standard.md`.
+
 ## [Unreleased] — 2026-09-09 — Migrate the self-hosted checkout to AgentKit 1.1.1
 
 ### Changed
