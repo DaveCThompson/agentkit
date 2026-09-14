@@ -1,6 +1,6 @@
 {
   "kitVersion": "1.2.0",
-  "compiledAt": "2026-09-11",
+  "compiledAt": "2026-09-14",
   "note": "COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
     {
@@ -20,7 +20,7 @@
       "type": "other",
       "name": "hooks",
       "tier": "core",
-      "sha256": "d6d0bac3106b5f71a9c33935f3cc72f40a0aac8d6a1e72a8dbbc3e2978d91846",
+      "sha256": "ef782b08e92ddb027fbdba108434742d6d5995683e9035db65983848a3f4b157",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,

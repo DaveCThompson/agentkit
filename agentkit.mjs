@@ -13,6 +13,8 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { main as guardMain } from './command-guard-cli.mjs';
+import { guardActivationIssues } from './command-guard.mjs';
 import {
   adapters, VENDORS, parseFrontmatter, normalizeEol, injectHeader, stripHeader, vendorDefaultIssue,
 } from './adapters.mjs';
@@ -387,7 +389,10 @@ function loadHooks(kitRoot, projectRoot) {
   const p = path.join(kitRoot, '.agent', 'hooks.json');
   const hooks = readJson(p, []);
   const kitCli = path.join(kitRoot, 'agentkit.mjs');
-  return hooks.map((h) => ({ ...h, command: h.command.replaceAll('{KIT}', kitCli).replaceAll('{PROJECT}', projectRoot) }));
+  return hooks.map((h) => ({ ...h,
+    ...(h.command ? { command: h.command.replaceAll('{KIT}', kitCli).replaceAll('{PROJECT}', projectRoot) } : {}),
+    ...(h.commandWindows ? { commandWindows: h.commandWindows.replaceAll('{KIT}', kitCli).replaceAll('{PROJECT}', projectRoot) } : {}),
+  }));
 }
 
 // Parse only the supported local MCP fields. The general frontmatter subset has one
@@ -640,6 +645,14 @@ function validateConfig(cfg) {
       }
     }
   }
+  if (cfg.commandGuard !== undefined) {
+    const guard = cfg.commandGuard;
+    if (!guard || typeof guard !== 'object' || Array.isArray(guard)) throw new Error('commandGuard must be an object');
+    if (guard.enabled !== undefined && typeof guard.enabled !== 'boolean') throw new Error('commandGuard.enabled must be boolean');
+    if (guard.protectedPaths !== undefined && (!Array.isArray(guard.protectedPaths) || guard.protectedPaths.some(v => typeof v !== 'string' || !v.trim() || /[*?{}\[\]]/.test(v)))) {
+      throw new Error('commandGuard.protectedPaths must be a string array of nonempty literal paths without globs');
+    }
+  }
 }
 export function kbRootFor(projectRoot, cfg = loadConfig(projectRoot) || {}) {
   const name = cfg.docs?.kbRoot === undefined ? 'docs/knowledge-base' : cfg.docs.kbRoot;
@@ -660,6 +673,7 @@ export function loadConfig(projectRoot) {
   cfg.tools = cfg.tools || [];
   cfg.overlay = cfg.overlay || {};
   cfg.pins = cfg.pins || {};
+  cfg.commandGuard = cfg.commandGuard || { enabled: false, protectedPaths: [] };
   return cfg;
 }
 
@@ -803,6 +817,7 @@ export function planSync(projectRoot, opts = {}) {
   const validations = [];
   for (const tool of cfg.tools || []) if (!loadIntegration(kitRoot, tool)) validations.push({ level: 'warn', msg: 'selected tool has no integration/prerequisite guidance: ' + tool });
   validations.push(...validateBrowserProfile(cfg));
+  validations.push(...guardActivationIssues(cfg));
   // Workflow implementation skills are explicit required routing edges. Body citations,
   // including the React scaffold's app-only references, remain conditional guidance.
   validations.push(...requiredSkillValidations(merged, new Set(cfg.exclude || [])));
@@ -1142,6 +1157,13 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     : value;
   const equal = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
   const conflict = (key, current, desired) => { throw settingsFailure(action, prior, key, current, undefined, desired); };
+  const hookValue = d => {
+    if (d.group) return d.group; // Exact lock-only reconstruction, including multi-hook groups.
+    const command = d.command || d.commandWindows;
+    const commandHook = { type: 'command', command, ...(d.timeout !== undefined ? { timeout: d.timeout } : {}) };
+    if (kind === 'codex-hooks' && d.commandWindows) commandHook.commandWindows = d.commandWindows;
+    return { ...(d.matcher ? { matcher: d.matcher } : {}), hooks: [commandHook] };
+  };
   if (Object.hasOwn(MANAGED_BLOCK_KINDS, kind)) {
     const { start, end } = blockMarkers(kind);
     const text = existingContent ?? '';
@@ -1205,13 +1227,13 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     }
     if (allow.length) perms.allow = allow; else delete perms.allow;
     if (Object.keys(perms).length) json.permissions = perms; else delete json.permissions;
-  } else if (kind === 'claude-hooks') {
+  } else if (['claude-hooks', 'codex-hooks', 'gemini-hooks'].includes(kind)) {
     if (json.hooks !== undefined && (!json.hooks || typeof json.hooks !== 'object' || Array.isArray(json.hooks))) throw new Error('invalid hooks object');
     const hooks = json.hooks || {};
     for (const [event, groups] of Object.entries(hooks)) {
       if (!Array.isArray(groups) || groups.some(g => !g || !Array.isArray(g.hooks))) throw new Error('invalid hook groups: ' + event);
     }
-    const desired = (action.data || []).map(d => ({ key: d.event, value: { hooks: [{ type: 'command', command: d.command }] } }));
+    const desired = (action.data || []).map(d => ({ key: d.event, value: hookValue(d) }));
     for (const p of prior) {
       const groups = hooks[p.key] || [];
       const exact = groups.findIndex(g => equal(g, p.value));
@@ -1226,7 +1248,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
     for (const d of desired) {
       const groups = hooks[d.key] || [];
       const p = prior.find(x => x.key === d.key && equal(x.value, d.value));
-      const satisfied = groups.some(g => (g.hooks || []).some(h => equal(h, d.value.hooks[0])));
+      const satisfied = groups.some(g => equal(g, d.value));
       record(d.key, d.value, satisfied ? (p?.ownership || (legacy.includes(d.key) ? 'unresolved' : 'borrowed')) : 'introduced');
       if (!satisfied) groups.push(d.value);
       hooks[d.key] = groups;
@@ -1275,7 +1297,7 @@ export function mergeSettings(action, existingContent, lockKeys = []) {
 function legacySettingsRecords(file, keys, content) {
   const records = keys.filter(k => k && typeof k === 'object');
   const old = keys.filter(k => typeof k === 'string');
-  if (!old.length || content === null) return records;
+  if (!old.length || content === null) return [...records, ...old];
   const add = (kind, key, value) => records.push({ kind, key, value, ownership: 'unresolved' });
   if (file.endsWith('.toml') || file.endsWith('.md')) {
     const kind = file.endsWith('.toml') ? 'toml-block' : 'md-block';
@@ -1288,6 +1310,9 @@ function legacySettingsRecords(file, keys, content) {
         if (/[()]/.test(key)) {
           if (json.permissions?.allow?.includes(key)) add('claude-permissions', key, key);
         } else for (const group of json.hooks?.[key] || []) add('claude-hooks', key, group);
+      } else if (file === '.codex/hooks.json' || file === '.gemini/settings.json') {
+        const kind = file === '.codex/hooks.json' ? 'codex-hooks' : 'gemini-hooks';
+        for (const group of json.hooks?.[key] || []) add(kind, key, group);
       } else {
         const kind = file === 'opencode.json' ? 'opencode-mcp' : 'mcp-json';
         const values = kind === 'opencode-mcp' ? json.mcp : json.mcpServers;
@@ -1295,7 +1320,7 @@ function legacySettingsRecords(file, keys, content) {
       }
     }
   }
-  return records;
+  return [...records, ...old.filter(key => !records.some(r => r.key === key))];
 }
 function prepareSettings(projectRoot, actions, lock, initialEffects = []) {
   const files = new Set([...actions.map(a => a.file), ...Object.keys(lock.settings || {})]);
@@ -1309,11 +1334,11 @@ function prepareSettings(projectRoot, actions, lock, initialEffects = []) {
     const previous = legacySettingsRecords(file, stored, content);
     const wanted = actions.filter(a => a.file === file);
     const kinds = new Set([...wanted.map(a => a.merge), ...previous.filter(x => typeof x === 'object').map(x => x.kind)]);
-    const records = [];
+    const records = previous.filter(r => typeof r === 'string');
     for (const kind of kinds) {
       const same = wanted.filter(a => a.merge === kind);
       if (same.length > 1) throw new Error('duplicate settings merge: ' + file + ' ' + kind);
-      const empty = ['claude-hooks', 'claude-permissions'].includes(kind) ? [] :
+      const empty = ['claude-hooks', 'codex-hooks', 'gemini-hooks', 'claude-permissions'].includes(kind) ? [] :
         ['mcp-json', 'opencode-mcp', 'json-scalars'].includes(kind) ? {} : '';
       const action = { ...(same[0] || { merge: kind, data: empty }), file };
       let result;
@@ -1326,7 +1351,7 @@ function prepareSettings(projectRoot, actions, lock, initialEffects = []) {
       records.push(...result.managedKeys);
     }
     if (records.length) settings[file] = records;
-    for (const record of records.filter(r => r.ownership === 'unresolved')) unresolved.push({ file, ...record,
+    for (const record of records.filter(r => typeof r === 'string' || r.ownership === 'unresolved')) unresolved.push({ file, ...(typeof record === 'string' ? { key: record, ownership: 'unresolved' } : record),
       reason: 'legacy introduction is unproven; preserve as user-owned, or explicitly remove this exact native contribution then sync to establish new introduction' });
     if (content !== before) effects.push(snapshotEffect(projectRoot, file, content));
   }
@@ -1401,7 +1426,7 @@ export function checkProject(projectRoot, opts = {}) {
           const owned = records.filter(r => r.kind === kind);
           let data;
           if (kind === 'claude-permissions') data = owned.map(r => r.value);
-          else if (kind === 'claude-hooks') data = owned.map(r => ({ event: r.key, command: r.value.hooks[0].command }));
+          else if (['claude-hooks', 'codex-hooks', 'gemini-hooks'].includes(kind)) data = owned.map(r => ({ event: r.key, group: r.value }));
           else if (kind === 'mcp-json' || kind === 'opencode-mcp' || kind === 'json-scalars') data = Object.fromEntries(owned.map(r => [r.key, r.value]));
           else if (Object.hasOwn(MANAGED_BLOCK_KINDS, kind)) {
             const { start, end } = blockMarkers(kind);
@@ -1430,6 +1455,7 @@ export function checkProject(projectRoot, opts = {}) {
   // quick mode skips planSync entirely, but the SessionStart hook runs `check --quick` — the
   // sibling-branch warn must still reach that always-on surface (F-cli-sibling-branch).
   if (opts.quick) {
+    validations.push(...guardActivationIssues(opts.cfg || loadConfig(projectRoot) || {}));
     const branchWarn = kitBranchWarn(opts.kitRoot || KIT_ROOT, projectRoot, opts.allowBranch);
     if (branchWarn) validations.push(branchWarn);
   }
@@ -3208,10 +3234,11 @@ export function printCheck(c, json) {
 }
 
 function printGeneralUsage() {
-  console.log('usage: agentkit <setup|recover|init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version> [project-path] [flags]');
+  console.log('usage: agentkit <setup|recover|init|sync|check|guard|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version> [project-path] [flags]');
   console.log('  init      [--vendors a,b] [--stack x,y] [--kinds k,l] [--tools t] [--clone-rebind] [--no-sync]');
   console.log('  sync      [--dry-run] [--force] [--json] [--allow-branch]');
   console.log('  check     [--quick] [--all] [--json] [--kb <paths…>] [--content] [--taxonomy] [--waive <path> <reason>] [--hygiene] [--count-only] [--allow-branch]');
+  console.log('  guard     [--vendor <vendor>] [--json] [--capabilities] [--explain] — bounded pre-tool command guard');
   console.log('  verify    [--json] [--warn-only] [--fail-on <severity>]   (runs invariant checks harvested from active rules)');
   console.log('  setup     --bin-dir <absolute-existing-machine-local-directory>');
   console.log('  recover   [project-path] — finish retained pending bytes; ordinary sync refuses pending state');
@@ -3232,6 +3259,9 @@ export function main(argv = process.argv.slice(2)) {
   const showHelp = !!(flags.help || flags.h || pos.includes('-h') || pos.includes('--help'));
   try {
     switch (verb) {
+      case 'guard': {
+        return guardMain(rest);
+      }
       case 'setup': {
         if (showHelp) { console.log('usage: agentkit setup --bin-dir <absolute-existing-machine-local-directory>'); return 0; }
         const result = setupLauncher(flags['bin-dir']);

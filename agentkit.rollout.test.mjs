@@ -19,7 +19,7 @@ const read = (base, rel) => fs.readFileSync(path.join(base, rel), 'utf8');
 
 test('rollout: legacy hook migration preserves unrelated settings and explains unresolved ownership', () => {
   const base = fs.mkdtempSync(path.join(root, 'legacy-')), kit = path.join(base, 'kit'), project = path.join(base, 'project');
-  for (const rel of ['agentkit.mjs', 'adapters.mjs']) put(kit, rel, fs.readFileSync(path.join(source, rel)));
+  for (const rel of ['agentkit.mjs', 'adapters.mjs', 'command-guard.mjs', 'command-guard-cli.mjs']) put(kit, rel, fs.readFileSync(path.join(source, rel)));
   json(kit, 'package.json', { version: '1.1.0' });
   put(kit, '.agent/skills/probe/SKILL.md', '---\nname: probe\ndescription: Use for fixture work.\ntier: core\n---\n# Probe\n');
   const oldHook = 'node private-machine-path/agentkit.mjs check . --quick --json';

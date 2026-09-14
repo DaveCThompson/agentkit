@@ -1,7 +1,7 @@
 ---
 name: vendor-capability-matrix
 description: Generated vendor surfaces, supported adapter inputs, ownership and measured native proof limits.
-last-verified: 2026-09-08
+last-verified: 2026-09-14
 doc-urls: https://code.claude.com/docs/en/skills, https://developers.openai.com/codex/mcp, https://antigravity.google/docs, https://geminicli.com/docs/cli/skills/, https://opencode.ai/docs/mcp-servers/
 ---
 
@@ -13,16 +13,40 @@ A date prompts rechecking the relevant source; age alone does not prove drift.
 
 | Adapter | Generated files | Settings contributions | Current proof boundary |
 | --- | --- | --- | --- |
-| Claude | `.claude/skills`, `.claude/commands`, `.claude/agents`; always/glob rules in `.claude/rules`; model-decision rules as `rule-` skills; output styles in `.claude/output-styles` | Hooks, allow grants and allowlisted `vendorDefaults` scalars in `.claude/settings.json`; local MCP in `.mcp.json` | Pure output/schema checks and current docs. Native permission matching, menu behavior and whether Claude loads a generated output style are pending. |
-| Codex | Standard skills and `wf-` workflow skills in `.agents/skills`; communication and delegation defaults in the root `AGENTS.md` managed block | Local MCP and allowlisted `vendorDefaults` keys in the `.codex/config.toml` managed block | Independent TOML semantics; isolated native Codex 0.153.4 project-config loading and skills/list discovery. Invocation/permission behavior pending. Project config applies only in a trusted project, and the kit cannot observe trust. |
-| Gemini | Selected standard skills in `.gemini/skills` when Codex is absent; curated workflow commands in `.gemini/commands/*.toml` | No Gemini MCP or hook contribution in this adapter | Installed Gemini 0.42.0 skill loader and discovery manager exercised in isolated Windows fixtures. Interactive commands pending. |
-| OpenCode | Standard skills in `.opencode/skills`; workflows in `.opencode/commands` | Create-if-absent `.opencode/package.json`; local MCP under `opencode.json` `mcp` | Pure output/schema checks and current docs. Native executable unavailable here. |
+| Claude | `.claude/skills`, `.claude/commands`, `.claude/agents`; always/glob rules in `.claude/rules`; model-decision rules as `rule-` skills; output styles in `.claude/output-styles` | Hooks, allow grants and allowlisted `vendorDefaults` scalars in `.claude/settings.json`; local MCP in `.mcp.json` | Command-guard registration is generated for opt-in projects with `PreToolUse` matcher `Bash\|PowerShell`; native loading, trust and deny/continue behavior remain pending. |
+| Codex | Standard skills and `wf-` workflow skills in `.agents/skills`; communication and delegation defaults in the root `AGENTS.md` managed block | Local MCP and allowlisted `vendorDefaults` keys in `.codex/config.toml`; opt-in guard hook in `.codex/hooks.json` | Independent JSON/TOML generation and ownership checks; desktop/Windows hook mapping, trust and deny/continue behavior remain pending. |
+| Gemini | Selected standard skills in `.gemini/skills` when Codex is absent; curated workflow commands in `.gemini/commands/*.toml` | Opt-in guard hook in `.gemini/settings.json` | Installed Gemini 0.42.0 discovery evidence remains separate; BeforeTool native deny/continue and PowerShell behavior remain pending. |
+| OpenCode | Standard skills in `.opencode/skills`; workflows in `.opencode/commands`; opt-in `.opencode/plugins/agentkit-command-guard.js` | Create-if-absent `.opencode/package.json`; local MCP under `opencode.json` `mcp` | Generated direct-process bridge and schema checks only. Native executable unavailable here; discovery and execution proof remain pending. |
 | Antigravity | None; retains canonical `.agent/` consumption policy | None | Canonical metadata checks only. Native behavior not reverified in this update. |
 
 The CLI separately owns entry-point documents and combined plan validation. Root `AGENTS.md` and
-the existing Claude/Gemini entry-point stubs remain its responsibility. No adapter emits a Codex hook
-merely because Codex has a configuration file. Claude's paired workflow implementation skills remain
+the existing Claude/Gemini entry-point stubs remain its responsibility. Guard output is opt-in only;
+the disabled default emits no registration. Claude's paired workflow implementation skills remain
 menu-hidden through `user-invocable: false`; native menu behavior remains unverified.
+
+## Command-guard activation boundary
+
+`commandGuard: { enabled: true, protectedPaths: [] }` is explicit project intent. The source ships
+the guard disabled and does not activate it through a kit update. `agentkit guard --capabilities
+--json` is the launcher/protocol check: it reports protocol version 1, bounded limits and the
+registration/native-proof state. A version string or ordinary `agentkit check` success is not a
+capability proof, and an older CLI may silently ignore `commandGuard`. Before activation, run the
+capability check through the actual launcher and complete a harmless native deny/continue probe for
+each selected vendor/platform combination. Missing or unknown native proof stays pending.
+
+Current enforcement is closed: sync, dry-run and quick check reject enabled targets because no
+vendor/platform has admitted native and bound-launcher evidence. Capability JSON is informational,
+not a bypass. OpenCode's generated factory has a POSIX direct-process candidate; Windows is explicitly
+unsupported until direct binding and shell identity are implemented and proved. Unit tests do not
+constitute admission evidence.
+
+The guard never returns an approval decision for continuation. Claude and Codex denial use
+`hookSpecificOutput.permissionDecision: "deny"` with `hookEventName: "PreToolUse"`. Gemini and the
+OpenCode bridge use `decision: "deny"`; the OpenCode factory throws for that result. Gemini registers
+`BeforeTool` for `run_shell_command`. Canonical `timeoutMs: 1000` becomes one second for Claude/Codex
+and 1000 milliseconds for Gemini. These are documented protocol contracts, not native execution proof.
+Sources: [Codex hooks](https://developers.openai.com/codex/hooks/),
+[Gemini hooks](https://geminicli.com/docs/hooks/), [OpenCode plugins](https://opencode.ai/docs/plugins/).
 
 ## Source and inverse contract
 
@@ -138,6 +162,8 @@ cannot certify every user's external skill collection.
 | Isolated Windows Codex 0.153.4 `mcp list --json`, generated dotted server name with args/env/disabled state | Trusted project loads the exact fixture fields; untrusted project excludes them. The same trusted-loader assertion fails on the retained old adapter and passes on the candidate. | Child-only temporary home/config/state, disabled nonexistent fixture command. No model, login, server, real profile change or skill-discovery claim. |
 | Isolated Windows Codex 0.153.4 app-server `skills/list`, protocol generated by that executable | Discovers the expected 71 operational plus 24 workflow skills with exact canonical names/descriptions and no errors. A malformed added skill produces a native YAML error while the 95 valid skills remain discoverable. | Temporary profile/project; no thread/turn or model request. Native discovery, not invocation or behavioral evaluation. The fixture app-server process is stopped after the probe. |
 | Primary docs retrieved 2026-09-08 | Confirms cited MCP fields, TOML meanings, Claude matching syntax and Gemini discovery policy | Retrieval establishes documented support, not native acceptance. |
+| Superseded Luna guard candidate, Windows Node 22.19.0, 2026-09-14 | Historical 12-test result and mean 161.80 ms/p95 218.34 ms bridge timing; subsequent parent review reproduced correctness failures | Not acceptance evidence for the repaired candidate. |
+| Parent guard repair, Windows Node 22.19.0, 2026-09-14 | 48 focused tests passed; 200 alternating same-bridge pairs: empty-command mean/p95 85.82/118.54 ms, scoped-cleanup mean/p95 88.44/118.18 ms, guard aggregate 17.69 s | Empty-command control is not native overhead. CPU p95 reported 16 ms with coarse Windows accounting, so the 10 ms CPU gate is not established. Native proof, workflow replay, OpenCode Windows direct binding and final broad evidence remain in the handoff. |
 
 The optional native test reports a skip if its installed bundle path is absent. A skip is pending
 proof. `AGENTKIT_TEST_PYTHON` selects the independent parser executable when python is not the right
@@ -150,10 +176,10 @@ See [advanced configuration](https://learn.chatgpt.com/docs/config-file/config-a
 The coordinator retains the probe, exact executable/source hashes and candidate/baseline results
 with the local acceptance evidence; private fixture paths are not a distribution dependency.
 
-Coordinator owns combined collisions, raw ingestion/dependency closure, retirement/conflicts,
-test collection and final candidate proof. Native Claude/OpenCode loading, skill invocation,
-native permission enforcement, Gemini interactive commands and POSIX remain pending. No second-computer,
-cloud-hydration, power-loss or native parity claim follows from Windows fixtures.
+The implementation owner owns combined collisions, raw ingestion/dependency closure, retirement/
+conflicts, focused test collection and local candidate proof. Native Claude/OpenCode loading, skill
+invocation, native permission enforcement, Gemini interactive commands and POSIX remain pending.
+No second-computer, cloud-hydration, power-loss or native parity claim follows from Windows fixtures.
 
 Historical July/August documentation checks established the then-documented Claude rules/invocation
 controls, OpenCode commands/MCP and entry-point policy. Their manual smoke checks were still pending.
