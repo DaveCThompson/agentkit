@@ -1,5 +1,71 @@
 # Changelog
 
+## [Unreleased] — 2026-09-14 — Implement opt-in cross-vendor command guard
+
+### Added
+- Add bounded, side-effect-free command analysis and a native JSON stdin/stdout launcher for POSIX,
+  PowerShell and `cmd`, with protected/broad/unresolved target denials and neutral continuation.
+- Add vendor-specific Claude, Codex, Gemini and generated OpenCode registration paths, disabled by
+  default, plus the explicit `agentkit guard --capabilities --json` launcher protocol check.
+
+### Changed
+- Preserve full native hook group fields, including matchers, timeout and Windows launch fields,
+  through merge, legacy ownership, retirement and lock-only check reconstruction.
+- Add dangerous/benign fixture pairs, bounded-input/failure tests, vendor protocol tests and adapter
+  lifecycle coverage. No destructive fixture is executed.
+
+### Repair and verification boundary
+- Parent repair fixes executable/data boundaries, newline/cmd separators, simple assignments,
+  effective cwd, encoded PowerShell, protected ancestor resolution and independent redirection.
+- Correct Codex denial, Gemini event/matcher/time units, portable native hook launch strings and
+  OpenCode's factory/argument contract. OpenCode Windows remains unsupported pending a proved
+  direct-launch binding and shell identity; no shell fallback or embedded machine path is emitted.
+- Refuse enabled targets in sync, dry-run and quick check while native and bound-launcher proof
+  remains pending. Preserve unknown legacy records and complete multi-hook groups.
+- Remove the extra Node process and bound the entire stdin envelope before JSON parsing.
+- Regression tests cover dangerous/benign pairs, native-shaped payload context, settings lifecycle,
+  no-write activation refusal, and packaging through a bound launcher with spaces in its path.
+  Copied CLI test fixtures now include both new runtime modules; assertions were not weakened.
+- The original worker's 12-test and timing results are superseded. The parent repair evidence and
+  final-suite result live in the local implementation handoff. Native client proof, full workflow
+  replay and per-client performance remain required before activation/release.
+- No client installation, global profile change, project activation, commit or push was performed.
+
+KB consulted: `governance/overlay-contract.md`, `governance/mirror-contract.md`,
+`governance/docs-standard.md`, `governance/migration-checklist.md`,
+`governance/vendor-capability-matrix.md`, `governance/DECISION-settings-key-merge-scope.md`,
+`governance/DECISION-lockfile-state-model.md`, `governance/DECISION-vendor-generation.md`.
+
+## [Unreleased] — 2026-09-14 — Plan destructive protection with no routine prompts
+
+### Changed
+- Revise [the command-guard plan](docs/backlog/TICKET-command-guard-cross-vendor.md) around bounded
+  destructive-operation detection, neutral native continuation, explicit coverage limits and
+  opt-in activation. Replace blanket unknown-syntax denials with scoped target checks.
+- Specify existing ownership seams, per-vendor native proof, a zero-false-block workflow corpus,
+  latency gates and independent delivery by verified vendor/platform combination.
+- Adjudicate the supplied Opus review: replace the unrealistic startup gate with separate analysis
+  and session-overhead budgets, enumerate settings/legacy/retirement seams, document old-CLI
+  compatibility limits, and remove project-specific identity from the public plan.
+
+### Verification
+- Primary hook/plugin documentation reviewed with a Luna research agent; native behavior remains
+  pending. Planning changes do not implement or activate a guard.
+- Astra's independent review incorporated: scratch cleanup, executable-evidence requirements,
+  dry-run precedence, explicit vendor activation and deferred inline-language analysis.
+- Reproduced Windows launcher timing with 30 invocations per path: launcher mean 153.1 ms,
+  p95 184.9 ms before guard analysis. Native bridge/guard performance remains pending.
+- Kit quick drift check reports all tracked files in sync. `git diff --check` passes (whitespace,
+  not citation checking); source locations and the changed plan's local Markdown links were checked directly.
+  No CLI or adapter code changed, so the implementation test suite was not rerun.
+
+KB consulted: `governance/README.md`, `governance/overlay-contract.md`,
+`governance/mirror-contract.md`, `governance/docs-standard.md`,
+`governance/migration-checklist.md`, `governance/vendor-capability-matrix.md`,
+`governance/DECISION-settings-key-merge-scope.md`, `governance/DECISION-coherent-kit-updates.md`,
+`governance/DECISION-vendor-generation.md`, `governance/DECISION-lockfile-state-model.md`,
+`governance/DECISION-compiled-manifest.md`.
+
 ## [Unreleased] — 2026-09-14 — Add a peer-reviewable cross-vendor command-guard plan
 
 ### Added

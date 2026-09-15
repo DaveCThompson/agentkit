@@ -51,6 +51,30 @@ and expose its launcher on that computer's PATH. The shared hook command is
 client's working directory and launcher resolution on each supported platform before claiming native
 portability. Missing setup does not authorize an implicit install or sync.
 
+### Optional command-guard activation
+
+The command guard is disabled unless the project explicitly sets
+`commandGuard: { "enabled": true, "protectedPaths": [] }`. Adding the key is a project policy
+change, not a routine kit update. Preview the complete generated effect set first; the selected
+vendor set and generated hook/plugin files must be visible in that preview.
+
+Before enabling, run the selected launcher with `agentkit guard --capabilities --json` and require
+protocol version `1`. This is an actual launcher compatibility check; `agentkit --version`, an
+ordinary sync, or a new minimum-version field does not prove that an installed old CLI enforces the
+switch. An old CLI may ignore `commandGuard` and report a successful ordinary sync.
+
+The current candidate refuses enabled guard targets in sync/dry-run and quick check. Every native
+proof lane remains pending; there is no override switch. Do not enable the flag yet. Admission of a
+vendor/platform requires a reviewed implementation with recorded native and bound-launcher proof.
+
+Then complete a harmless native deny/continue probe for every selected guard vendor and platform.
+Record the client version, payload, project trust state, launcher identity, denial result and neutral
+continuation result. Missing, malformed, unknown or unsupported proof leaves activation pending.
+OpenCode currently has no executable on the implementation machine, so its native lane remains
+pending. Do not install a client, alter global profiles or activate a project as part of ordinary
+kit implementation. Retiring the guard uses the normal owned-settings removal rules: preserve
+edited, borrowed and unresolved contributions and inspect the exact generated plugin before prune.
+
 A template-derived project needs explicit identity/overlay/selection triage. The `init --clone-rebind`
 contract preserves the inherited lock through reconciliation; it is not permission to reset
 CHANGELOG, working evidence or ownership. Keep/change/retire each inherited contribution deliberately.

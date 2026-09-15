@@ -3,5 +3,14 @@
     "event": "SessionStart",
     "command": "agentkit check . --quick --json",
     "vendors": ["claude"]
+  },
+  {
+    "id": "command-guard",
+    "event": "PreToolUse",
+    "matcher": "Bash|PowerShell",
+    "command": "agentkit guard --vendor {VENDOR} --json",
+    "commandWindows": "agentkit guard --vendor {VENDOR} --json",
+    "timeoutMs": 1000,
+    "vendors": ["claude", "codex", "gemini"]
   }
 ]

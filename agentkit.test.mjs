@@ -429,7 +429,7 @@ function packagingFixture(axes = {}) {
   for (const e of scanKitAgent(KIT_ROOT)) {
     if (['skill', 'rule', 'workflow'].includes(e.type)) write(kit, e.srcRel, e.raw);
   }
-  for (const p of ['agentkit.mjs', 'adapters.mjs', 'governance/docs-standard.md', 'integrations/codebase-mcp.md', 'integrations/fallow.md']) write(kit, p, read(KIT_ROOT, p));
+  for (const p of ['agentkit.mjs', 'adapters.mjs', 'command-guard.mjs', 'command-guard-cli.mjs', 'governance/docs-standard.md', 'integrations/codebase-mcp.md', 'integrations/fallow.md']) write(kit, p, read(KIT_ROOT, p));
   const entries = scanKitAgent(kit);
   const tiers = [...new Set(entries.map(e => e.tier))];
   const proj = mkProject({
@@ -2287,7 +2287,7 @@ test('CLI general help and subcommand help print usage and exit 0', () => {
     for (const verb of ['--help', '-h', 'help']) {
       out = '';
       assert.equal(main([verb]), 0, `general help ${verb} exits 0`);
-      assert.ok(out.includes('usage: agentkit <setup|recover|init|sync|check|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version>'), `general help ${verb} contains usage`);
+      assert.ok(out.includes('usage: agentkit <setup|recover|init|sync|check|guard|verify|receipt|changelog-roll|adopt|lock|surfaces|inventory|doctor|--version>'), `general help ${verb} contains usage`);
     }
 
     // 2. Subcommand help
@@ -3916,6 +3916,7 @@ test('acceptance repair: CLI JSON, human sync and check expose redacted scoped c
   const kit = mkKit(), proj = mkProject({ vendors: ['codex'] });
   fs.copyFileSync(path.join(HERE, 'agentkit.mjs'), path.join(kit, 'agentkit.mjs'));
   fs.copyFileSync(path.join(HERE, 'adapters.mjs'), path.join(kit, 'adapters.mjs'));
+  for (const name of ['command-guard.mjs', 'command-guard-cli.mjs']) fs.copyFileSync(path.join(HERE, name), path.join(kit, name));
   assert.equal(syncProject(proj, { kitRoot: kit }).ok, true);
   const lock = loadLock(proj); delete lock.schema; lock.settings['.codex/config.toml'] = ['block'];
   write(proj, '.agentkit.lock', JSON.stringify(lock));

@@ -25,7 +25,7 @@ const exists = (base, rel) => fs.existsSync(path.join(base, rel));
 // real release does and what the consumer must be able to accept.
 function mkKit(name, workflows) {
   const kit = path.join(root, name);
-  for (const rel of ['agentkit.mjs', 'adapters.mjs']) put(kit, rel, fs.readFileSync(path.join(source, rel)));
+  for (const rel of ['agentkit.mjs', 'adapters.mjs', 'command-guard.mjs', 'command-guard-cli.mjs']) put(kit, rel, fs.readFileSync(path.join(source, rel)));
   json(kit, 'package.json', { version: '1.1.0' });
   put(kit, '.agent/skills/probe/SKILL.md', '---\nname: probe\ndescription: Use for fixture work.\ntier: core\n---\n# Probe\n');
   for (const wf of workflows) {

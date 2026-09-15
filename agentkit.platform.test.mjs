@@ -604,7 +604,7 @@ test('platform DEP-F6: a machine-local launcher executes its selected checkout t
   const f = fixture();
   const selected = path.join(f.base, 'selected kit with spaces');
   fs.mkdirSync(selected);
-  for (const name of ['agentkit.mjs', 'adapters.mjs']) {
+  for (const name of ['agentkit.mjs', 'adapters.mjs', 'command-guard.mjs', 'command-guard-cli.mjs']) {
     put(selected, name, fs.readFileSync(new URL('./' + name, import.meta.url)));
   }
   json(selected, 'package.json', { name: 'fixture-agentkit', version: '8.7.6', type: 'module' });
