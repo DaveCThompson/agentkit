@@ -1,6 +1,6 @@
 {
   "kitVersion": "1.2.0",
-  "compiledAt": "2026-09-14",
+  "compiledAt": "2026-09-22",
   "note": "COMPILED by kit-owned sync/adoption/inventory — never hand-edit (a hand edit here is itself drift; decision 28)",
   "entries": [
     {
@@ -1320,7 +1320,7 @@
       "type": "skill",
       "name": "close",
       "tier": "core",
-      "sha256": "bb62afe47a216dadaee5f7cd8075f1b907bbbe7544266dbaa77d979291e1bb81",
+      "sha256": "2717c10ab001f1dc3fa6b0a3d9f0c673296dbcd38a0ba1b2a70d06bac3df472e",
       "triggers": [
         "close session",
         "prepare archive",
@@ -1748,7 +1748,7 @@
       "type": "skill",
       "name": "implement-session-land",
       "tier": "core",
-      "sha256": "6788eae708a200480296adfa4bff389d5ff08aa6f0ca5f5dd019ac0dcb7cf588",
+      "sha256": "8268feb23be036cacf695139a6ccd732e36d98bec0745d3d8b2b2e0b19cf2047",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -1769,11 +1769,36 @@
       }
     },
     {
+      "path": ".agent/skills/implement-session-land/scripts/worktree-cleanup.mjs",
+      "type": "skill",
+      "name": "implement-session-land",
+      "tier": "core",
+      "sha256": "52f190cffd43255ee2822e4f27bb1172e885e5b6dc8b013229478e4965b36664",
+      "triggers": null,
+      "appliesTo": null,
+      "requiredTools": null,
+      "conflictsWith": null,
+      "generatedTargets": {
+        "claude": [
+          ".claude/skills/implement-session-land/scripts/worktree-cleanup.mjs"
+        ],
+        "codex": [
+          ".agents/skills/implement-session-land/scripts/worktree-cleanup.mjs"
+        ],
+        "gemini": [
+          ".gemini/skills/implement-session-land/scripts/worktree-cleanup.mjs"
+        ],
+        "opencode": [
+          ".opencode/skills/implement-session-land/scripts/worktree-cleanup.mjs"
+        ]
+      }
+    },
+    {
       "path": ".agent/skills/implement-session-wrap-up/SKILL.md",
       "type": "skill",
       "name": "implement-session-wrap-up",
       "tier": "core",
-      "sha256": "9c16de5fdc7a34b6d728b426963502440233eebe52e99c364f7fbdc5236075e2",
+      "sha256": "adab61dcfb4e095aa3ed4e6a6b8c00017fa34df2f81db870286bc4e20d51ab5a",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,
@@ -3433,7 +3458,7 @@
       "type": "workflow",
       "name": "land",
       "tier": "core",
-      "sha256": "580b34aabbecff9ab3905d49ef25b62229607e283f6ff2520850554469f4c688",
+      "sha256": "8460177d75fe993c2d3edc13766b97bbad652bc6ddb0e548d2d16d4722c0b865",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,

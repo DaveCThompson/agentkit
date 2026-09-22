@@ -1,5 +1,46 @@
 # Changelog
 
+## [Unreleased] — 2026-09-22 — Make land deterministically reconcile and clean session worktrees
+
+### Added
+- `implement-session-land/scripts/worktree-cleanup.mjs`, a dependency-free planner/executor.
+  `plan` inventories every worktree into exactly one of `eligible`, `retained`, or `blocked`, with
+  path, branch, HEAD, registry owner and activity, separate dirty counts, preservation ref, ancestry
+  results, and reason. It writes no Git state. `apply` re-assesses each eligible entry against live
+  state, skips changed entries, repairs a missing `.git` pointer, removes a verified stale admin
+  record, re-reads Git after every removal, and requires `git worktree prune --dry-run` to report
+  nothing. A rerun over the same plan is a no-op.
+- Preservation requires `git merge-base --is-ancestor` against a named retained ref. A branch name
+  or patch equivalence is not proof, and the worktree's own branch is skipped. Dirty content is
+  eligible only when every changed path is byte-identical in that ref. Useful ignored content and
+  unknown owners block removal.
+- `worktree-cleanup.test.mjs` covers the eight ticket fixtures plus bucket totality, staged-only
+  content, useful ignored content, changed-after-plan skipping, and the CLI. It runs in `npm test`.
+
+### Changed
+- `implement-session-land` Phase 3.5 requires a full inventory and the plan artifact before any
+  mutation. It no longer says blanket cleanup is unnecessary for completion. Phase 5 reports
+  integrated, published, cleaned, and retained separately; `landed` never implies `cleaned`.
+  Definition of Done covers every inventoried resource and a clean prune dry-run.
+- `implement-session-wrap-up` stays non-destructive and returns a retained-resource receipt naming
+  each retained worktree and its next cleanup owner.
+- `close` and the `/land` workflow point at the same planner and four-outcome report.
+
+### Verification
+- `node --test worktree-cleanup.test.mjs` — PASS: 14 tests. Fixture 2 is red before the target
+  holds the change and green after. Fixture 4 asserts a patch-equivalent, non-ancestor branch.
+- Windows CI first failed every fixture: the runner's temp directory is an 8.3 short path and Git
+  records the long path. Reproduced locally with a short `TEMP`; `pathKey` now canonicalizes through
+  the nearest existing ancestor. The same run passes, and a direct short-name test covers it.
+- `npm test` on the candidate on top of `7757dae` (Windows, local) — PASS: 444 tests, 443 passed,
+  1 skipped, 0 failed. The D2 selection snapshot gained the new script path; that is its only change.
+- `agentkit check . --quick` — PASS: all tracked files in sync. `check --content` — PASS.
+- Read-only `plan --target main` on this checkout — 0 eligible, 1 retained (primary), 3 blocked
+  (`owner-unknown`, no registry supplied). No Git state changed.
+- Not exercised: `apply` against a real consumer repository such as ResuMint.
+
+KB consulted: `governance/overlay-contract.md`, `governance/mirror-contract.md`.
+
 ## [Unreleased] — 2026-09-14 — Implement opt-in cross-vendor command guard
 
 ### Added

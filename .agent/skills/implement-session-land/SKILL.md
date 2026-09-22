@@ -125,29 +125,71 @@ retain candidate refs and resources until the result is reconciled.
 
 ### Phase 3.5: Release-tree closure audit (after final-state reconciliation)
 
-Use the cleanup ownership/preservation contract in `git-protocol.md`. Inventory broadly only when
-needed to locate session resources; mutate only exact authorized, session-owned, inactive targets.
+Use the cleanup ownership/preservation contract in `git-protocol.md`. Inventory every worktree on
+every run. Restraint applies to mutation, not inspection: mutate only exact authorized,
+session-owned, inactive targets. This step follows verified preservation and publication
+reconciliation when publication is requested.
 
-For each eligible worktree/branch:
+Run the bundled planner from the primary worktree. When a vendor exposes only the copied skill path,
+use its local `scripts/worktree-cleanup.mjs`.
 
-- Establish its actual HEAD is preserved in the accepted target or another verified retained ref.
-  A missing branch name is not preservation evidence.
-- Inspect tracked, staged, untracked, and useful ignored content. Verify any authorized transfer
-  before removing the source; do not force-add private artifacts.
-- Check no active task depends on the checkout/ref, then use Git-native non-force removal only
-  when all conditions hold. Retain dirty, active, protected, foreign, or unknown targets.
-- Treat remote branch deletion as a separate exact-target grant and confirm its result.
+1. Write the registry snapshot. Add one entry per worktree whose owner and activity the host's
+   task/session registry states: `{ "entries": [{ "path": "<exact path>", "owner": "<task or
+   session id>", "activity": "active" | "inactive" }] }`. Sources include the host session list,
+   `lock status`, and ticket frontmatter. Filesystem mtime, a clean status, or an absent process is
+   not activity evidence. Omit a worktree you cannot resolve; the planner blocks it.
+2. Emit the plan before any mutation:
+   `node .agent/skills/implement-session-land/scripts/worktree-cleanup.mjs plan --target <landed ref>
+   --registry <file> --authorized-owner <session id> --out .agentkit/verification/worktree-cleanup/plan.json`.
+   Add `--retain <ref>` for each other verified retained ref. `plan` does not change Git state.
+3. Review `retained` and `blocked`. Resolve a blocked resource by preserving its content or
+   establishing its owner, then re-plan. Never edit the registry to claim inactivity.
+4. Execute: `node .agent/skills/implement-session-land/scripts/worktree-cleanup.mjs apply --plan
+   <plan.json> --out .agentkit/verification/worktree-cleanup/result.json`. Exit 0 means every
+   eligible resource is gone and `git worktree prune --dry-run` reports nothing. Exit 2 means
+   resources remain. Exit 1 is an error.
+5. After a timeout or partial failure, rerun `apply` over the same plan. It re-reads Git state,
+   skips completed removals, and is a verified no-op once complete.
 
-This step follows verified preservation and publication reconciliation when publication is requested.
-An unchanged cleanup inventory is not a reason to broaden scope. No blanket worktree pruning or
-branch deletion is required to call the requested landing complete.
+Each worktree lands in exactly one bucket with `path`, `branch`, `head`, `owner`, `activity`,
+`dirty` counts, `preservation_ref`, and `reason`:
+
+| Bucket | Condition |
+| --- | --- |
+| `eligible` | Registered inactive owner covered by the cleanup grant. `git merge-base --is-ancestor` shows HEAD in a named retained ref, recorded in `ancestry`. No useful ignored content. Any tracked, staged, or untracked change is byte-identical in that ref (`content_proof`). |
+| `retained` | Primary or current worktree, locked, active owner, or owner outside the cleanup grant. |
+| `blocked` | Unknown owner, HEAD not an ancestor of a retained ref, unproven dirty content, useful ignored content, or content that cannot be inspected. |
+
+- A branch name, a missing branch, or patch equivalence is not preservation proof. The planner
+  skips the worktree's own branch when it checks retained refs.
+- Ignored content is useful unless a path segment is on the disposable list (`node_modules`,
+  build caches, virtualenvs). Extend it with `--disposable-ignored <name>` only for regenerable
+  output. Never force-add private artifacts to satisfy a cleanup.
+- `apply` re-assesses each entry and skips one whose state changed since the plan. It removes
+  proven-dirty worktrees with `--force`, repairs a missing `.git` pointer before removal, and removes
+  a stale admin record only after it confirms the recorded path is absent. It does not delete branches.
+- Local branch deletion and remote branch deletion are separate exact-target grants. Local worktree
+  removal does not imply either. Confirm a remote deletion at the remote.
+- If Node or the script is unavailable, apply the same checks manually. Record the same fields and
+  buckets, or retain the resource as `blocked`.
+
+The closure audit is complete when every inventoried resource sits in exactly one bucket with its
+reason recorded. Cleanup of resources outside this landing's session still needs its own mandate.
 
 ### Phase 5: Report
 
-Return integrated source/candidate identities, target, confirmed publication or retained local state,
-actual proof, remaining checks/owners, documentation disposition, and removed/retained resources.
-Use kernel §2 status semantics: `landed` means verified integration ancestry, with publication
-evidence separate. Keep required pending work in active navigation.
+Return integrated source/candidate identities, target, actual proof, remaining checks/owners, and
+documentation disposition. Report four outcomes separately:
+
+- **integrated**: verified ancestry of the candidate in the local target.
+- **published**: the confirmed remote result, or the retained local state.
+- **cleaned**: resources removed in this run, from the `apply` result.
+- **retained**: every `retained` and `blocked` resource with its owner and reason, plus any
+  eligible resource `apply` skipped.
+
+Use kernel §2 status semantics: `landed` means verified integration ancestry. It never implies
+`published` or `cleaned`. A run that removes nothing must say so and name what it retained and why.
+Keep required pending work in active navigation.
 
 Record obligations before releasing only a coordination acquisition this invocation owns. If a
 post-gate tracked status edit was necessary, reconcile the new state under the testing rule before
@@ -156,6 +198,7 @@ claiming a fully verified final candidate.
 ## Definition of Done
 
 The requested integration/publication has evidence for the exact final state, or a precise retained
-blocker. Required pending proof and work remain reachable. Owned records are current, and every
-attempted cleanup has a verified removal or explicit retention result. No foreign work or useful
-local-only evidence was discarded.
+blocker. Required pending proof and work remain reachable. Owned records are current. The cleanup
+plan was emitted before any mutation. Every inventoried resource has a verified removal or a
+recorded retention reason, and `git worktree prune --dry-run` reports nothing. No foreign work or
+useful local-only evidence was discarded.

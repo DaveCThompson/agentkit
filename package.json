@@ -7,7 +7,7 @@
     "agentkit": "./agentkit.mjs"
   },
   "scripts": {
-    "test": "node --test agentkit.test.mjs agentkit.platform.test.mjs agentkit.adapters.test.mjs agentkit.acceptance.test.mjs agentkit.rollout.test.mjs agentkit.downstream.test.mjs command-guard.test.mjs command-guard-cli.test.mjs writing-style.test.mjs writing-style-recovery.test.mjs writing-style-routing.test.mjs",
+    "test": "node --test agentkit.test.mjs agentkit.platform.test.mjs agentkit.adapters.test.mjs agentkit.acceptance.test.mjs agentkit.rollout.test.mjs agentkit.downstream.test.mjs command-guard.test.mjs command-guard-cli.test.mjs writing-style.test.mjs writing-style-recovery.test.mjs writing-style-routing.test.mjs worktree-cleanup.test.mjs",
     "test:writing-style": "node --test writing-style.test.mjs writing-style-recovery.test.mjs writing-style-routing.test.mjs"
   },
   "engines": {
