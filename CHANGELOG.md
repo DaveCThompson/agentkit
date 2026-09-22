@@ -27,10 +27,13 @@
 - `close` and the `/land` workflow point at the same planner and four-outcome report.
 
 ### Verification
-- `node --test worktree-cleanup.test.mjs` — PASS: 13 tests. Fixture 2 is red before the target
+- `node --test worktree-cleanup.test.mjs` — PASS: 14 tests. Fixture 2 is red before the target
   holds the change and green after. Fixture 4 asserts a patch-equivalent, non-ancestor branch.
-- `npm test` on the candidate rebased onto `7757dae` — PASS: 443 tests, 442 passed, 1 skipped,
-  0 failed. The D2 selection snapshot gained the new script path; that is its only change.
+- Windows CI first failed every fixture: the runner's temp directory is an 8.3 short path and Git
+  records the long path. Reproduced locally with a short `TEMP`; `pathKey` now canonicalizes through
+  the nearest existing ancestor. The same run passes, and a direct short-name test covers it.
+- `npm test` on the candidate on top of `7757dae` (Windows, local) — PASS: 444 tests, 443 passed,
+  1 skipped, 0 failed. The D2 selection snapshot gained the new script path; that is its only change.
 - `agentkit check . --quick` — PASS: all tracked files in sync. `check --content` — PASS.
 - Read-only `plan --target main` on this checkout — 0 eligible, 1 retained (primary), 3 blocked
   (`owner-unknown`, no registry supplied). No Git state changed.

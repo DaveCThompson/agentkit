@@ -42,9 +42,23 @@ function digest(value) {
   return crypto.createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
 }
 
+// Canonicalize through the nearest existing ancestor so 8.3 short names, symlinks and removed
+// directories compare equal to the long path Git records.
+function canonical(p) {
+  let head = path.resolve(p);
+  const tail = [];
+  for (;;) {
+    try { return path.join(fs.realpathSync.native(head), ...tail); } catch { /* walk up */ }
+    const parent = path.dirname(head);
+    if (parent === head) return path.resolve(p);
+    tail.unshift(path.basename(head));
+    head = parent;
+  }
+}
+
 // Git reports paths with forward slashes and, on Windows, may differ in drive/segment case.
 export function pathKey(p) {
-  const resolved = path.resolve(p).replace(/[\\/]+$/, '');
+  const resolved = canonical(p).replace(/[\\/]+$/, '');
   return process.platform === 'win32' ? resolved.replace(/\\/g, '/').toLowerCase() : resolved;
 }
 

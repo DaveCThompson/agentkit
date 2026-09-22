@@ -1773,7 +1773,7 @@
       "type": "skill",
       "name": "implement-session-land",
       "tier": "core",
-      "sha256": "3d327d3e57dd0998acdc005d1d030858c45f333cf79428662bcdbf43a6cb4b8c",
+      "sha256": "52f190cffd43255ee2822e4f27bb1172e885e5b6dc8b013229478e4965b36664",
       "triggers": null,
       "appliesTo": null,
       "requiredTools": null,

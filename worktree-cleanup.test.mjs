@@ -86,6 +86,19 @@ test('every worktree lands in exactly one bucket with owner and reason; plan mut
   assert.equal(find(plan, path.join(f.root, 'foreign')).reason, 'owner-not-authorized');
 });
 
+test('pathKey matches 8.3 short names and removed directories to the long path Git records', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-cleanup-'));
+  tempRoots.push(root);
+  const long = path.join(root, 'LongWorktreeDirectoryName');
+  fs.mkdirSync(long);
+  const short = process.platform === 'win32'
+    ? spawnSync('cmd', ['/d', '/s', '/c', `"for %I in ("${long}") do @echo %~sI"`], { encoding: 'utf8', windowsVerbatimArguments: true }).stdout.trim()
+    : '';
+  if (!short || short === long) { t.skip('no 8.3 alias on this volume'); return; }
+  assert.equal(pathKey(short), pathKey(long));
+  assert.equal(pathKey(path.join(short, 'gone', 'child')), pathKey(path.join(long, 'gone', 'child')));
+});
+
 test('fixture 1: dirty worktree with uncommitted tracked changes is blocked', () => {
   const f = fixture();
   const p = f.add('dirty');
