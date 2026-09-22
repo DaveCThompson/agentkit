@@ -114,8 +114,13 @@ tree, run or cite its applicable gate now under `foundation-testing.md`. If land
 return the changed paths and missing proof for that owner. Reconcile any later tracked edit rather
 than citing stale evidence; identify ignored report content separately.
 
-Return completed record steps, changed/moved paths, evidence identity, remainder/dispositions,
-and retained branch/resources. Ordinary wrap ends locally. A caller already authorized to land
+Return completed record steps, changed/moved paths, evidence identity, and remainder/dispositions.
+
+Include a retained-resource receipt. List every worktree except the primary, with its path, branch
+or detached HEAD, owner, and the next cleanup owner. The next cleanup owner is the landing caller
+for session-owned worktrees and the registered owner for others; name `unknown` when neither is
+established. The read-only `plan` command in `implement-session-land` Phase 3.5 produces this
+inventory without mutation. Wrap never runs `apply`. Ordinary wrap ends locally. A caller already authorized to land
 continues its own operation with this receipt; wrap never delegates back to it.
 
 For a requested reviewer package, give the actual problem, result, material objections, deviations,
@@ -128,4 +133,5 @@ named limit; no fixed objection count or extra approval step is implied.
 - Records are idempotent, scoped to their owners, and preserve current truth and navigation.
 - Pending lanes remain discoverable; status, integration ancestry, and publication stay distinct.
 - Final-state proof is valid or explicitly handed to its owner.
+- The return names every retained worktree and its next cleanup owner.
 - The caller receives a bounded return without publication, resource deletion, or recursive land.

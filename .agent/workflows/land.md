@@ -13,5 +13,6 @@ Preserve the selected target through delegated calls. The skill owns synchroniza
 final-state proof, publication reconciliation and eligible cleanup. Do not repeat its steps here,
 replace a requested base with a moving default, or treat every open worktree/ticket as session-owned.
 
-Return confirmed local, integrated and published states separately, with any unresolved acceptance
-or retained resources. A missing prerequisite or ambiguous external result is not successful landing.
+Return the integrated, published, cleaned and retained outcomes separately, with any unresolved
+acceptance. `landed` never implies `cleaned`; a run that removes nothing says so and names what it
+retained. A missing prerequisite or ambiguous external result is not successful landing.

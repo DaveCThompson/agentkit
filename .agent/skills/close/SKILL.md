@@ -57,9 +57,9 @@ shared Git/resource safety in `git-protocol.md` and external-effect recovery in
   unknown, or externally managed instances.
 - Transient notes/caches: remove only disposable task-owned state after preserving useful evidence.
   Do not erase durable project knowledge or account memory.
-- Worktrees/branches: inspect actual HEAD preservation and tracked, untracked, and useful ignored
-  contents. A clean Git status or vanished branch name alone is insufficient. Use Git-native
-  non-force removal for eligible inactive targets; retain everything uncertain.
+- Worktrees/branches: use the plan/apply planner in `implement-session-land` Phase 3.5. It checks
+  HEAD preservation and tracked, staged, untracked, and useful ignored contents. A clean Git status
+  or vanished branch name alone is insufficient. Retain everything uncertain.
 - Browser sessions: close task-opened tabs/sessions only after confirming they contain no unsaved
   user state. Preserve unrelated tabs.
 - Unavailable controls: report the resource retained rather than guessing or using an unrelated

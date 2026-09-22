@@ -755,6 +755,7 @@ const PRE_KINDS_SNAPSHOT = [
   '.agent/skills/implement-quick-fix/SKILL.md',
   '.agent/skills/implement-refactor/SKILL.md',
   '.agent/skills/implement-session-land/SKILL.md',
+  '.agent/skills/implement-session-land/scripts/worktree-cleanup.mjs',
   '.agent/skills/implement-session-wrap-up/SKILL.md',
   '.agent/skills/implement-test/SKILL.md',
   '.agent/skills/kit-contribute/SKILL.md',
